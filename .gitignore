@@ -1,0 +1,37 @@
+# ---------- OS / Editor ----------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.fleet/
+
+# ---------- Local tooling ----------
+.qodo/
+
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# ---------- Logs ----------
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ---------- Dependencies (root-level) ----------
+/vendor/
+/node_modules/
+
+# ---------- Service dependencies ----------
+/puppeteer-service/node_modules/
+
+# ---------- Build/runtime artifacts ----------
+app-code/public/build/
+app-code/public/hot
+app-code/storage/logs/*.log
+app-code/storage/framework/cache/data/*
+
+# ---------- Release artifacts ----------
+wp-plugin/*.zip
+marketing-site/*.zip

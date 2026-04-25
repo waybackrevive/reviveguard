@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="ReviveGuard keeps your WordPress site monitored, backed up, and updated — automatically. Never lose your website again. Plans from $19/month.">
+    <meta name="keywords"
+        content="WordPress maintenance, website monitoring, website backup, WordPress updates, site security, ReviveGuard">
+    <meta property="og:title" content="ReviveGuard — Website Maintenance That Runs Itself">
+    <meta property="og:description"
+        content="24/7 monitoring, automatic backups, WordPress updates — done for you. Starting at $19/month.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://reviveguard.com">
+    <title>ReviveGuard — Website Maintenance That Runs Itself</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="canonical" href="https://reviveguard.com/">
+</head>
+
+<body>
+
+    <!-- ══════════════════════════════════════════════════════════
+     NAV
+═══════════════════════════════════════════════════════════ -->
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+        <div class="container nav__inner">
+            <a href="/" class="nav__logo" aria-label="ReviveGuard home">
+                <span class="live-dot"></span>
+                Revive<span>Guard</span>
+            </a>
+            <ul class="nav__links" role="list">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+            <div class="nav__cta">
+                <a href="https://portal.reviveguard.com/portal/login" class="btn btn--outline btn--sm">Client Login</a>
+                <a href="#pricing" class="btn btn--primary btn--sm">Get Started</a>
+            </div>
+            <button class="nav__hamburger" aria-label="Open menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile menu -->
+    <div class="nav__mobile" role="dialog" aria-label="Mobile navigation">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://portal.reviveguard.com/portal/login">Client Login</a>
+        <a href="#pricing" class="btn btn--primary" style="margin-top:.75rem;justify-content:center">Get Started →</a>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════════ -->
+    <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__bg"></div>
+        <div class="hero__grid-lines" aria-hidden="true"></div>
+        <div class="container">
+            <div class="hero__content">
+                <div class="hero__badge" role="status">
+                    <span class="live-dot" aria-hidden="true"></span>
+                    Monitoring 200+ websites right now
+                </div>
+                <h1 id="hero-title" class="hero__title">
+                    Your website,<br>
+                    <em>watched 24/7.</em><br>
+                    Never lose it again.
+                </h1>
+                <p class="hero__sub">
+                    ReviveGuard monitors your website around the clock, keeps backups safe in the cloud, and handles
+                    WordPress updates automatically — so you can focus on your business, not your website.
+                </p>
+                <div class="hero__actions">
+                    <a href="#pricing" class="btn btn--primary btn--lg">
+                        Start Protection Today →
+                    </a>
+                    <a href="#how-it-works" class="btn btn--outline btn--lg">
+                        See How It Works
+                    </a>
+                </div>
+                <div class="hero__social-proof">
+                    <div class="hero__stars" aria-label="5 star rating">★★★★★</div>
+                    <p>Trusted by small business owners who've been through the nightmare of losing their site</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Mockup -->
+            <div class="hero__dashboard-preview fade-up" aria-hidden="true">
+                <div class="dashboard-mockup">
+                    <div class="mockup-bar">
+                        <span class="mockup-dot"></span>
+                        <span class="mockup-dot"></span>
+                        <span class="mockup-dot"></span>
+                        <span class="mockup-url">app.reviveguard.com/portal</span>
+                    </div>
+                    <div class="mockup-stats">
+                        <div class="mockup-stat">
+                            <div class="mockup-stat__label">Status</div>
+                            <div class="mockup-stat__val green">● Online</div>
+                        </div>
+                        <div class="mockup-stat">
+                            <div class="mockup-stat__label">Uptime 30d</div>
+                            <div class="mockup-stat__val green">99.9%</div>
+                        </div>
+                        <div class="mockup-stat">
+                            <div class="mockup-stat__label">Last Backup</div>
+                            <div class="mockup-stat__val">2h ago</div>
+                        </div>
+                        <div class="mockup-stat">
+                            <div class="mockup-stat__label">SSL Expiry</div>
+                            <div class="mockup-stat__val yellow">47 days</div>
+                        </div>
+                    </div>
+                    <div class="mockup-sites">
+                        <div class="mockup-site-row">
+                            <span class="mockup-site-name">mybakery.com</span>
+                            <span class="mockup-site-badge up">● Up</span>
+                        </div>
+                        <div class="mockup-site-row">
+                            <span class="mockup-site-name">plumbingpros.net</span>
+                            <span class="mockup-site-badge up">● Up</span>
+                        </div>
+                        <div class="mockup-site-row">
+                            <span class="mockup-site-name">dentalstudio.co</span>
+                            <span class="mockup-site-badge warn">⚠ SSL Expiring</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     STATS STRIP
+═══════════════════════════════════════════════════════════ -->
+    <div class="stats-strip" aria-label="Key statistics">
+        <div class="container stats-inner">
+            <div class="stat-item">
+                <div class="stat-item__num"><span data-target="200">0</span><span style="color:var(--green)">+</span>
+                </div>
+                <div class="stat-item__label">Sites Protected</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-item__num"><span data-target="99">0</span><span style="color:var(--green)">%</span>
+                </div>
+                <div class="stat-item__label">Average Uptime</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-item__num"><span data-target="4800">0</span><span style="color:var(--green)">+</span>
+                </div>
+                <div class="stat-item__label">Backups Stored</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-item__num"><span data-target="4">0</span><span style="color:var(--green)">hr</span>
+                </div>
+                <div class="stat-item__label">Emergency Restore SLA</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+     PROBLEM SECTION
+═══════════════════════════════════════════════════════════ -->
+    <section class="section problem" aria-labelledby="problem-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">The Reality</span>
+                <h2 id="problem-title">Your website is one missed renewal<br>away from disappearing</h2>
+                <p>Most small business owners don't realize how fragile their site is — until it's gone.</p>
+            </div>
+            <div class="problem__grid">
+                <div class="problem__card fade-up">
+                    <div class="problem__icon" aria-hidden="true">🔴</div>
+                    <h4>Domain Expires Quietly</h4>
+                    <p>No warning. Your domain expires, someone squats on it, and your business address disappears
+                        overnight. We alert you at 60, 30, and 7 days.</p>
+                </div>
+                <div class="problem__card fade-up">
+                    <div class="problem__icon" aria-hidden="true">🔓</div>
+                    <h4>Outdated WordPress = Open Door</h4>
+                    <p>90% of hacked WordPress sites were running outdated plugins. Every day you delay updates is a day
+                        attackers can walk straight in.</p>
+                </div>
+                <div class="problem__card fade-up">
+                    <div class="problem__icon" aria-hidden="true">💸</div>
+                    <h4>No Backup When You Need It</h4>
+                    <p>Your hosting "backs up daily" — but restoring costs $150+ and takes 3 days. We store your backups
+                        in Backblaze B2 and can restore in under 4 hours.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     HOW IT WORKS
+═══════════════════════════════════════════════════════════ -->
+    <section class="section how-it-works" id="how-it-works" aria-labelledby="hiw-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">How It Works</span>
+                <h2 id="hiw-title">Set up in 5 minutes.<br>Protected forever.</h2>
+                <p>No complex setup. No technical knowledge required. Just three simple steps.</p>
+            </div>
+            <div class="steps">
+                <div class="step fade-up">
+                    <div class="step__num" aria-hidden="true">1</div>
+                    <h4>Choose Your Plan</h4>
+                    <p>Pick the protection level that fits your site. Monitor for basic peace of mind, Guard for active
+                        WordPress sites, or Shield for business-critical websites.</p>
+                </div>
+                <div class="step fade-up">
+                    <div class="step__num" aria-hidden="true">2</div>
+                    <h4>Install the Agent Plugin</h4>
+                    <p>We send you a WordPress plugin and an API token. Install it in under 60 seconds — no server
+                        access needed. It connects your site to ReviveGuard instantly.</p>
+                </div>
+                <div class="step fade-up">
+                    <div class="step__num" aria-hidden="true">3</div>
+                    <h4>Relax. We Watch Everything.</h4>
+                    <p>Your client portal shows live site health, backup history, SSL status, and events. Monthly PDF
+                        reports land in your inbox. You do nothing.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     FEATURES
+═══════════════════════════════════════════════════════════ -->
+    <section class="section features" id="features" aria-labelledby="features-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Everything Included</span>
+                <h2 id="features-title">Not a plugin. Not a tool.<br>A done-for-you service.</h2>
+                <p>ReviveGuard runs in the background. You get results, not dashboards to manage.</p>
+            </div>
+            <div class="feature-list">
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">⚡</div>
+                    <div>
+                        <h4>24/7 Uptime Monitoring</h4>
+                        <p>Your site is checked every 5 minutes. You're notified the moment it goes down — before your
+                            customers notice.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">☁️</div>
+                    <div>
+                        <h4>Automatic Cloud Backups</h4>
+                        <p>Full site backups stored securely in Backblaze B2. Daily, weekly, or monthly based on your
+                            plan — retained for up to 180 days.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">🔄</div>
+                    <div>
+                        <h4>WordPress Auto-Updates</h4>
+                        <p>Core, plugins, and themes updated automatically. Every update is logged. If anything breaks,
+                            we restore from the backup made just before.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">🔒</div>
+                    <div>
+                        <h4>SSL & Domain Expiry Alerts</h4>
+                        <p>We track your SSL certificate and domain registration dates. You get email alerts at 60, 30,
+                            and 7 days before expiry — never miss a renewal again.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">📊</div>
+                    <div>
+                        <h4>Monthly Health Reports</h4>
+                        <p>A professional PDF report emailed to you every month: uptime stats, backup log, update
+                            history, SSL status. Great for sharing with clients if you're an agency.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">🎟️</div>
+                    <div>
+                        <h4>Priority Support Portal</h4>
+                        <p>Got a question? Open a ticket directly from your client portal. Guard clients get 1
+                            request/month. Shield clients get priority 24-hour response.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">🖥️</div>
+                    <div>
+                        <h4>Your Own Client Portal</h4>
+                        <p>A private dashboard branded to ReviveGuard — not a third-party tool with another company's
+                            logo. See every event, backup, and status update in real time.</p>
+                    </div>
+                </div>
+                <div class="feature-item fade-up">
+                    <div class="feature-icon" aria-hidden="true">🚨</div>
+                    <div>
+                        <h4>Emergency Restore SLA</h4>
+                        <p>Shield plan clients get a guaranteed 4-hour restore SLA. Site goes down? We get it back up.
+                            That's a promise in writing.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     PRICING
+═══════════════════════════════════════════════════════════ -->
+    <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Pricing</span>
+                <h2 id="pricing-title">Simple, honest pricing.<br>No surprises.</h2>
+                <p>All plans include your client portal, cloud backups, and monthly reports. Cancel anytime.</p>
+            </div>
+            <div class="pricing__grid">
+
+                <!-- Monitor -->
+                <div class="plan-card fade-up" id="plan-monitor">
+                    <div class="plan-name">Monitor</div>
+                    <div class="plan-price">
+                        <strong>$19</strong><span>/month</span>
+                    </div>
+                    <p class="plan-who">Perfect for HTML sites or WordPress sites that just need basic peace of mind and
+                        alerts.</p>
+                    <ul class="plan-features" aria-label="Monitor plan features">
+                        <li class="plan-feature">24/7 uptime monitoring (every 5 min)</li>
+                        <li class="plan-feature">SSL certificate expiry alerts</li>
+                        <li class="plan-feature">Domain expiry alerts</li>
+                        <li class="plan-feature">Monthly backup (stored 30 days)</li>
+                        <li class="plan-feature">Monthly health report (PDF)</li>
+                        <li class="plan-feature">Client portal access</li>
+                        <li class="plan-feature no">WordPress auto-updates</li>
+                        <li class="plan-feature no">Weekly malware scan</li>
+                        <li class="plan-feature no">Support tickets</li>
+                    </ul>
+                    <div class="plan-cta">
+                        <a href="https://whop.com/reviveguard-monitor" class="btn btn--outline"
+                            style="width:100%;justify-content:center" data-plan="monitor">
+                            Get Monitor →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Guard — POPULAR -->
+                <div class="plan-card plan-card--popular fade-up" id="plan-guard">
+                    <div class="plan-badge">Most Popular</div>
+                    <div class="plan-name">Guard</div>
+                    <div class="plan-price">
+                        <strong>$49</strong><span>/month</span>
+                    </div>
+                    <p class="plan-who">For active WordPress business sites that need updates, security, and reliable
+                        backups every week.</p>
+                    <ul class="plan-features" aria-label="Guard plan features">
+                        <li class="plan-feature">Everything in Monitor</li>
+                        <li class="plan-feature">Weekly backups (stored 90 days)</li>
+                        <li class="plan-feature">WordPress core auto-updates</li>
+                        <li class="plan-feature">Plugin &amp; theme auto-updates</li>
+                        <li class="plan-feature">Weekly malware scan</li>
+                        <li class="plan-feature">Monthly broken link check</li>
+                        <li class="plan-feature">1 support request/month</li>
+                        <li class="plan-feature no">Content edits</li>
+                        <li class="plan-feature no">Emergency restore SLA</li>
+                    </ul>
+                    <div class="plan-cta">
+                        <a href="https://whop.com/reviveguard-guard" class="btn btn--primary"
+                            style="width:100%;justify-content:center" data-plan="guard">
+                            Get Guard →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Shield -->
+                <div class="plan-card fade-up" id="plan-shield">
+                    <div class="plan-name">Shield</div>
+                    <div class="plan-price">
+                        <strong>$99</strong><span>/month</span>
+                    </div>
+                    <p class="plan-who">For revenue-generating websites that can't afford downtime — with content edits
+                        and guaranteed restore SLA.</p>
+                    <ul class="plan-features" aria-label="Shield plan features">
+                        <li class="plan-feature">Everything in Guard</li>
+                        <li class="plan-feature">Daily backups (stored 180 days)</li>
+                        <li class="plan-feature">Up to 1hr content edits/month</li>
+                        <li class="plan-feature">Priority support (24hr response)</li>
+                        <li class="plan-feature">Quarterly SEO health snapshot</li>
+                        <li class="plan-feature">Emergency restore SLA (4 hrs)</li>
+                        <li class="plan-feature">Unlimited support requests</li>
+                    </ul>
+                    <div class="plan-cta">
+                        <a href="https://whop.com/reviveguard-shield" class="btn btn--outline"
+                            style="width:100%;justify-content:center" data-plan="shield">
+                            Get Shield →
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Money back note -->
+            <p class="text-center" style="margin-top:2rem;font-size:.9rem;color:var(--text-dim)">
+                ✓ Cancel anytime &nbsp;·&nbsp; ✓ No setup fee &nbsp;·&nbsp; ✓ 7-day money-back guarantee
+            </p>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     ADD-ONS
+═══════════════════════════════════════════════════════════ -->
+    <section class="section addons" aria-labelledby="addons-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Add-Ons</span>
+                <h2 id="addons-title">Available on any plan</h2>
+                <p>Need something extra? Add it to any plan without upgrading.</p>
+            </div>
+            <div class="addons-grid">
+                <div class="addon-card fade-up">
+                    <div>
+                        <div class="addon-name">Emergency Malware Cleanup</div>
+                        <div class="addon-desc">Full scan, removal, and hardening after an attack</div>
+                    </div>
+                    <div class="addon-price">$79</div>
+                </div>
+                <div class="addon-card fade-up">
+                    <div>
+                        <div class="addon-name">Extra Content Edit Hours</div>
+                        <div class="addon-desc">Text, images, minor layout changes</div>
+                    </div>
+                    <div class="addon-price">$35<span style="font-size:.75rem;font-weight:400">/hr</span></div>
+                </div>
+                <div class="addon-card fade-up">
+                    <div>
+                        <div class="addon-name">Speed Optimization Audit</div>
+                        <div class="addon-desc">Core Web Vitals report + action plan</div>
+                    </div>
+                    <div class="addon-price">$49</div>
+                </div>
+                <div class="addon-card fade-up">
+                    <div>
+                        <div class="addon-name">SSL Installation</div>
+                        <div class="addon-desc">We install and verify your SSL certificate</div>
+                    </div>
+                    <div class="addon-price">$29</div>
+                </div>
+                <div class="addon-card fade-up">
+                    <div>
+                        <div class="addon-name">Extra Backup Storage</div>
+                        <div class="addon-desc">Per 10 GB of additional B2 storage</div>
+                    </div>
+                    <div class="addon-price">$5<span style="font-size:.75rem;font-weight:400">/mo</span></div>
+                </div>
+                <div class="addon-card fade-up">
+                    <div>
+                        <div class="addon-name">Emergency Restore (Monitor)</div>
+                        <div class="addon-desc">One-time restore for Monitor plan clients</div>
+                    </div>
+                    <div class="addon-price">$49</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     WHY REVIVEGUARD (COMPARE)
+═══════════════════════════════════════════════════════════ -->
+    <section class="section compare" aria-labelledby="compare-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Why ReviveGuard</span>
+                <h2 id="compare-title">Not just another WordPress maintenance service</h2>
+                <p>We built ReviveGuard because the existing options are either too expensive, too generic, or hiding
+                    the work from you.</p>
+            </div>
+            <div class="compare-table-wrap fade-up">
+                <table class="compare-table" role="table" aria-label="Feature comparison">
+                    <thead>
+                        <tr>
+                            <th scope="col">Feature</th>
+                            <th scope="col" class="rg">ReviveGuard</th>
+                            <th scope="col">WP Buffs</th>
+                            <th scope="col">Generic Agency</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Starting price</td>
+                            <td class="rg yes">$19/mo</td>
+                            <td class="no">$67/mo</td>
+                            <td class="no">$100+/mo</td>
+                        </tr>
+                        <tr>
+                            <td>Client portal (your own branded)</td>
+                            <td class="rg yes">✓ Yes</td>
+                            <td class="no">No</td>
+                            <td class="no">No</td>
+                        </tr>
+                        <tr>
+                            <td>Real-time site health dashboard</td>
+                            <td class="rg yes">✓ Yes</td>
+                            <td class="no">No</td>
+                            <td class="no">No</td>
+                        </tr>
+                        <tr>
+                            <td>Automatic WP updates with backup first</td>
+                            <td class="rg yes">✓ Yes</td>
+                            <td class="yes">Yes</td>
+                            <td class="no">Sometimes</td>
+                        </tr>
+                        <tr>
+                            <td>SSL &amp; domain expiry alerts</td>
+                            <td class="rg yes">✓ Yes</td>
+                            <td class="no">No</td>
+                            <td class="no">Rarely</td>
+                        </tr>
+                        <tr>
+                            <td>Monthly PDF health report</td>
+                            <td class="rg yes">✓ Yes</td>
+                            <td class="no">No</td>
+                            <td class="no">Extra cost</td>
+                        </tr>
+                        <tr>
+                            <td>Emergency restore SLA guarantee</td>
+                            <td class="rg yes">✓ 4 hours (Shield)</td>
+                            <td class="no">No SLA</td>
+                            <td class="no">No SLA</td>
+                        </tr>
+                        <tr>
+                            <td>Cancel anytime</td>
+                            <td class="rg yes">✓ Always</td>
+                            <td class="yes">Yes</td>
+                            <td class="no">Annual contracts</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     TESTIMONIALS
+═══════════════════════════════════════════════════════════ -->
+    <section class="section testimonials" aria-labelledby="testimonials-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Trusted By</span>
+                <h2 id="testimonials-title">Business owners who've been through<br>the nightmare — and never want to go
+                    back</h2>
+            </div>
+            <div class="testimonial-grid">
+                <div class="testimonial-card fade-up">
+                    <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
+                    <p class="testimonial-text">WaybackRevive restored my site after it got hacked. The moment they
+                        offered ReviveGuard I signed up immediately. I sleep better knowing it's watched 24/7.</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar" aria-hidden="true">MK</div>
+                        <div>
+                            <div class="testimonial-name">Maria K.</div>
+                            <div class="testimonial-role">Owner, Artisan Bakery</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card fade-up">
+                    <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
+                    <p class="testimonial-text">The monthly report alone is worth the price. I actually know what's
+                        happening with my website now — before I was completely in the dark. My SSL expired and I had no
+                        idea.</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar" aria-hidden="true">JR</div>
+                        <div>
+                            <div class="testimonial-name">James R.</div>
+                            <div class="testimonial-role">Plumbing Services, Florida</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card fade-up">
+                    <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
+                    <p class="testimonial-text">I run 3 client sites. The Shield plan pays for itself — I used to spend
+                        2 hours a month on WordPress updates and backups. Now I don't touch it. Revenue-generating time
+                        back in my hands.</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar" aria-hidden="true">SL</div>
+                        <div>
+                            <div class="testimonial-name">Sarah L.</div>
+                            <div class="testimonial-role">Web Designer / Freelancer</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     WHO IS IT FOR
+═══════════════════════════════════════════════════════════ -->
+    <section class="section" style="background:var(--navy)" aria-labelledby="audience-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Who It's For</span>
+                <h2 id="audience-title">Built for three types of website owners</h2>
+            </div>
+            <div class="grid-3">
+                <div class="feature-item fade-up" style="flex-direction:column;text-align:center;padding:2rem">
+                    <div class="feature-icon" style="margin:0 auto 1rem;width:48px;height:48px;font-size:1.5rem"
+                        aria-hidden="true">🏪</div>
+                    <h4>Small Business Owners</h4>
+                    <p style="margin-top:.5rem">You built your website to grow your business — not to become a web
+                        developer. ReviveGuard handles the technical side so you never have to think about it.</p>
+                </div>
+                <div class="feature-item fade-up" style="flex-direction:column;text-align:center;padding:2rem">
+                    <div class="feature-icon" style="margin:0 auto 1rem;width:48px;height:48px;font-size:1.5rem"
+                        aria-hidden="true">🔁</div>
+                    <h4>Previous Hack / Loss Victims</h4>
+                    <p style="margin-top:.5rem">You've already felt the pain of losing your website. You know exactly
+                        how much it costs — in time, money, and stress. Never again.</p>
+                </div>
+                <div class="feature-item fade-up" style="flex-direction:column;text-align:center;padding:2rem">
+                    <div class="feature-icon" style="margin:0 auto 1rem;width:48px;height:48px;font-size:1.5rem"
+                        aria-hidden="true">🎨</div>
+                    <h4>Freelancers &amp; Agencies</h4>
+                    <p style="margin-top:.5rem">Stop spending hours on client site maintenance. Use ReviveGuard as your
+                        backend, bill your clients more, and deliver professional monthly reports without the manual
+                        work.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     FAQ
+═══════════════════════════════════════════════════════════ -->
+    <section class="section faq" id="faq" aria-labelledby="faq-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">FAQ</span>
+                <h2 id="faq-title">Questions? We have answers.</h2>
+            </div>
+            <div class="faq-list" role="list">
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        How does ReviveGuard connect to my website?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>We send you a small WordPress plugin and a unique API token. You install the plugin (takes
+                            under 60 seconds), paste your token in the plugin settings, and it connects immediately. No
+                            server access, no SSH, no technical knowledge needed.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        What happens if an update breaks my site?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>Before every update run, we take a full backup. If something breaks after the update, we
+                            restore from that backup. You'll see both the update and restore events in your client
+                            portal. Guard and Shield plans include this protection automatically.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        Where are my backups stored?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>All backups are stored in Backblaze B2 — a highly durable, geographically redundant cloud
+                            storage service. Your backups are stored separately from your hosting provider, so even if
+                            your host has a problem, your backups are safe.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        Does this work for non-WordPress sites?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>Yes — the Monitor plan works for any website (HTML, static sites, non-WP CMS). Uptime
+                            monitoring, SSL alerts, and domain alerts work on any site. WordPress-specific features
+                            (auto-updates, malware scans) are only available for WordPress sites.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        Can I cancel anytime?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>Yes. Cancel at any time from your client portal or by emailing us. No contracts, no
+                            cancellation fees. Your protection continues until the end of your billing period. We also
+                            offer a 7-day money-back guarantee on all plans.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        What is the "4-hour emergency restore SLA"?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>Shield plan clients get a written guarantee: if your site goes down due to a hack, crash, or
+                            update failure, we will restore it from a clean backup within 4 hours of your report. This
+                            is a real commitment, not marketing language.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item" role="listitem">
+                    <button class="faq-question" aria-expanded="false">
+                        I already pay for website hosting with backups. Why do I need this?
+                        <span aria-hidden="true">+</span>
+                    </button>
+                    <div class="faq-answer" aria-hidden="true">
+                        <p>Hosting backups are stored on the same server — if that server has a problem, so do your
+                            backups. They also don't update your WordPress, monitor your uptime, alert you about
+                            SSL/domain expiry, or send you monthly reports. ReviveGuard is a complete maintenance
+                            service, not just storage.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     CTA BANNER
+═══════════════════════════════════════════════════════════ -->
+    <section class="section cta-banner" aria-labelledby="cta-title">
+        <div class="container">
+            <div class="cta-banner__inner">
+                <h2 id="cta-title">Your website is one event<br>away from going dark.</h2>
+                <p>Start with the Monitor plan for $19/month — no setup fee, no contract. Cancel anytime.</p>
+                <div class="cta-banner__actions">
+                    <a href="#pricing" class="btn btn--primary btn--lg">Protect My Site Now →</a>
+                    <a href="https://portal.reviveguard.com/portal/login" class="btn btn--outline btn--lg">Client
+                        Login</a>
+                </div>
+                <div class="cta-trust">
+                    <span class="cta-trust-item">7-day money-back guarantee</span>
+                    <span class="cta-trust-item">Cancel anytime</span>
+                    <span class="cta-trust-item">No setup fee</span>
+                    <span class="cta-trust-item">Setup in 5 minutes</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════════ -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer__grid">
+                <div class="footer__brand">
+                    <a href="/" class="nav__logo" aria-label="ReviveGuard home">
+                        <span class="live-dot" aria-hidden="true"></span>
+                        Revive<span>Guard</span>
+                    </a>
+                    <p>Website maintenance that actually runs itself. 24/7 monitoring, automatic backups, and WordPress
+                        updates — done for you.</p>
+                </div>
+                <div class="footer__col">
+                    <h5>Product</h5>
+                    <a href="#features">Features</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#how-it-works">How It Works</a>
+                    <a href="#faq">FAQ</a>
+                </div>
+                <div class="footer__col">
+                    <h5>Plans</h5>
+                    <a href="#plan-monitor">Monitor — $19/mo</a>
+                    <a href="#plan-guard">Guard — $49/mo</a>
+                    <a href="#plan-shield">Shield — $99/mo</a>
+                </div>
+                <div class="footer__col">
+                    <h5>Account</h5>
+                    <a href="https://portal.reviveguard.com/portal/login">Client Login</a>
+                    <a href="mailto:support@reviveguard.com">Support</a>
+                    <a href="mailto:hello@reviveguard.com">Contact Us</a>
+                </div>
+            </div>
+            <div class="footer__bottom">
+                <p>© <span id="year"></span> ReviveGuard / WaybackRevive LLC. All rights reserved.</p>
+                <div class="footer__bottom-links">
+                    <a href="/privacy">Privacy Policy</a>
+                    <a href="/terms">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+
+</html>

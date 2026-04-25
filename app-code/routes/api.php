@@ -1,0 +1,34 @@
+<?php
+
+use App\Http\Controllers\Agent\CommandResultController;
+use App\Http\Controllers\Agent\EventController;
+use App\Http\Controllers\Agent\HeartbeatController;
+use App\Http\Controllers\Agent\PluginListController;
+use App\Http\Controllers\Webhook\UptimeKumaController;
+use App\Http\Controllers\Webhook\WhopController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Agent API Routes — /api/v1/agent/*
+|--------------------------------------------------------------------------
+| All routes are stateless (api middleware group = no session/CSRF).
+| AgentTokenAuth validates Bearer token → sha256 → Site model.
+| Rate limiter 'agent' = 60 req/min per token (AppServiceProvider).
+*/
+Route::prefix('v1/agent')
+    ->middleware(['agent.auth', 'throttle:agent'])
+    ->group(function () {
+        Route::post('heartbeat',       HeartbeatController::class);
+        Route::post('command-result',  CommandResultController::class);
+        Route::post('plugin-list',     PluginListController::class);
+        Route::post('event',           EventController::class);
+    });
+
+// Uptime Kuma status webhooks — validated by shared secret header
+Route::post('v1/webhooks/uptime-kuma', UptimeKumaController::class)
+    ->middleware(['uptime_kuma.webhook', 'throttle:60,1']);
+
+// Whop billing webhooks — validated by HMAC-SHA256 signature
+Route::post('v1/webhooks/whop', WhopController::class)
+    ->middleware(['whop.webhook', 'throttle:60,1']);

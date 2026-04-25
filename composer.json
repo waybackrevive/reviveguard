@@ -1,0 +1,9 @@
+{
+    "require": {
+        "filament/filament": "3.2",
+        "laravel/horizon": "5.21",
+        "laravel/breeze": "2.1",
+        "iodev/whois": "2.0",
+        "resend/resend-php": "0.13"
+    }
+}

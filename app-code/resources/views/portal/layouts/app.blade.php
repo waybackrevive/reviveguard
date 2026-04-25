@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config('app.name') }} — Client Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    @livewireStyles
+</head>
+<body class="h-full">
+
+<div class="min-h-full flex">
+
+    {{-- ── Sidebar (desktop) ─────────────────────────────────────────── --}}
+    <aside class="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200">
+        <div class="flex h-16 items-center px-6 border-b border-gray-200">
+            <span class="text-xl font-bold text-blue-600">ReviveGuard</span>
+        </div>
+
+        <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+            @php $current = request()->route()->getName(); @endphp
+
+            <a href="{{ route('portal.dashboard') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.dashboard') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+
+            <a href="{{ route('portal.events') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.events') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                Activity Log
+            </a>
+
+            <a href="{{ route('portal.reports') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.reports') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Reports
+            </a>
+
+            <a href="{{ route('portal.backups') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.backups') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                Backups
+            </a>
+
+            <a href="{{ route('portal.tickets') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.tickets') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Support
+            </a>
+
+            <div class="pt-4 mt-4 border-t border-gray-200 space-y-1">
+                <a href="{{ route('portal.account') }}"
+                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.account') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Account
+                </a>
+
+                <form method="POST" action="{{ route('portal.logout') }}">
+                    @csrf
+                    <button type="submit" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        Sign out
+                    </button>
+                </form>
+            </div>
+        </nav>
+    </aside>
+
+    {{-- ── Mobile top nav ──────────────────────────────────────────────── --}}
+    <div class="lg:hidden w-full">
+        <div class="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-200">
+            <span class="text-lg font-bold text-blue-600">ReviveGuard</span>
+            <details class="relative">
+                <summary class="cursor-pointer list-none p-2 rounded-lg hover:bg-gray-100">
+                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </summary>
+                <nav class="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50">
+                    <a href="{{ route('portal.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Dashboard</a>
+                    <a href="{{ route('portal.events') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Activity Log</a>
+                    <a href="{{ route('portal.reports') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Reports</a>
+                    <a href="{{ route('portal.backups') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Backups</a>
+                    <a href="{{ route('portal.tickets') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Support</a>
+                    <a href="{{ route('portal.account') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Account</a>
+                    <div class="border-t border-gray-100 mt-1 pt-1">
+                        <form method="POST" action="{{ route('portal.logout') }}">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Sign out</button>
+                        </form>
+                    </div>
+                </nav>
+            </details>
+        </div>
+    </div>
+
+    {{-- ── Main content ────────────────────────────────────────────────── --}}
+    <main class="flex-1 lg:pl-64">
+        <div class="px-4 sm:px-6 lg:px-8 py-8 max-w-6xl mx-auto">
+            {{ $slot }}
+        </div>
+    </main>
+
+</div>
+
+@livewireScripts
+</body>
+</html>

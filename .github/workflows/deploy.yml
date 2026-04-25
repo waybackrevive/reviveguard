@@ -1,0 +1,115 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+# Only one deployment at a time
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy to VPS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ─── Install PHP + Composer ─────────────────────────────────────────────
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, pgsql, redis, bcmath
+          coverage: none
+
+      # ─── Install Composer dependencies (production only) ────────────────────
+      - name: Composer install
+        run: |
+          composer install \
+            --no-dev \
+            --no-interaction \
+            --prefer-dist \
+            --optimize-autoloader
+
+      # ─── Build frontend assets ──────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: NPM install + build
+        run: |
+          npm ci
+          npm run build
+
+      # ─── Run tests ──────────────────────────────────────────────────────────
+      # Note: tests run against local SQLite in CI; only smoke-tests
+      - name: Run test suite
+        run: |
+          php artisan test --stop-on-failure
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          RESEND_API_KEY: test_key
+          WHOP_WEBHOOK_SECRET: test_secret
+          UPTIME_KUMA_WEBHOOK_SECRET: test_secret
+
+      # ─── Deploy via SSH ─────────────────────────────────────────────────────
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          port:     ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+
+            echo "=== [1/8] Pull latest code ==="
+            cd /var/www/reviveguard
+            git pull origin main
+
+            echo "=== [2/8] Composer install (production) ==="
+            composer install \
+              --no-dev \
+              --no-interaction \
+              --prefer-dist \
+              --optimize-autoloader
+
+            echo "=== [3/8] NPM build ==="
+            npm ci
+            npm run build
+
+            echo "=== [4/8] Clear + cache config ==="
+            php artisan down --retry=5 --secret="${DEPLOY_SECRET}"
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+
+            echo "=== [5/8] Run migrations ==="
+            php artisan migrate --force
+
+            echo "=== [6/8] Restart queue workers (Horizon) ==="
+            php artisan horizon:terminate
+            sudo supervisorctl restart reviveguard-horizon
+
+            echo "=== [7/8] Restart Puppeteer service ==="
+            pm2 restart reviveguard-puppeteer
+
+            echo "=== [8/8] Bring app back online ==="
+            php artisan up
+
+            echo "✓ Deploy complete"
