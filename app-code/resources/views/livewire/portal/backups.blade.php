@@ -1,34 +1,34 @@
 <div>
-    <h1 class="text-2xl font-semibold text-gray-900 mb-1">Backups</h1>
-    <p class="text-sm text-gray-500 mb-6">{{ $retentionCopy }}</p>
+    <h1 class="portal-title text-3xl font-extrabold mb-1">Backups</h1>
+    <p class="portal-muted text-sm mb-6">{{ $retentionCopy }}</p>
 
     @if ($backups->isEmpty())
-        <div class="bg-white rounded-2xl border border-gray-200 p-10 text-center text-sm text-gray-500">
+        <div class="portal-panel-strong rounded-3xl p-10 text-center text-sm portal-muted">
             No backups found yet. Backups run automatically on your plan schedule.
         </div>
     @else
-        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
-            <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+        <div class="portal-panel-strong rounded-3xl overflow-hidden mb-6">
+            <table class="min-w-full">
+                <thead class="portal-table-head border-b portal-divider">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
-                        <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Size</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Type</th>
+                        <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Size</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
+                <tbody>
                     @foreach ($backups as $backup)
-                        <tr>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                        <tr class="portal-table-row border-b last:border-b-0">
+                            <td class="px-6 py-4 text-sm portal-muted whitespace-nowrap">
                                 {{ $backup->completed_at?->format('M j, Y H:i') ?? '—' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700">Full backup</td>
-                            <td class="hidden sm:table-cell px-6 py-4 text-sm text-gray-700">
+                            <td class="px-6 py-4 text-sm portal-title font-semibold">Full backup</td>
+                            <td class="hidden sm:table-cell px-6 py-4 text-sm portal-muted">
                                 {{ $backup->size_bytes ? round($backup->size_bytes / 1048576) . ' MB' : '—' }}
                             </td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                <span class="portal-badge portal-badge-success">
                                     ✓ Verified
                                 </span>
                             </td>
@@ -39,9 +39,9 @@
         </div>
     @endif
 
-    <div class="bg-gray-50 rounded-2xl border border-gray-200 p-5 text-sm text-gray-600">
+    <div class="portal-panel-soft rounded-3xl p-5 text-sm portal-muted">
         Need to restore a backup?
-        <a href="{{ route('portal.tickets') }}" class="text-blue-600 hover:underline font-medium">Open a support ticket →</a>
+        <a href="{{ route('portal.tickets') }}" class="portal-link font-semibold">Open a support ticket →</a>
         and we'll restore it for you.
     </div>
 </div>
