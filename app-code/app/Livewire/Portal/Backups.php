@@ -5,7 +5,10 @@ namespace App\Livewire\Portal;
 use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\Site;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class Backups extends Component
@@ -13,15 +16,39 @@ class Backups extends Component
     public function render(): \Illuminate\View\View
     {
         $client = Auth::guard('client')->user();
-        $site   = Site::where('client_id', $client->id)->first();
 
-        $backups = $site
-            ? Backup::where('site_id', $site->id)
-                ->where('status', BackupStatus::SUCCESS)
-                ->orderByDesc('completed_at')
-                ->limit(10)
-                ->get()
-            : collect();
+        if (!$client) {
+            return view('livewire.portal.backups', [
+                'backups' => collect(),
+                'retentionCopy' => 'Please sign in to view backups.',
+            ])->layout('portal.layouts.app');
+        }
+
+        if (!Schema::hasTable('sites') || !Schema::hasTable('backups')) {
+            return view('livewire.portal.backups', [
+                'backups' => collect(),
+                'retentionCopy' => 'Backups are being initialized. Please check again shortly or contact support.',
+            ])->layout('portal.layouts.app');
+        }
+
+        try {
+            $site = Site::where('client_id', $client->id)->first();
+
+            $backups = $site
+                ? Backup::where('site_id', $site->id)
+                    ->where('status', BackupStatus::SUCCESS)
+                    ->orderByDesc('completed_at')
+                    ->limit(10)
+                    ->get()
+                : collect();
+        } catch (QueryException $e) {
+            Log::warning('Portal backups query failed', [
+                'client_id' => $client->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $backups = collect();
+        }
 
         // Plan-based retention copy from the subscription
         $plan = optional($client->activeSubscription)->plan;

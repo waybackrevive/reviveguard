@@ -31,7 +31,8 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::hex('#1a1a2e'),
             ])
-            ->brandName('ReviveGuard Admin')
+            ->brandName('ReviveGuard Admin • WaybackRevive')
+            ->sidebarCollapsibleOnDesktop()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
