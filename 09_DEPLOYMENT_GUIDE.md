@@ -37,13 +37,25 @@
 | RAM | 2 GB | 4 GB |
 | Disk | 20 GB SSD | 40 GB SSD |
 | OS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
-| PHP | 8.2+ | 8.3 |
+| PHP | 8.4 | 8.4 |
 | Node.js | 18+ | 20 LTS |
 | PostgreSQL | 15+ | 16 |
 | Redis | 7+ | 7 |
 
-**Domain needed:** e.g. `app.reviveguard.com` and `portal.reviveguard.com`
-(Can be same domain with path, or two separate subdomains — guide uses two subdomains)
+**Domain architecture (recommended for this project):**
+- `reviveguard.com` (and `www`) → static marketing site on Hostinger
+- `app.reviveguard.com` → Laravel app on VPS (Admin + Client Portal on same host)
+- Portal path on same host: `https://app.reviveguard.com/portal/login`
+
+### DNS Records
+
+Set these records at your DNS provider:
+
+| Host | Type | Target |
+|---|---|---|
+| `@` | A | Hostinger static site IP (or Hostinger default target) |
+| `www` | CNAME | `reviveguard.com` |
+| `app` | A | Your VPS public IP |
 
 ---
 
@@ -110,15 +122,15 @@ sudo apt install -y \
   ca-certificates lsb-release
 ```
 
-### PHP 8.3
+### PHP 8.4
 ```bash
 sudo add-apt-repository ppa:ondrej/php -y
 sudo apt update
 sudo apt install -y \
-  php8.3 php8.3-fpm php8.3-cli \
-  php8.3-pgsql php8.3-redis php8.3-mbstring \
-  php8.3-xml php8.3-curl php8.3-zip \
-  php8.3-bcmath php8.3-intl php8.3-gd
+  php8.4 php8.4-fpm php8.4-cli \
+  php8.4-pgsql php8.4-redis php8.4-mbstring \
+  php8.4-xml php8.4-curl php8.4-zip \
+  php8.4-bcmath php8.4-intl php8.4-gd
 
 # Verify
 php -v
@@ -158,7 +170,7 @@ sudo systemctl start postgresql
 
 # Create database and user
 sudo -u postgres psql << 'SQL'
-CREATE USER reviveguard WITH PASSWORD 'wayBack26@25dev';
+CREATE USER reviveguard WITH PASSWORD 'CHANGE_THIS_STRONG_PASSWORD';
 CREATE DATABASE reviveguard OWNER reviveguard;
 GRANT ALL PRIVILEGES ON DATABASE reviveguard TO reviveguard;
 \q
@@ -168,9 +180,8 @@ SQL
 psql -h 127.0.0.1 -U reviveguard -d reviveguard -c "SELECT version();"
 ```
 
-> **Important:** Replace `wayBack26@25dev` with a real strong password. Store it in a password manager.
-wayBack26@25dev
-revivE26@25dev
+> **Important:** Replace `CHANGE_THIS_STRONG_PASSWORD` with a real strong password. Store it in a password manager.
+
 ---
 
 ## 5. Redis Setup
@@ -220,15 +231,44 @@ composer install --no-dev --optimize-autoloader \
 
 ### Create .env
 ```bash
-cp .env.example .env
-nano .env
-# Fill in all values — see Section 16 for full reference
-```
+# Use the production template from repo root (recommended for server)
+cp /var/www/reviveguard/.env.production.example /var/www/reviveguard/app-code/.env
 
-### Generate app key
-```bash
+# Edit production env values
+nano .env
+
+# Generate APP_KEY after saving
 php artisan key:generate
 ```
+
+Production `.env` rules (important):
+- Yes, you can use values from `.env.production.example` as base.
+- Replace every `<CHANGE_ME>` placeholder with real production secrets.
+- Keep these defaults unless you have a reason to change:
+  - `APP_ENV=production`
+  - `APP_DEBUG=false`
+  - `QUEUE_CONNECTION=redis`
+  - `UPTIME_KUMA_URL=http://127.0.0.1:3001`
+  - `PUPPETEER_SERVICE_URL=http://127.0.0.1:3002`
+- Do NOT copy local/dev values from `app-code/.env.example` to production.
+
+Minimum values you must set before first run:
+- `APP_URL`, `PORTAL_URL`
+- `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+- `REDIS_PASSWORD` (if Redis is password-protected)
+- `RESEND_API_KEY`
+- `WHOP_API_KEY`, `WHOP_WEBHOOK_SECRET`
+- `WHOP_PLAN_MONITOR_ID`, `WHOP_PLAN_GUARD_ID`, `WHOP_PLAN_SHIELD_ID`
+- `UPTIME_KUMA_API_KEY`, `UPTIME_KUMA_WEBHOOK_SECRET`
+- `B2_KEY_ID`, `B2_APP_KEY`, `B2_BUCKET_ID`, `B2_BUCKET_NAME`
+- `SENTRY_LARAVEL_DSN` (recommended)
+
+If any of the keys above are missing in your copied `.env`, add them manually.
+
+Quick note for clarity:
+- You do NOT need to change every line in `.env`.
+- Keep defaults as-is, only fill required keys above.
+- We are keeping Resend flow as-is (`MAIL_MAILER=log` + `RESEND_API_KEY`).
 
 ### Set storage permissions
 ```bash
@@ -261,7 +301,9 @@ php artisan event:cache
 
 ## 8. Nginx Configuration
 
-### Admin panel (`app.reviveguard.com`)
+Use one Nginx site for both Admin and Portal on the same domain.
+
+### App + Portal (`app.reviveguard.com`)
 ```bash
 sudo nano /etc/nginx/sites-available/reviveguard-admin
 ```
@@ -270,6 +312,7 @@ Paste:
 ```nginx
 server {
     listen 80;
+  listen [::]:80;
     server_name app.reviveguard.com;
     root /var/www/reviveguard/app-code/public;
 
@@ -284,10 +327,17 @@ server {
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }
 
+    # ACME challenge path for Let's Encrypt (must be publicly reachable)
+    location ^~ /.well-known/acme-challenge/ {
+      root /var/www/reviveguard/app-code/public;
+      default_type "text/plain";
+      try_files $uri =404;
+    }
+
     error_page 404 /index.php;
 
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
@@ -305,51 +355,9 @@ server {
 }
 ```
 
-### Client portal (`portal.reviveguard.com`)
-```bash
-sudo nano /etc/nginx/sites-available/reviveguard-portal
-```
-
-Paste:
-```nginx
-server {
-    listen 80;
-    server_name portal.reviveguard.com;
-    root /var/www/reviveguard/app-code/public;
-
-    index index.php;
-    charset utf-8;
-    client_max_body_size 16M;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_hide_header X-Powered-By;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-}
-```
-
-### Enable both sites
+### Enable site
 ```bash
 sudo ln -s /etc/nginx/sites-available/reviveguard-admin /etc/nginx/sites-enabled/
-sudo ln -s /etc/nginx/sites-available/reviveguard-portal /etc/nginx/sites-enabled/
 
 # Test config
 sudo nginx -t
@@ -366,8 +374,16 @@ sudo systemctl reload nginx
 # Install certbot
 sudo apt install -y certbot python3-certbot-nginx
 
+# Ensure ACME directory exists
+mkdir -p /var/www/reviveguard/app-code/public/.well-known/acme-challenge
+
+# Quick reachability test (must return the same token on both)
+echo acme-test > /var/www/reviveguard/app-code/public/.well-known/acme-challenge/ping
+curl -4 http://app.reviveguard.com/.well-known/acme-challenge/ping
+curl -6 http://app.reviveguard.com/.well-known/acme-challenge/ping
+
 # Get certificates (will auto-edit nginx configs)
-sudo certbot --nginx -d app.reviveguard.com -d portal.reviveguard.com \
+sudo certbot --nginx -d app.reviveguard.com \
   --email your@email.com --agree-tos --non-interactive
 
 # Test auto-renewal
@@ -375,6 +391,9 @@ sudo certbot renew --dry-run
 ```
 
 > Certbot adds a cron job automatically to renew certs before expiry.
+>
+> If `curl -6` fails or shows unexpected response, your `AAAA` DNS for `app` is not aligned with this VPS.
+> Either fix IPv6 routing on this VPS or remove the `AAAA` record for `app` and keep only `A`.
 
 ---
 
@@ -474,9 +493,9 @@ docker run -d \
 ```
 
 Access at `http://YOUR_SERVER_IP:3001` (temporarily) to create admin account, then set:
-- Username + password
+- API Key (Settings → API Keys)
 - Get the API key from Settings → API Keys
-- Store these in `.env` as `UPTIME_KUMA_USERNAME`, `UPTIME_KUMA_PASSWORD`
+- Store these in `.env` as `UPTIME_KUMA_API_KEY` (and keep `UPTIME_KUMA_WEBHOOK_SECRET` set)
 
 Add a Nginx proxy for Uptime Kuma if you want `status.reviveguard.com`.
 
@@ -505,14 +524,19 @@ This runs every minute and Laravel decides which jobs to execute based on their 
 1. Go to https://resend.com → Create API Key
 2. Verify your sender domain (`notifications@reviveguard.com`)
 3. Add `RESEND_API_KEY=re_xxxx` to `.env`
-4. Set `MAIL_MAILER=resend` in production `.env`
+4. Keep `MAIL_MAILER=log` (or configure SMTP if you want password-reset emails via Hostinger).
+  App alert/report/ticket emails are sent by `NotificationService` through Resend API using `RESEND_API_KEY`.
 
 ### Whop (Billing)
 1. Go to https://whop.com → Your App → Webhooks
-2. Add webhook URL: `https://app.reviveguard.com/webhooks/whop`
-3. Copy the webhook secret → `WHOP_WEBHOOK_SECRET=`
-4. Get API key → `WHOP_API_KEY=`
-5. Create 3 plans (Monitor / Guard / Shield) and copy their IDs:
+2. Add webhook URL: `https://app.reviveguard.com/api/v1/webhooks/whop`
+3. Select events:
+  - `membership.went_valid`
+  - `membership.went_invalid`
+  - `membership.was_banned`
+4. Copy the webhook secret → `WHOP_WEBHOOK_SECRET=`
+5. Get API key → `WHOP_API_KEY=`
+6. Create 3 plans (Monitor / Guard / Shield) and copy their IDs:
    - `WHOP_PLAN_MONITOR_ID=`
    - `WHOP_PLAN_GUARD_ID=`
    - `WHOP_PLAN_SHIELD_ID=`
@@ -521,9 +545,10 @@ This runs every minute and Laravel decides which jobs to execute based on their 
 1. Go to https://www.backblaze.com/b2/cloud-storage.html
 2. Create a bucket named `reviveguard-backups` (private)
 3. Create an Application Key with read+write access to that bucket
-4. Copy Key ID → `BACKBLAZE_KEY_ID=`
-5. Copy Application Key → `BACKBLAZE_APP_KEY=`
-6. Copy Bucket ID → `BACKBLAZE_BUCKET_ID=`
+4. Copy Key ID → `B2_KEY_ID=`
+5. Copy Application Key → `B2_APP_KEY=`
+6. Copy Bucket ID → `B2_BUCKET_ID=`
+7. Set bucket name → `B2_BUCKET_NAME=reviveguard-backups`
 
 ### Sentry (Error Tracking)
 1. Go to https://sentry.io → New Project → Laravel
@@ -534,67 +559,76 @@ This runs every minute and Laravel decides which jobs to execute based on their 
 ## 16. Final .env Reference
 
 ```dotenv
-APP_NAME=ReviveGuard
+APP_NAME="ReviveGuard"
 APP_ENV=production
-APP_KEY=base64:GENERATE_WITH_php_artisan_key:generate
+APP_KEY=
 APP_DEBUG=false
 APP_TIMEZONE=UTC
 APP_URL=https://app.reviveguard.com
+PORTAL_URL=https://app.reviveguard.com
+
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+
+APP_MAINTENANCE_DRIVER=file
+BCRYPT_ROUNDS=12
 
 LOG_CHANNEL=stack
-LOG_STACK=daily
-LOG_LEVEL=warning
+LOG_STACK=single
+LOG_LEVEL=error
 
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=reviveguard
-DB_USERNAME=reviveguard
-DB_PASSWORD=YOUR_DB_PASSWORD
+DB_USERNAME=reviveguard_user
+DB_PASSWORD=<CHANGE_ME>
 
 SESSION_DRIVER=redis
-SESSION_LIFETIME=480
+SESSION_LIFETIME=120
 SESSION_ENCRYPT=true
+SESSION_PATH=/
 SESSION_DOMAIN=.reviveguard.com
 
-BROADCAST_CONNECTION=log
-FILESYSTEM_DISK=local
-QUEUE_CONNECTION=redis
-
 CACHE_STORE=redis
-CACHE_PREFIX=reviveguard_
+CACHE_PREFIX=rg_
 
+REDIS_CLIENT=phpredis
 REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=YOUR_REDIS_PASSWORD
+REDIS_PASSWORD=null
 REDIS_PORT=6379
 
-MAIL_MAILER=resend
-MAIL_FROM_ADDRESS="notifications@reviveguard.com"
+QUEUE_CONNECTION=redis
+BROADCAST_CONNECTION=log
+FILESYSTEM_DISK=local
+
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS=hello@reviveguard.com
 MAIL_FROM_NAME="ReviveGuard"
 
-RESEND_API_KEY=re_xxxxxxxxxxxx
+RESEND_API_KEY=re_<CHANGE_ME>
 
-WHOP_API_KEY=
-WHOP_WEBHOOK_SECRET=
-WHOP_PLAN_MONITOR_ID=
-WHOP_PLAN_GUARD_ID=
-WHOP_PLAN_SHIELD_ID=
-
-BACKBLAZE_KEY_ID=
-BACKBLAZE_APP_KEY=
-BACKBLAZE_BUCKET_ID=
-BACKBLAZE_BUCKET_NAME=reviveguard-backups
+WHOP_WEBHOOK_SECRET=<CHANGE_ME>
+WHOP_API_KEY=<CHANGE_ME>
+WHOP_PLAN_MONITOR_ID=<CHANGE_ME>
+WHOP_PLAN_GUARD_ID=<CHANGE_ME>
+WHOP_PLAN_SHIELD_ID=<CHANGE_ME>
 
 UPTIME_KUMA_URL=http://127.0.0.1:3001
-UPTIME_KUMA_USERNAME=
-UPTIME_KUMA_PASSWORD=
-UPTIME_KUMA_WEBHOOK_SECRET=
+UPTIME_KUMA_API_KEY=<CHANGE_ME>
+UPTIME_KUMA_WEBHOOK_SECRET=<CHANGE_ME>
+
+B2_KEY_ID=<CHANGE_ME>
+B2_APP_KEY=<CHANGE_ME>
+B2_BUCKET_ID=<CHANGE_ME>
+B2_BUCKET_NAME=reviveguard-backups
 
 PUPPETEER_SERVICE_URL=http://127.0.0.1:3002
 
-PORTAL_URL=https://portal.reviveguard.com
+SENTRY_LARAVEL_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
+SENTRY_TRACES_SAMPLE_RATE=0.1
 
-SENTRY_LARAVEL_DSN=
+VITE_APP_NAME="${APP_NAME}"
 ```
 
 ---
@@ -648,7 +682,7 @@ curl -s -o /dev/null -w "%{http_code}" https://app.reviveguard.com/admin
 # Expected: 302 (redirect to login)
 
 # Portal loads
-curl -s -o /dev/null -w "%{http_code}" https://portal.reviveguard.com/portal/login
+curl -s -o /dev/null -w "%{http_code}" https://app.reviveguard.com/portal/login
 # Expected: 200
 
 # Agent API responds
@@ -794,6 +828,52 @@ php artisan migrate --path=database/migrations/FILENAME.php
 php artisan migrate:fresh --seed
 ```
 
+### Composer install fails with "requires php >=8.4"
+If you see errors like `symfony/* requires php >=8.4`, your server is on PHP 8.3 while the lock file expects PHP 8.4.
+
+```bash
+# Install PHP 8.4 packages
+sudo apt update
+sudo apt install -y \
+  php8.4 php8.4-fpm php8.4-cli \
+  php8.4-pgsql php8.4-redis php8.4-mbstring \
+  php8.4-xml php8.4-curl php8.4-zip \
+  php8.4-bcmath php8.4-intl php8.4-gd
+
+# Restart FPM and nginx
+sudo systemctl restart php8.4-fpm
+sudo systemctl restart nginx
+
+# Verify active PHP version
+php -v
+
+# Retry install
+cd /var/www/reviveguard/app-code
+composer install --no-dev --optimize-autoloader \
+  --ignore-platform-req=ext-pcntl \
+  --ignore-platform-req=ext-posix
+```
+
+### Certbot fails with `unauthorized` or ACME `404`
+If Let's Encrypt shows `Invalid response ... /.well-known/acme-challenge/...: 404`, run:
+
+```bash
+# 1) Confirm nginx is serving the app site config
+sudo nginx -t
+sudo systemctl reload nginx
+
+# 2) Verify challenge path from internet on both IP stacks
+echo acme-test > /var/www/reviveguard/app-code/public/.well-known/acme-challenge/ping
+curl -4 http://app.reviveguard.com/.well-known/acme-challenge/ping
+curl -6 http://app.reviveguard.com/.well-known/acme-challenge/ping
+
+# 3) If IPv6 (curl -6) is wrong/failing, remove AAAA record for host `app` in DNS
+#    and keep only A record to VPS IPv4.
+
+# 4) Retry certbot
+sudo certbot --nginx -d app.reviveguard.com
+```
+
 ---
 
 ## Quick Reference Card
@@ -801,7 +881,7 @@ php artisan migrate:fresh --seed
 | URL | Purpose |
 |-----|---------|
 | `https://app.reviveguard.com/admin` | Admin panel (Filament) |
-| `https://portal.reviveguard.com/portal/login` | Client portal |
+| `https://app.reviveguard.com/portal/login` | Client portal |
 | `https://app.reviveguard.com/api/v1/heartbeat` | Agent API |
 | `http://127.0.0.1:3001` | Uptime Kuma (internal) |
 | `http://127.0.0.1:3002/health` | PDF service health |

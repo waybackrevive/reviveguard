@@ -42,9 +42,7 @@ That's it. No in-app checkout. No credit card forms.
 |---|---|
 | `membership.went_valid` | Activate client (new signup OR renewal) |
 | `membership.went_invalid` | Suspend client (payment lapsed/expired) |
-| `membership.cancelled` | Suspend client (voluntarily cancelled) |
-| `payment.succeeded` | Reactivate if suspended (successful retry) |
-| `payment.failed` | Send payment failed email to client |
+| `membership.was_banned` | Suspend client (banned) |
 
 All other events: return 200 and ignore.
 
@@ -102,7 +100,7 @@ WHOP_PLAN_SHIELD_ID=prod_xxx
 
 ```php
 // routes/api.php — outside auth middleware
-Route::post('/whop/webhook', WhopWebhookController::class)
+Route::post('/v1/webhooks/whop', WhopWebhookController::class)
      ->middleware('whop.webhook');
 ```
 
@@ -116,14 +114,14 @@ final class VerifyWhopWebhook
     public function handle(Request $request, Closure $next): Response
     {
         $secret    = config('services.whop.webhook_secret');
-        $signature = $request->header('X-Whop-Signature-256');
+        $signature = $request->header('whop-signature');
         $payload   = $request->getContent();
 
         if (!$signature || !$secret) {
             abort(401, 'Missing webhook signature');
         }
 
-        $expected = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+        $expected = hash_hmac('sha256', $payload, $secret);
 
         if (!hash_equals($expected, $signature)) {
             abort(401, 'Invalid webhook signature');
@@ -397,9 +395,8 @@ That's one `<a>` tag. No API call, no redirect generation, no Cashier method.
 [ ] Create 3 products on whop.com/dashboard with correct prices ($19/$49/$99)
 [ ] Get WHOP_WEBHOOK_SECRET from Whop dashboard → Webhooks section
 [ ] Store WHOP_WEBHOOK_SECRET and WHOP_PLAN_*_ID values in .env
-[ ] Register webhook URL in Whop: https://app.reviveguard.com/api/whop/webhook
-[ ] Select events: membership.went_valid, membership.went_invalid,
-    membership.cancelled, payment.succeeded, payment.failed
+[ ] Register webhook URL in Whop: https://app.reviveguard.com/api/v1/webhooks/whop
+[ ] Select events: membership.went_valid, membership.went_invalid, membership.was_banned
 [ ] Use Whop webhook test tool → confirm client activates in DB
 [ ] Update plans table: set whop_plan_id for Monitor / Guard / Shield rows
 ```
@@ -412,9 +409,7 @@ That's one `<a>` tag. No API call, no redirect generation, no Cashier method.
 [ ] Webhook signature validated with hash_equals (timing-safe, constant-time)
 [ ] membership.went_valid → client activated + OnboardClient job queued
 [ ] membership.went_invalid → client suspended + sites paused
-[ ] membership.cancelled → client suspended + event logged on all sites
-[ ] payment.succeeded → suspended client reactivated
-[ ] payment.failed → payment failure email dispatched to client
+[ ] membership.was_banned → client suspended + event logged on all sites
 [ ] Duplicate webhooks handled idempotently (updateOrCreate pattern)
 [ ] Webhook always returns 200 immediately (async processing)
 [ ] No Cashier package in composer.json
