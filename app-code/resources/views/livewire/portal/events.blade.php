@@ -1,12 +1,10 @@
 <div>
-    <div class="mb-6">
-        <h1 class="portal-title text-3xl font-extrabold">Activity Log</h1>
-        <p class="portal-muted mt-2 text-sm">Filter alerts, maintenance, backup activity, and warnings without losing readability in either theme.</p>
-    </div>
+    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Activity Log</h1>
 
+    {{-- ── Filters ─────────────────────────────────────────────────────────── --}}
     <div class="flex flex-wrap gap-3 mb-6">
         <select wire:model.live="filterType"
-                class="portal-select rounded-xl px-3 py-2.5 text-sm font-medium">
+                class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Events</option>
             <option value="uptime_kuma_alert">Downtime</option>
             <option value="backup_completed">Backup</option>
@@ -16,7 +14,7 @@
         </select>
 
         <select wire:model.live="filterSeverity"
-        class="portal-select rounded-xl px-3 py-2.5 text-sm font-medium">
+                class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Severities</option>
             <option value="critical">Critical</option>
             <option value="warning">Warning</option>
@@ -25,46 +23,51 @@
         </select>
 
         <select wire:model.live="filterDays"
-                class="portal-select rounded-xl px-3 py-2.5 text-sm font-medium">
+                class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="7">Last 7 days</option>
             <option value="30" selected>Last 30 days</option>
             <option value="90">Last 90 days</option>
         </select>
     </div>
 
-    <div class="portal-panel-strong rounded-3xl overflow-hidden">
+    {{-- ── Table ───────────────────────────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         @if ($events->isEmpty())
-            <div class="py-16 text-center text-sm portal-muted">
-                No events found for the selected filters.
+            <div class="py-16 text-center text-sm text-gray-500">
+                No events found for the selected filters — that's a good sign!
             </div>
         @else
-            <table class="min-w-full">
-                <thead class="portal-table-head border-b portal-divider">
+            <table class="min-w-full divide-y divide-gray-100">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Date / Time</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Event</th>
-                        <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Type</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.24em]">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Date / Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Event</th>
+                        <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-50">
                     @foreach ($events as $event)
                         <tr wire:click="showEvent('{{ $event->id }}')"
-                            class="portal-table-row portal-table-row-hover cursor-pointer border-b last:border-b-0">
-                            <td class="px-6 py-4 text-sm portal-muted whitespace-nowrap">
+                            class="hover:bg-gray-50 cursor-pointer">
+                            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                                 {{ $event->created_at->format('M j, Y H:i') }}
                             </td>
                             <td class="px-6 py-4">
-                                <p class="portal-title text-sm font-bold">{{ $event->title }}</p>
+                                <p class="text-sm font-medium text-gray-800">{{ $event->title }}</p>
                                 @if ($event->message)
-                                    <p class="portal-muted text-xs mt-0.5 truncate max-w-xs">{{ $event->message }}</p>
+                                    <p class="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{{ $event->message }}</p>
                                 @endif
                             </td>
-                            <td class="hidden sm:table-cell px-6 py-4 text-sm portal-muted">
+                            <td class="hidden sm:table-cell px-6 py-4 text-sm text-gray-500">
                                 {{ ucwords(str_replace(['_', 'uptime kuma'], [' ', 'Downtime'], $event->type)) }}
                             </td>
                             <td class="px-6 py-4">
-                                <span class="portal-badge @if ($event->severity === 'critical') portal-badge-danger @elseif ($event->severity === 'warning') portal-badge-warning @elseif ($event->severity === 'success') portal-badge-success @else portal-badge-neutral @endif">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                    @if ($event->severity === 'critical')  bg-red-100 text-red-700
+                                    @elseif ($event->severity === 'warning') bg-amber-100 text-amber-700
+                                    @elseif ($event->severity === 'success') bg-green-100 text-green-700
+                                    @else bg-blue-50 text-blue-700 @endif">
                                     @if ($event->severity === 'critical') ✗ Critical
                                     @elseif ($event->severity === 'warning') ⚠ Warning
                                     @elseif ($event->severity === 'success') ✓ Success
@@ -76,38 +79,39 @@
                 </tbody>
             </table>
 
-            <div class="px-6 py-4 border-t portal-divider">
+            <div class="px-6 py-4 border-t border-gray-100">
                 {{ $events->links() }}
             </div>
         @endif
     </div>
 
+    {{-- ── Event detail modal ──────────────────────────────────────────────── --}}
     @if ($selectedEvent)
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
              wire:click.self="closeModal">
-            <div class="portal-modal-panel rounded-3xl max-w-md w-full p-6">
-                <h3 class="portal-title text-base font-extrabold mb-1">{{ $selectedEvent->title }}</h3>
-                <p class="portal-soft text-xs mb-4">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                <h3 class="text-base font-semibold text-gray-900 mb-1">{{ $selectedEvent->title }}</h3>
+                <p class="text-xs text-gray-400 mb-4">
                     {{ $selectedEvent->created_at->format('F j, Y \a\t H:i') }} UTC
                 </p>
 
                 @if ($selectedEvent->message)
-                    <p class="portal-muted text-sm mb-4">{{ $selectedEvent->message }}</p>
+                    <p class="text-sm text-gray-700 mb-4">{{ $selectedEvent->message }}</p>
                 @endif
 
                 @if ($selectedEvent->metadata)
-                    <dl class="text-sm mb-4 border-t portal-divider">
+                    <dl class="text-sm divide-y divide-gray-100 mb-4">
                         @foreach ($selectedEvent->metadata as $key => $val)
-                            <div class="flex justify-between gap-4 py-3 border-b portal-divider">
-                                <dt class="portal-muted">{{ ucwords(str_replace('_', ' ', $key)) }}</dt>
-                                <dd class="portal-title font-bold text-right">{{ $val }}</dd>
+                            <div class="flex justify-between py-2">
+                                <dt class="text-gray-500">{{ ucwords(str_replace('_', ' ', $key)) }}</dt>
+                                <dd class="text-gray-800 font-medium">{{ $val }}</dd>
                             </div>
                         @endforeach
                     </dl>
                 @endif
 
                 <button wire:click="closeModal"
-                        class="portal-btn-secondary w-full py-2.5 text-sm font-semibold rounded-xl transition-colors">
+                        class="w-full py-2 bg-gray-100 hover:bg-gray-200 text-sm font-medium rounded-lg transition-colors">
                     Close
                 </button>
             </div>
