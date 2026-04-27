@@ -1,8 +1,14 @@
 <?php
 
+use App\Http\Controllers\Portal\ActivateController;
 use App\Http\Controllers\Portal\AuthController;
 use App\Http\Controllers\Portal\PasswordResetController;
 use Illuminate\Support\Facades\Route;
+
+// ── Account activation (magic link, no auth required) ────────────────────────
+// Token is validated inside the controller (Hash::check against stored hash).
+Route::get('/activate/{client}',  [ActivateController::class, 'show'])->name('portal.activate');
+Route::post('/activate/{client}', [ActivateController::class, 'activate'])->name('portal.activate.submit');
 
 // ── Guest-only routes (redirect to dashboard if already logged in) ────────────
 Route::middleware('portal.guest')->group(function () {

@@ -21,6 +21,8 @@ class Client extends Authenticatable
         'name',
         'email',
         'portal_password',
+        'activation_token',
+        'activation_expires_at',
         'company_name',
         'phone',
         'timezone',
@@ -30,12 +32,14 @@ class Client extends Authenticatable
 
     protected $hidden = [
         'portal_password',
+        'activation_token',
         'remember_token',
     ];
 
     protected $casts = [
-        'is_active'     => 'boolean',
-        'last_login_at' => 'datetime',
+        'is_active'              => 'boolean',
+        'last_login_at'          => 'datetime',
+        'activation_expires_at'  => 'datetime',
     ];
 
     /**

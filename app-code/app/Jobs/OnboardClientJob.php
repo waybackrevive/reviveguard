@@ -10,16 +10,18 @@ use App\Services\NotificationService;
 use App\Services\UptimeKumaService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Dispatched when a Whop membership.went_valid event is received for a new client.
+ * Dispatched when a Whop membership.went_valid event is received.
  *
  * Responsibilities:
  *  1. Check if client already has a site record — create one if not
  *  2. Create an Uptime Kuma HTTP monitor (if service is configured)
- *  3. Send the welcome email via Resend
+ *  3. For new clients: generate magic activation link → send welcome email
+ *  4. For existing clients (reactivation/upgrade): send plan-updated email
  */
 class OnboardClientJob implements ShouldQueue
 {
@@ -31,6 +33,7 @@ class OnboardClientJob implements ShouldQueue
     public function __construct(
         public readonly string $clientId,
         public readonly string $subscriptionId,
+        public readonly bool   $isNewClient = true,
     ) {}
 
     public function handle(UptimeKumaService $uptimeKuma, NotificationService $notifications): void
@@ -49,16 +52,16 @@ class OnboardClientJob implements ShouldQueue
         if (! $site) {
             $rawToken = Str::random(64);
             $site = Site::create([
-                'tenant_id'       => $client->tenant_id,
-                'client_id'       => $client->id,
-                'plan_id'         => $subscription?->plan_id,
-                'subscription_id' => $subscription?->id,
-                'name'            => $client->name . "'s Website",
-                'url'             => '',  // Client must set this via portal or admin
-                'status'          => SiteStatus::PENDING,
-                'agent_token'     => hash('sha256', $rawToken),
+                'tenant_id'         => $client->tenant_id,
+                'client_id'         => $client->id,
+                'plan_id'           => $subscription?->plan_id,
+                'subscription_id'   => $subscription?->id,
+                'name'              => $client->name . "'s Website",
+                'url'               => '',  // Client must set this via portal or admin
+                'status'            => SiteStatus::PENDING,
+                'agent_token'       => hash('sha256', $rawToken),
                 'agent_token_last4' => substr($rawToken, -4),
-                'is_active'       => true,
+                'is_active'         => true,
             ]);
 
             Log::info('OnboardClientJob: site record created', ['site_id' => $site->id, 'client_id' => $client->id]);
@@ -76,14 +79,35 @@ class OnboardClientJob implements ShouldQueue
             }
         }
 
-        // ── 3. Send welcome email ─────────────────────────────────────────────
+        // ── 3. Send appropriate notification ─────────────────────────────────
         try {
-            $notifications->sendWelcome($client, $subscription?->plan);
+            if ($this->isNewClient) {
+                // Generate one-time activation token (stored hashed, plain sent in email)
+                $rawActivationToken = Str::random(48);
+                $client->update([
+                    'activation_token'      => Hash::make($rawActivationToken),
+                    'activation_expires_at' => now()->addHours(72),
+                ]);
+
+                $activationUrl = route('portal.activate', [
+                    'client' => $client->id,
+                    'token'  => $rawActivationToken,
+                ]);
+
+                $notifications->sendWelcome($client, $subscription?->plan, $activationUrl);
+            } else {
+                // Existing client — reactivation or plan upgrade
+                $notifications->sendPlanUpdated($client, $subscription?->plan, $subscription);
+            }
         } catch (\Throwable $e) {
-            Log::error('OnboardClientJob: welcome email failed', ['error' => $e->getMessage()]);
+            Log::error('OnboardClientJob: notification failed', ['error' => $e->getMessage()]);
             // Non-fatal — don't fail the job over email
         }
 
-        Log::info('OnboardClientJob: completed', ['client_id' => $client->id]);
+        Log::info('OnboardClientJob: completed', [
+            'client_id'  => $client->id,
+            'is_new'     => $this->isNewClient,
+        ]);
     }
 }
+

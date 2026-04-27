@@ -29,7 +29,8 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->authGuard('web')
             ->colors([
-                'primary' => Color::hex('#1a1a2e'),
+                // Emerald green as primary accent — professional on Filament's default light background
+                'primary' => Color::hex('#059669'),
             ])
             ->brandName('ReviveGuard Admin • WaybackRevive')
             ->sidebarCollapsibleOnDesktop()

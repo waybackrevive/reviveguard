@@ -200,25 +200,34 @@ Every feature below is either **IN** or **OUT** of Phase 1 MVP. There is no "may
 
 ---
 
-### Feature 10: Billing (Stripe)
+### Feature 10: Billing (Whop)
 
 **IN:**
-- 3 subscription plans in Stripe (Monthly billing only in Phase 1)
-- Checkout via Stripe Payment Links (simplest possible — no custom checkout UI)
-- Laravel Cashier manages subscription state
-- Stripe webhooks handle: subscription activated, cancelled, payment failed
-- On activation: onboard client automatically (create records, send welcome email)
-- On cancellation: pause monitoring, email client
-- On payment failure: email client (Stripe handles retry logic)
+- 3 subscription plans configured on Whop (monthly billing)
+- Checkout via Whop hosted checkout — no custom checkout UI needed
+- `WhopBillingService` handles all membership lifecycle events
+- Whop webhooks handled: `membership.went_valid`, `membership.went_invalid`, `membership.was_banned`
+- **Automated self-service onboarding (zero human involvement):**
+  - User buys plan on Whop → `membership.went_valid` webhook fires
+  - `WhopBillingService` auto-creates `Client` record (locked portal password)
+  - `OnboardClientJob` dispatched: creates `Site` record, Uptime Kuma monitor, generates magic activation link
+  - Magic link sent via `sendWelcome()` email (Resend) — valid 72 hours
+  - User clicks link → sets own password on `/portal/activate/{client}?token=...` page → auto-logged in → redirected to dashboard
+  - If link expires: user uses standard "Forgot Password" flow
+- **Plan change / upgrade notification:**
+  - When existing client's `membership.went_valid` fires again (upgrade or reactivation)
+  - `sendPlanUpdated()` email sent to confirm new plan and billing details
+  - Subscription record updated; client stays active with updated plan
+- On cancellation/payment failure: subscription marked inactive, portal access revoked, email sent
+- On ban: client deactivated immediately
 - Admin can see subscription status per client in Filament
-- Link to Stripe Customer Portal for client to manage card details
 
 **OUT:**
 - Annual billing option (Phase 2)
-- Custom checkout page (Stripe Payment Links is fine for 10 clients)
-- Promo codes / discounts UI (can do manually in Stripe dashboard)
-- Invoices shown in your portal (Stripe Customer Portal handles this)
-- Metered billing / usage-based billing
+- Custom checkout page (Whop checkout is fine for Phase 1)
+- Promo codes / discounts UI (manage in Whop dashboard)
+- Invoice history in portal (Whop handles this)
+- Metered / usage-based billing
 
 ---
 

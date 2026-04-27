@@ -251,18 +251,44 @@ class NotificationService
 
     // ── Onboarding ────────────────────────────────────────────────────────────
 
-    public function sendWelcome(Client $client, ?\App\Models\Plan $plan = null): void
+    /**
+     * New client welcome email. Includes a magic activation link so the client
+     * can set their own password and land straight on the dashboard.
+     *
+     * @param  string  $activationUrl  Signed, one-time activation URL (72 h TTL)
+     */
+    public function sendWelcome(Client $client, ?\App\Models\Plan $plan = null, string $activationUrl = ''): void
     {
         $this->send(
             to: $client->email,
-            subject: 'Welcome to ReviveGuard — your site is protected',
+            subject: 'Welcome to ReviveGuard — activate your account',
             view: 'emails.welcome',
+            data: [
+                'clientName'    => explode(' ', $client->name)[0],
+                'planName'      => $plan?->name ?? 'ReviveGuard',
+                'activationUrl' => $activationUrl,
+            ],
+            type: 'welcome',
+            clientId: $client->id,
+        );
+    }
+
+    /**
+     * Sent to an existing client when their plan is changed, upgraded, or reactivated.
+     */
+    public function sendPlanUpdated(Client $client, ?\App\Models\Plan $plan = null, ?\App\Models\Subscription $subscription = null): void
+    {
+        $this->send(
+            to: $client->email,
+            subject: 'Your ReviveGuard plan has been updated',
+            view: 'emails.plan-updated',
             data: [
                 'clientName'   => explode(' ', $client->name)[0],
                 'planName'     => $plan?->name ?? 'ReviveGuard',
-                'portalUrl'    => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'validUntil'   => $subscription?->whop_valid_until?->format('F j, Y') ?? null,
+                'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/dashboard',
             ],
-            type: 'welcome',
+            type: 'plan_updated',
             clientId: $client->id,
         );
     }

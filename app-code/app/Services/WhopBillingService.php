@@ -6,7 +6,6 @@ use App\Jobs\OnboardClientJob;
 use App\Models\Client;
 use App\Models\Plan;
 use App\Models\Subscription;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -53,17 +52,18 @@ class WhopBillingService
         $plan = $planId ? Plan::where('whop_plan_id', $planId)->first() : null;
 
         // Find or create client
+        $isNewClient = false;
         $client = Client::where('whop_member_id', $whopUserId)
             ->orWhere('email', $email)
             ->first();
 
         if (! $client) {
-            $tempPassword = Str::random(16);
+            $isNewClient = true;
             $client = Client::create([
                 'tenant_id'       => $this->tenantId,
                 'name'            => (string) $name,
                 'email'           => strtolower(trim((string) $email)),
-                'portal_password' => Hash::make($tempPassword),
+                'portal_password' => \Illuminate\Support\Facades\Hash::make(Str::random(32)),
                 'whop_member_id'  => $whopUserId,
                 'is_active'       => true,
             ]);
@@ -100,8 +100,8 @@ class WhopBillingService
             ]);
         }
 
-        // Dispatch onboarding job (creates site record + Uptime Kuma monitor + welcome email)
-        OnboardClientJob::dispatch($client->id, $subscription->id);
+        // Dispatch onboarding job (creates site record + Uptime Kuma monitor + welcome/plan-updated email)
+        OnboardClientJob::dispatch($client->id, $subscription->id, $isNewClient);
 
         Log::info('WhopBillingService: membership activated', [
             'client_id'      => $client->id,
