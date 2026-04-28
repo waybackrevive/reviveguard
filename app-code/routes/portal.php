@@ -5,6 +5,10 @@ use App\Http\Controllers\Portal\AuthController;
 use App\Http\Controllers\Portal\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
+// ── Post-payment confirmation (no auth required) ──────────────────────────────
+// Whop redirects here after successful checkout. Just a "check your email" page.
+Route::get('/welcome', [AuthController::class, 'welcome'])->name('portal.welcome');
+
 // ── Account activation (magic link, no auth required) ────────────────────────
 // Token is validated inside the controller (Hash::check against stored hash).
 Route::get('/activate/{client}',  [ActivateController::class, 'show'])->name('portal.activate');

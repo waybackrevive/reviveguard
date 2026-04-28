@@ -20,6 +20,11 @@ class AuthController extends Controller
         return view('portal.auth.login');
     }
 
+    public function welcome(): View
+    {
+        return view('portal.auth.welcome');
+    }
+
     public function login(Request $request): RedirectResponse
     {
         $request->validate([
