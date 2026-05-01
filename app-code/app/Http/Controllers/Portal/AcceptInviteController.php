@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\SiteStatus;
 use App\Http\Controllers\Controller;
-use App\Jobs\OnboardClientJob;
+use App\Models\Site;
 use App\Services\InviteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -61,9 +62,21 @@ class AcceptInviteController extends Controller
         $hashedPassword = Hash::make($request->input('password'));
         $client         = $this->inviteService->accept($invite, $hashedPassword);
 
-        // Kick off async onboarding: create site record, add Uptime Kuma monitor, send welcome email
+        // Create site record now if the invite included a site URL.
+        // Agent token is generated here so the client can install the plugin immediately.
+        // Uptime Kuma monitor is created when the first heartbeat arrives (or on Whop webhook).
         if ($invite->site_url) {
-            OnboardClientJob::dispatch($client, $invite->site_url, isNewClient: true);
+            $rawToken = bin2hex(random_bytes(32));
+            Site::create([
+                'tenant_id'         => $client->tenant_id,
+                'client_id'         => $client->id,
+                'name'              => parse_url($invite->site_url, PHP_URL_HOST) ?? $client->name . "'s Website",
+                'url'               => rtrim($invite->site_url, '/'),
+                'status'            => SiteStatus::PENDING,
+                'agent_token'       => hash('sha256', $rawToken),
+                'agent_token_last4' => substr($rawToken, -4),
+                'is_active'         => true,
+            ]);
         }
 
         // Log the client into the portal guard

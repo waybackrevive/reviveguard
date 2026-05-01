@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Portal;
 
-use App\Jobs\OnboardClientJob;
+use App\Enums\SiteStatus;
 use App\Models\Site;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -25,6 +25,7 @@ class SiteWizard extends Component
     public string $confirmMessage = '';
 
     // Step 2: show plugin download link + manual agent key entry
+    public string $agentKey      = '';  // raw token generated at step 1, shown to user once
     public string $agentKeyInput = '';
     public ?Site  $pendingSite   = null;
 
@@ -59,13 +60,18 @@ class SiteWizard extends Component
             return;
         }
 
-        // Create the pending site record
+        // Create the pending site record with a generated agent token
+        $rawToken          = bin2hex(random_bytes(32)); // 64 hex chars
+        $this->agentKey    = $rawToken;
         $this->pendingSite = Site::create([
-            'tenant_id' => $client->tenant_id,
-            'client_id' => $client->id,
-            'url'       => rtrim($this->siteUrl, '/'),
-            'label'     => $this->siteLabel ?: parse_url($this->siteUrl, PHP_URL_HOST),
-            'status'    => 'pending', // No heartbeat yet
+            'tenant_id'         => $client->tenant_id,
+            'client_id'         => $client->id,
+            'name'              => $this->siteLabel ?: parse_url($this->siteUrl, PHP_URL_HOST),
+            'url'               => rtrim($this->siteUrl, '/'),
+            'status'            => \App\Enums\SiteStatus::PENDING,
+            'agent_token'       => hash('sha256', $rawToken),
+            'agent_token_last4' => substr($rawToken, -4),
+            'is_active'         => true,
         ]);
 
         $this->step = 2;
@@ -82,18 +88,11 @@ class SiteWizard extends Component
 
         $this->validate(['agentKeyInput' => ['required', 'string', 'size:64']]);
 
-        // Check agent key matches the site record
-        if ($this->agentKeyInput !== $this->pendingSite->agent_key) {
-            $this->addError('agentKeyInput', 'Agent key does not match. Double-check the value in your plugin settings.');
+        // Check user confirmed the correct token (proves they copied it into the plugin)
+        if ($this->agentKeyInput !== $this->agentKey) {
+            $this->addError('agentKeyInput', 'Token does not match. Copy the exact token shown above and paste it here.');
             return;
         }
-
-        // Dispatch onboard job — creates Uptime Kuma monitor, sends confirmation email
-        OnboardClientJob::dispatch(
-            Auth::guard('client')->user()->id,
-            null,
-            false
-        );
 
         $this->statusMessage = 'Plugin connected! Waiting for the first heartbeat...';
         $this->step = 3;
@@ -136,7 +135,6 @@ class SiteWizard extends Component
     {
         return view('livewire.portal.site-wizard', [
             'pluginDownloadUrl' => config('app.url') . '/downloads/reviveguard-agent.zip',
-            'agentKey'          => $this->pendingSite?->agent_key,
         ]);
     }
 }
