@@ -123,4 +123,13 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | ReviveGuard Custom Config
+    |--------------------------------------------------------------------------
+    */
+
+    'tenant_id'               => env('TENANT_ID', '00000000-0000-0000-0000-000000000001'),
+    'evaluation_monthly_cap'  => (int) env('EVALUATION_MONTHLY_CAP', 10),
+
 ];

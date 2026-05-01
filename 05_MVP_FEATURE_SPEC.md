@@ -17,18 +17,53 @@ Every feature below is either **IN** or **OUT** of Phase 1 MVP. There is no "may
 **IN:**
 - Filament-based admin at `app.reviveguard.com/admin`
 - Login with 2FA
-- Client management: create, view, edit, list
-- Site management: add site, generate agent token, view site status, view events
+
+**Client Management:**
+- Create, view, edit, list clients
+- Filter by status (invited / active / suspended / churned) and path (alumni / evaluation)
+- View each client's path, invite status, subscription, and all their sites in one place
+- Manually activate, suspend, or reactivate a client
+
+**Invite Management (new — core of both onboarding paths):**
+- Create a single invite: enter name, email, site URL, select path (alumni / evaluation)
+- Bulk import alumni from CSV (columns: name, email, site_url — imported from WaybackRevive export)
+- Select multiple imported alumni → "Send Invites" bulk action → system emails all selected
+- View all invites: pending / accepted / expired with timestamps
+- Resend expired invite (generates new token, extends expiry by 72h)
+- Revoke a pending invite (invalidates token immediately)
+- Invite detail view: shows token status, email sent timestamp, accepted timestamp, linked client
+
+**Site Management:**
+- Add site (for admin-managed onboarding), generate agent token, view site status, view events
 - Manual backup trigger (queues command, agent picks it up)
 - Manual update trigger (same pattern)
 - View all events for a site (paginated list)
 - View all backups for a site
-- Global site health overview (dashboard widget: X sites up, Y down, Z warnings)
+- Rotate agent token (invalidates old token, generates new one)
+
+**Evaluation Queue (Path B admin workflow):**
+- Dedicated Filament resource showing all evaluation submissions
+- Each entry: prospect name, site URL, submission date, site type, stated concern, status
+- Status workflow: pending → reviewing → proposed → converted / declined / expired
+- "Start Review" action → status → reviewing
+- Notes field: team adds tech findings, risks, recommended plan
+- "Send Proposal" action:
+  - Creates a `client_invites` record (path='evaluation', evaluation_id linked)
+  - System generates token and sends proposal email
+  - Status → proposed
+- "Decline" action → sends polite rejection email, status → declined
+- Monthly cap indicator: shows "X / 26 accepted this month" in queue header
+- Cap is configurable in admin settings (default: 26)
+
+**Dashboard & Monitoring:**
+- Global site health overview: X sites up, Y down, Z warnings (dashboard widget)
+- Admin can manually trigger monthly report for any site
+- Admin can see subscription status per client
 
 **OUT:**
 - Multi-user admin roles (you're the only admin in Phase 1)
 - Audit log of admin actions
-- Bulk operations across sites
+- Bulk operations across sites (other than invite send)
 - Custom plan builder
 - Reseller management
 
@@ -226,8 +261,88 @@ Every feature below is either **IN** or **OUT** of Phase 1 MVP. There is no "may
 - Annual billing option (Phase 2)
 - Custom checkout page (Whop checkout is fine for Phase 1)
 - Promo codes / discounts UI (manage in Whop dashboard)
-- Invoice history in portal (Whop handles this)
 - Metered / usage-based billing
+
+---
+
+### Feature 12: New-Client Evaluation Flow (Path B Onboarding)
+
+**IN:**
+- Public `GET /evaluation` page on marketing site with form:
+  - Name, email, website URL (required)
+  - Site type (WordPress / HTML / Other) (required)
+  - "What's your biggest concern about your website?" (textarea, optional)
+- Form submits to `POST /evaluations` (rate-limited: max 3 per IP per day)
+- `site_evaluations` record created with `status = pending`
+- Confirmation page shown + confirmation email sent (Resend)
+- **Admin Evaluation Queue (Filament):**
+  - New evaluations appear in a dedicated Filament resource with queue view
+  - Each evaluation card shows: site URL, prospect name, submission date, site type, their stated concern
+  - Team clicks "Start Review" → status → `reviewing`
+  - Team adds internal notes (tech findings, risks, recommended plan)
+  - Team clicks "Send Proposal" → status → `proposed`:
+    - `EvaluationService` sends proposal email (Resend):
+      - "Here's what we found" section with their site's risk summary
+      - Recommended plan with feature breakdown
+      - Clear pricing
+      - "Accept this proposal" button (magic link, 72h TTL, hashed token in DB)
+      - "Not right now" link (marks as declined)
+- **Prospect accepts proposal:**
+  - Magic link validates `proposal_token` + expiry
+  - `Client` record created from evaluation data
+  - `OnboardClientJob` dispatched (same as Path A)
+  - `converted_client_id` set on evaluation record
+  - Portal activation email sent
+- **Monthly cap enforcement:**
+  - Before accepting any new evaluation for review: count accepted evaluations this calendar month
+  - If count ≥ 26: show waitlist page instead of evaluation form
+  - Waitlist: capture name + email, get notified when next month's spots open
+  - Cap is configurable in admin settings (default: 26)
+- **Auto follow-up:**
+  - If proposal not accepted after 7 days: send one follow-up with a free tip ("We noticed your SSL expires in 45 days — here's what that means")
+  - After 14 days with no response: mark `expired`
+
+**OUT:**
+- Automated site scanning/crawling during evaluation (manual review by team)
+- Instant approval without human review
+- Self-serve checkout without evaluation (Path A alumni are the only ones who skip evaluation)
+- Multiple proposal versions / negotiation
+
+---
+
+### Feature 13: Self-Serve Portal (Client Ownership)
+
+Clients have full control over their own dashboard and plan — they don’t have to contact you to change anything.
+
+**IN:**
+- **Site Onboarding Wizard (3 steps, like WPMaintenance):**
+  - **Step 1 — Domain:** Enter company name + domain URL
+  - **Step 2 — Package:** Choose plan (Monitor/Guard/Shield) with feature comparison visible. Select add-ons.
+  - **Step 3 — Order:** Review selection + total → "Proceed to checkout" → Whop hosted checkout
+  - After checkout completion: wizard shows "Your site is being set up" → redirect to dashboard
+- **Plan Management (self-serve):**
+  - Client can see current plan on Account page
+  - "Change plan" → shows all plans → select → confirm → Whop upgrade/downgrade flow
+  - Downgrade: takes effect at end of billing period (shown to client clearly)
+  - Upgrade: takes effect immediately, prorated
+- **Add-on Toggle:**
+  - Client can enable/disable add-ons (e.g., extra backup storage) directly in portal
+  - Each toggle shows price impact immediately
+  - Confirm → Whop billing updated
+- **Invoice History:**
+  - Table: Date | Invoice # | Amount | Status | Download
+  - "Download" links to PDF (generated by Puppeteer, stored on B2)
+  - Invoices auto-generated monthly by `BillingService` after successful charge
+  - "Pay with [method]" button for outstanding amounts if applicable
+- **Billing Details:**
+  - Client can update payment method (redirects to Whop billing portal)
+  - View next billing date and amount
+
+**OUT:**
+- Client-initiated plan cancellation from portal (they must email — gives you a save opportunity)
+- Custom billing cycles per client
+- Multiple payment methods stored
+- Client-facing discount codes
 
 ---
 

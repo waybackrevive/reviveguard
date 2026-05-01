@@ -81,10 +81,17 @@ CREATE TABLE clients (
     notes           TEXT,                               -- internal notes
     portal_password VARCHAR(255),                       -- hashed
     portal_last_login   TIMESTAMP WITH TIME ZONE,
-    -- Stripe
-    stripe_customer_id  VARCHAR(255) UNIQUE,
+    -- Whop billing
+    whop_member_id  VARCHAR(255) UNIQUE,                -- Whop membership ID
+    -- Onboarding
+    path            VARCHAR(30) NOT NULL DEFAULT 'evaluation',
+                    -- 'alumni'  → WaybackRevive restored client (admin-invited)
+                    -- 'evaluation' → new client who went through evaluation review
+                    -- Path is set by admin when creating the invite. Users cannot choose.
+    onboarding_completed_at TIMESTAMP WITH TIME ZONE,  -- NULL = not yet onboarded
     -- Status
-    status          VARCHAR(50) DEFAULT 'active',
+    status          VARCHAR(50) DEFAULT 'invited',
+                    -- 'invited' (token sent, not yet activated)
                     -- 'active', 'suspended', 'churned'
     source          VARCHAR(100),
                     -- 'waybackrevive_restored', 'inbound', 'referral'
@@ -95,7 +102,67 @@ CREATE TABLE clients (
 
 CREATE INDEX idx_clients_tenant ON clients(tenant_id);
 CREATE INDEX idx_clients_email ON clients(email);
-CREATE INDEX idx_clients_stripe ON clients(stripe_customer_id);
+CREATE INDEX idx_clients_whop ON clients(whop_member_id);
+```
+
+---
+
+### `client_invites`
+Signed invite tokens. **This is the only mechanism for onboarding a client — no public sign-up page exists.**
+
+- Admin creates an invite record (for alumni outreach or after evaluation approval).
+- System generates a cryptographically secure token and stores its HMAC hash.
+- Client receives a personal email with `app.reviveguard.com/portal/accept-invite?token=PLAIN_TOKEN`.
+- On click: plain token is hashed and matched against `token_hash`. If valid + not expired + not used → client account is activated and they're logged in.
+- Users **never choose their own path** — `path` is set by admin when creating the invite.
+
+```sql
+CREATE TABLE client_invites (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id),
+
+    -- Who this is for (pre-seeded from WaybackRevive DB or evaluation approval)
+    name            VARCHAR(255) NOT NULL,
+    email           VARCHAR(255) NOT NULL,
+    site_url        VARCHAR(500),                       -- pre-fill for the wizard
+
+    -- Path — set by admin, never by the user
+    path            VARCHAR(30) NOT NULL,
+                    -- 'alumni'     → WaybackRevive restored client, proactive outreach
+                    -- 'evaluation' → new client, approved after evaluation review
+
+    -- Link to evaluation (for Path B only)
+    evaluation_id   UUID REFERENCES site_evaluations(id),
+
+    -- Created client record (set after invite is accepted)
+    client_id       UUID REFERENCES clients(id),
+
+    -- Token (store only the HMAC-SHA256 hash — never the plain token)
+    token_hash      VARCHAR(64) NOT NULL UNIQUE,        -- SHA-256 hex of plain token
+    expires_at      TIMESTAMP WITH TIME ZONE NOT NULL,  -- default: NOW() + 72 hours
+    accepted_at     TIMESTAMP WITH TIME ZONE,           -- NULL = not yet used
+    email_sent_at   TIMESTAMP WITH TIME ZONE,
+
+    -- Admin notes
+    notes           TEXT,
+    created_by      UUID REFERENCES users(id),
+
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_invites_tenant ON client_invites(tenant_id);
+CREATE INDEX idx_invites_email ON client_invites(email);
+CREATE INDEX idx_invites_token ON client_invites(token_hash);
+CREATE INDEX idx_invites_evaluation ON client_invites(evaluation_id);
+```
+
+**Security note:** The plain token is generated with `random_bytes(32)` (256-bit), URL-safe base64 encoded. Only the SHA-256 hash is stored in DB. Even if the DB is compromised, tokens cannot be reversed.
+
+**Token generation in PHP:**
+```php
+$plainToken = base64url_encode(random_bytes(32));        // send this in email URL
+$hash       = hash('sha256', $plainToken);               // store this in DB
 ```
 
 ---
@@ -111,8 +178,8 @@ CREATE TABLE plans (
     slug            VARCHAR(100) NOT NULL,              -- "monitor", "guard", "shield"
     price_monthly   DECIMAL(10,2) NOT NULL,             -- 19.00, 49.00, 99.00
     price_annually  DECIMAL(10,2),                      -- optional annual price
-    stripe_price_id_monthly VARCHAR(255),               -- Stripe Price ID
-    stripe_price_id_annually VARCHAR(255),
+    whop_product_id_monthly  VARCHAR(255),              -- Whop product ID (monthly)
+    whop_product_id_annually VARCHAR(255),              -- Whop product ID (annual)
     features        JSONB NOT NULL DEFAULT '{}',
                     -- {"uptime_check": true, "wp_updates": false, "backup_days": 30, ...}
     max_sites       INT DEFAULT 1,
@@ -157,19 +224,20 @@ CREATE TABLE subscriptions (
     client_id       UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     plan_id         UUID REFERENCES plans(id),
     name            VARCHAR(255) NOT NULL DEFAULT 'default',
-    stripe_id       VARCHAR(255) NOT NULL UNIQUE,
-    stripe_status   VARCHAR(255) NOT NULL,
-    stripe_price    VARCHAR(255),
-    quantity        INT,
+    whop_membership_id      VARCHAR(255) NOT NULL UNIQUE,   -- Whop membership ID
+    whop_plan_id            VARCHAR(255),                   -- Whop plan/product ID
+    whop_status             VARCHAR(255) NOT NULL,
+                            -- 'active', 'past_due', 'canceled', 'banned'
+    quantity        INT DEFAULT 1,
     trial_ends_at   TIMESTAMP WITH TIME ZONE,
     ends_at         TIMESTAMP WITH TIME ZONE,
-    billing_cycle   VARCHAR(20) DEFAULT 'monthly',      -- 'monthly', 'annually'
+    billing_cycle   VARCHAR(20) DEFAULT 'monthly',          -- 'monthly', 'annually'
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX idx_subscriptions_client ON subscriptions(client_id);
-CREATE INDEX idx_subscriptions_stripe ON subscriptions(stripe_id);
+CREATE INDEX idx_subscriptions_whop ON subscriptions(whop_membership_id);
 ```
 
 ---
@@ -399,6 +467,75 @@ CREATE INDEX idx_tickets_status ON support_tickets(status);
 
 ---
 
+### `site_evaluations`
+New-client evaluation requests. Each row is one prospect who submitted a site for review.
+
+```sql
+CREATE TABLE site_evaluations (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+
+    -- Prospect info (not a client yet)
+    prospect_name   VARCHAR(255) NOT NULL,
+    prospect_email  VARCHAR(255) NOT NULL,
+    prospect_phone  VARCHAR(50),
+    company         VARCHAR(255),
+    site_url        VARCHAR(500) NOT NULL,
+    site_type       VARCHAR(50),                        -- 'wordpress', 'html', 'shopify', etc.
+    biggest_concern TEXT,                               -- what they wrote in the form
+
+    -- Lifecycle
+    status          VARCHAR(50) NOT NULL DEFAULT 'pending',
+                    -- 'pending'    → submitted, not reviewed yet
+                    -- 'reviewing'  → team is looking at it
+                    -- 'proposed'   → proposal sent, awaiting acceptance
+                    -- 'accepted'   → prospect clicked accept, becoming a client
+                    -- 'declined'   → prospect said no, or we said no
+                    -- 'expired'    → proposal link expired, no response
+
+    -- Internal review notes (admin use)
+    review_notes        TEXT,
+    recommended_plan_id UUID REFERENCES plans(id),
+    reviewed_by         UUID REFERENCES users(id),
+    reviewed_at         TIMESTAMP WITH TIME ZONE,
+
+    -- Proposal sent
+    proposal_sent_at    TIMESTAMP WITH TIME ZONE,
+    proposal_token      VARCHAR(255),                   -- hashed magic link token
+    proposal_token_expires_at   TIMESTAMP WITH TIME ZONE,   -- 72h from sent
+
+    -- Converted to client
+    converted_client_id UUID REFERENCES clients(id),   -- set when accepted
+    converted_at        TIMESTAMP WITH TIME ZONE,
+
+    -- Follow-up
+    follow_up_sent_at   TIMESTAMP WITH TIME ZONE,
+
+    -- Monthly cap tracking
+    month_slot          VARCHAR(7),                     -- e.g. '2025-04' (month of submission)
+
+    created_at          TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at          TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_evaluations_tenant ON site_evaluations(tenant_id);
+CREATE INDEX idx_evaluations_status ON site_evaluations(status);
+CREATE INDEX idx_evaluations_email ON site_evaluations(prospect_email);
+CREATE INDEX idx_evaluations_month ON site_evaluations(month_slot);
+```
+
+**Monthly cap enforcement (26/month):**
+```sql
+-- Before accepting a new evaluation, check:
+SELECT COUNT(*) FROM site_evaluations
+WHERE tenant_id = $1
+AND month_slot = to_char(NOW(), 'YYYY-MM')
+AND status NOT IN ('declined', 'expired');
+-- If >= 26: return "We're fully booked for this month. Join waitlist."
+```
+
+---
+
 ### `notifications_log`
 Record of every notification sent. For debugging and client-facing "alert history."
 
@@ -434,6 +571,8 @@ CREATE INDEX idx_notifications_sent ON notifications_log(sent_at DESC);
 tenants
     ├── users (team members)
     ├── plans (Monitor, Guard, Shield)
+    ├── site_evaluations (prospects — pre-client pipeline)
+    │       └── → converts to clients on acceptance
     └── clients
             ├── subscriptions (linked to plans + Stripe)
             └── sites

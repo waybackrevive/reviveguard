@@ -34,11 +34,11 @@ Laravel middleware validates this before processing.
 ### Portal / Admin API Authentication
 Session-based. Laravel Breeze handles login. CSRF token required for all POST/PUT/DELETE.
 
-### Stripe Webhooks
+### Whop Webhooks
 ```
-Stripe-Signature: {stripe_signature_header}
+Whop-Signature: {whop_signature_header}
 ```
-Validated using `Laravel\Cashier\Http\Middleware\VerifyWebhookSignature`.
+Validated by computing HMAC-SHA256 of raw request body with `WHOP_WEBHOOK_SECRET` env key.
 
 ---
 
@@ -207,17 +207,17 @@ Laravel looks up `sites.uptime_kuma_monitor_id = 42`, updates status, dispatches
 
 ---
 
-### POST `/api/v1/webhooks/stripe`
-Stripe sends all subscription events here.
+### POST `/api/v1/webhooks/whop`
+Whop sends all membership lifecycle events here.
 
-**Auth:** Stripe-Signature header validation
+**Auth:** Whop-Signature header validation (HMAC-SHA256 of raw body)
 
 **Events handled:**
-- `customer.subscription.created` → activate client plan
-- `customer.subscription.updated` → update plan record
-- `customer.subscription.deleted` → pause/cancel site monitoring
-- `invoice.payment_succeeded` → log payment, reset monthly support ticket count
-- `invoice.payment_failed` → send payment failure email to client
+- `membership.went_valid` → activate client plan (new membership or reactivation)
+- `membership.went_invalid` → pause client (payment failed / subscription lapsed)
+- `membership.was_banned` → immediately deactivate client, revoke portal access
+- `charge.succeeded` → create Invoice record, queue PDF generation
+- `charge.failed` → send payment failure email to client
 
 ---
 

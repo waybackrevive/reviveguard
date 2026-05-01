@@ -7,7 +7,6 @@ use App\Models\Client;
 use App\Models\Plan;
 use App\Models\Subscription;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Handles Whop subscription lifecycle events.
@@ -51,30 +50,26 @@ class WhopBillingService
 
         $plan = $planId ? Plan::where('whop_plan_id', $planId)->first() : null;
 
-        // Find or create client
+        // Invite-first model: only match existing clients — NEVER auto-create.
+        // Clients must be pre-registered by admin via the invite system.
         $isNewClient = false;
         $client = Client::where('whop_member_id', $whopUserId)
             ->orWhere('email', $email)
             ->first();
 
         if (! $client) {
-            $isNewClient = true;
-            $client = Client::create([
-                'tenant_id'       => $this->tenantId,
-                'name'            => (string) $name,
-                'email'           => strtolower(trim((string) $email)),
-                'portal_password' => \Illuminate\Support\Facades\Hash::make(Str::random(32)),
-                'whop_member_id'  => $whopUserId,
-                'is_active'       => true,
+            Log::warning('WhopBillingService: no client found for went_valid webhook (invite-first model — skipping auto-create)', [
+                'email'          => $email,
+                'whop_member_id' => $whopUserId,
+                'membership_id'  => $membershipId,
             ]);
-
-            Log::info('WhopBillingService: new client created', ['client_id' => $client->id, 'email' => $client->email]);
-        } else {
-            $client->update([
-                'whop_member_id' => $whopUserId ?? $client->whop_member_id,
-                'is_active'      => true,
-            ]);
+            return;
         }
+
+        $client->update([
+            'whop_member_id' => $whopUserId ?? $client->whop_member_id,
+            'is_active'      => true,
+        ]);
 
         // Create or update subscription record
         $subscription = Subscription::where('whop_membership_id', $membershipId)->first();

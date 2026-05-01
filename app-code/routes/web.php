@@ -1,11 +1,17 @@
  <?php
 
+use App\Http\Controllers\EvaluationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect('/portal/login');
 });
+
+// ── Public site evaluation form ───────────────────────────────────────────────
+Route::get('/evaluate',        [EvaluationController::class, 'show'])->name('evaluate');
+Route::post('/evaluate',       [EvaluationController::class, 'store'])->name('evaluate.submit')->middleware('throttle:5,10');
+Route::get('/evaluate/thanks', [EvaluationController::class, 'thanks'])->name('evaluate.thanks');
 
 Route::get('/admin-access', function () {
     return view('admin.access-code');

@@ -46,12 +46,14 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
 [ ] Configure PostgreSQL connection in .env
 [ ] Install core packages:
       - filament/filament v3
-      - laravel/cashier-stripe
       - stancl/tenancy
       - laravel/horizon
       - laravel/breeze (Livewire stack)
       - iodev/whois (domain expiry checking)
       - resend/resend-php
+      - spatie/laravel-permission (admin roles later)
+      - barryvdh/laravel-dompdf (fallback, Puppeteer is primary PDF)
+      - league/csv (alumni CSV import)
 [ ] Configure Laravel Horizon
 [ ] Set up GitHub repository (private)
 [ ] Configure GitHub Actions for deploy (git pull + artisan commands on push to main)
@@ -88,13 +90,12 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
 [ ] Test HTTPS on both domains
 ```
 
-#### Day 6: Stripe + Resend
+#### Day 6: Whop + Resend
 ```
-[ ] Create Stripe account, get API keys (test mode first)
-[ ] Create 3 products in Stripe: Monitor ($19), Guard ($49), Shield ($99)
-[ ] Create monthly Price for each product
-[ ] Create Payment Links for each plan (Phase 1 checkout method)
-[ ] Configure Stripe webhook → app.reviveguard.com/api/v1/webhooks/stripe
+[ ] Create Whop account, configure 3 products: Monitor ($19), Guard ($49), Shield ($99)
+[ ] Create Whop hosted checkout links for each plan
+[ ] Configure Whop webhook → app.reviveguard.com/api/v1/webhooks/whop
+[ ] Note: Whop webhook signing key stored in .env as WHOP_WEBHOOK_SECRET
 [ ] Create Resend account, verify sending domain
 [ ] Test email send via Resend API
 [ ] Configure WhatsApp Cloud API (Meta for Developers account)
@@ -123,14 +124,29 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
 [ ] Test: login to admin, login to portal (separate sessions)
 ```
 
-### Week 3: Admin Panel — Clients + Sites
+### Week 3: Admin Panel — Clients + Sites + Invites
 
 ```
 [ ] Filament Resource: Clients
-      - List view: name, email, plan, sites count, status
-      - Create: name, email, phone, whatsapp, timezone, source
+      - List view: name, email, plan, sites count, path (alumni/evaluation), status
+      - Create: name, email, phone, whatsapp, timezone, source, path
       - Edit: all fields
-      - View: with related sites list
+      - View: with related sites list, invite status, subscription status
+      - Actions: manually activate, suspend, reactivate
+[ ] Filament Resource: ClientInvites
+      - List view: name, email, path, status (pending/accepted/expired), created_at
+      - Create single invite: name, email, site_url, path selector
+      - Import alumni from CSV: upload CSV (name, email, site_url columns)
+      - Bulk action: select multiple imported rows → "Send Invites"
+      - Per-row actions: Resend (regenerate token, extend expiry), Revoke
+      - View: token status, email sent at, accepted at, linked client
+      - InviteService: generate random_bytes(32) token, store SHA-256 hash only
+      - Email: personalised invite email via Resend (alumni vs evaluation template)
+[ ] Route: GET /portal/accept-invite (public)
+      - Validate token hash match, not expired, not already accepted
+      - Activate client account, set accepted_at
+      - Log client in, redirect to onboarding wizard
+      - If invalid/expired: show friendly "link expired" page with contact link
 [ ] Filament Resource: Sites
       - List view: site name, URL, client, status, last seen, plan
       - Create site: name, URL, type (wp/html), assign to client
@@ -138,7 +154,8 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
       - On create: call Uptime Kuma API to add HTTP monitor
       - Edit site
       - View site: status, last heartbeat, SSL, domain, recent events
-[ ] Agent token generation service (HMAC secret, show once)
+      - Action: Rotate Agent Token
+[ ] Agent token generation service (HMAC secret, show once, stored hashed)
 [ ] Filament Resource: Plans (read-only view, managed via seed)
 ```
 
@@ -200,36 +217,83 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
       - Update sites.uptime_30d, sites.uptime_7d
 ```
 
-### Week 7: Client Portal
+### Week 7: Client Portal + Self-Serve Features
 
 ```
-[ ] Portal auth: Breeze login/forgot-password, client guard
+[ ] Portal auth: custom client guard, login/forgot-password, magic link activation
+[ ] Site onboarding wizard (3-step Livewire wizard):
+      Step 1: Domain name + company name + WordPress connection check
+      Step 2: Plan selection + add-ons (package options)
+      Step 3: Order summary → redirect to Whop checkout
 [ ] Dashboard screen (Livewire component):
       - Status card, uptime %, last backup, SSL days, domain days
       - Recent events (last 5)
       - Livewire polling every 60s
-[ ] Events screen: paginated list, filter by type/severity
+[ ] My Websites screen: list sites, "+Add website" CTA
+[ ] Activity Log screen: paginated events list, filter by type/severity
 [ ] Event detail modal (click to expand)
 [ ] Reports screen: list with PDF download (generate signed B2 URL on click)
-[ ] Backups screen: list last 10 backups
+[ ] Backups screen: list last 10 backups, "Request restore" → support ticket
 [ ] Support tickets screen: form + list
-[ ] Account settings screen: edit name, email, WhatsApp, change password
-[ ] Link to Stripe Customer Portal for billing
+[ ] Account screen (3 tabs):
+      - My details: name, email, WhatsApp, change password
+      - My plan: current plan, upgrade/downgrade, add-on toggles
+      - Billing & invoices: invoice history table, PDF download per invoice, update payment method
 [ ] Plan limit enforcement on tickets
 [ ] All jargon translated to plain English (review every user-facing string)
 [ ] Mobile responsive review
 ```
 
-### Week 8: Billing + Notifications + Reports
+### Week 7.5: New-Client Evaluation Flow
 
 ```
-[ ] Stripe webhooks: customer.subscription.created/updated/deleted
-[ ] Invoice paid/failed webhooks
+[ ] Public evaluation form: /evaluation (on marketing site, simple HTML form)
+[ ] POST /portal/evaluations endpoint (rate-limited 3/IP/day, honeypot field)
+[ ] site_evaluations migration + model + factory
+[ ] Confirmation email (Resend): "We'll review your site within 48 hours"
+[ ] Monthly cap check: if ≥ 26 accepted this month → show waitlist form instead
+[ ] Waitlist: capture name + email only
+[ ] Admin Filament Resource: SiteEvaluations
+      - Queue view: pending evaluations sorted by submission date
+      - Evaluation card: site URL, prospect info, their concern
+      - "Start Review" action: status → reviewing
+      - Notes + recommended plan fields on evaluation record
+      - "Send Proposal" action: sends proposal email with magic link
+[ ] Proposal email template (Resend): findings, recommended plan, pricing, accept/decline CTA
+[ ] POST /portal/evaluations/{id}/accept (magic link token validation)
+      - Validate token + expiry
+      - Create Client record from evaluation data
+      - Dispatch OnboardClientJob
+      - Mark evaluation converted_client_id
+[ ] GET /portal/evaluations/{id}/decline → mark declined, send thank-you
+[ ] Scheduler: auto-expire proposals after 14 days
+[ ] Scheduler: 7-day follow-up email if proposal not accepted
+[ ] Admin: "Waitlist" tab on SiteEvaluations showing waitlisted emails
+```
+
+### Week 8: Billing + Notifications + Reports + Invoice Generation
+
+```
+[ ] Whop webhooks: membership.went_valid / went_invalid / was_banned
 [ ] BillingService: activate/pause/cancel client on webhook events
-[ ] OnboardClientJob: runs on subscription created
+[ ] OnboardClientJob: runs on new membership
       - Creates site record
       - Adds Uptime Kuma monitor
-      - Sends welcome email with agent installation instructions
+      - Sends welcome email with agent installation instructions (magic link)
+[ ] Self-serve plan change: POST /portal/subscription/change
+      - Validate plan change is allowed (no downgrade to lower than current add-ons)
+      - Call Whop API to swap plan
+      - Update subscription record
+      - Send plan-updated email
+[ ] Add-on toggle: POST /portal/subscription/addon
+      - Enable/disable specific add-ons
+      - Update Whop subscription
+[ ] Invoice generation (monthly scheduler):
+      - On Whop charge success webhook: create Invoice record
+      - Generate branded PDF invoice via Puppeteer
+      - Store on B2: reviveguard-backups/tenant/client/invoices/2025-04.pdf
+      - Save PDF URL to invoices table
+      - Client can download from portal Account → Billing tab
 [ ] Notification emails (Resend) — all types in MVP spec
 [ ] WhatsApp alert: site down + site recovered (critical only)
 [ ] Puppeteer microservice: Express + Puppeteer, /render endpoint
@@ -240,10 +304,15 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
       - Backups confirmed table
       - SSL + domain expiry status
       - Footer with your contact details
+[ ] Invoice Blade template (HTML → PDF):
+      - Invoice # (RVG-YYYY-NNN), date, billing period
+      - Line items: plan + add-ons
+      - Subtotal, taxes, total
+      - "Thank you for your business" footer
 [ ] Scheduler: GenerateMonthlyReports (1st of month, 09:00 UTC)
 [ ] Admin: manual "Generate report" action for any site
 [ ] Admin: manual "Resend report email" action
-[ ] Test full report flow end-to-end
+[ ] Test full report + invoice flow end-to-end
 ```
 
 ---
@@ -266,11 +335,34 @@ MONITORING TESTS
 [ ] Bring test site back — recovery alert sent
 [ ] SSL expiry check — correct days shown in portal
 
-BILLING TESTS (Stripe test mode)
-[ ] Use Stripe test card to subscribe to Guard plan
-[ ] Subscription webhook fires — client activated in system
-[ ] Cancel subscription via Stripe — client paused in system
-[ ] Payment failure test card — failure email sent to client
+BILLING TESTS (Whop test mode)
+[ ] Use Whop test membership to trigger membership.went_valid webhook
+[ ] Webhook fires — check client activated in system
+[ ] Trigger membership.went_invalid — check client paused
+[ ] Trigger membership.was_banned — check client deactivated
+[ ] Payment failure — check failure email sent to client
+
+INVITE / ONBOARDING TESTS
+[ ] Admin creates alumni invite for test email — email received
+[ ] Click invite link — account activated, redirected to wizard
+[ ] Try reusing same invite link — shows "already used" error
+[ ] Let invite expire (set expires_at to past) — shows "link expired" page
+[ ] Admin resends expired invite — new link works
+[ ] Admin revokes invite — link shows "link expired" even if not expired
+[ ] Import CSV of alumni — rows appear in invite list
+[ ] Bulk send 3 invites — all 3 emails received
+[ ] Admin sends proposal from evaluation queue — proposal email received
+[ ] Click "Accept" in proposal email — account created, logged in
+[ ] Click "Accept" a second time — shows already accepted, no duplicate client
+
+EVALUATION FLOW TESTS
+[ ] Submit evaluation form from marketing site — record appears in admin queue
+[ ] Submit 4 times from same IP — 4th is rate-limited (max 3/day)
+[ ] Submit when cap is 26/month — waitlist form shown instead
+[ ] Admin reviews evaluation, sends proposal — proposal email received
+[ ] Click decline in proposal email — record marked declined
+[ ] Wait 7 days (manually set created_at) — follow-up email sent
+[ ] Wait 14 days — record marked expired
 
 PORTAL TESTS
 [ ] Log in as client — see only your own site
@@ -279,12 +371,9 @@ PORTAL TESTS
 [ ] Download report PDF — PDF opens correctly
 [ ] Submit support ticket — ticket appears in admin Filament panel
 [ ] Update WhatsApp number — saved correctly
-
-NOTIFICATION TESTS
-[ ] Site down alert — email received, WhatsApp received
-[ ] Site recovered — email received
-[ ] SSL warning (manually set ssl_expires_at to 28 days from now) — email sent
-[ ] Monthly report email — PDF attached, correct data
+[ ] Self-serve plan change — Whop updated, email received
+[ ] Add-on toggle — price updates instantly on confirm
+[ ] Download invoice PDF — branded PDF opens correctly
 ```
 
 ---
@@ -292,17 +381,20 @@ NOTIFICATION TESTS
 ## Phase 1 Launch Checklist
 
 ```
-[ ] Switch Stripe from test mode to live mode
-[ ] Update Payment Link URLs to live Stripe links
-[ ] Configure Stripe live webhook with production URL
-[ ] SSL confirmed valid on app.reviveguard.com + portal.reviveguard.com
+[ ] Switch Whop from test mode to live mode
+[ ] Update Whop checkout links to live plans
+[ ] Configure Whop live webhook with production URL
+[ ] SSL confirmed valid on app.reviveguard.com
 [ ] VPS daily snapshot enabled (Hetzner)
 [ ] pg_dump backup cron running (daily to B2)
 [ ] PM2 configured to restart on reboot (pm2 startup)
 [ ] Horizon configured to restart on deploy
-[ ] Error monitoring: add Sentry (Laravel package, free tier) 
-      — not required for launch but recommended
+[ ] Error monitoring: add Sentry (Laravel package, free tier)
+[ ] Rate limiting tested on /evaluations submit endpoint
+[ ] Monthly cap (26) configured and tested
+[ ] Marketing site: two-path CTAs live (Path A + Path B)
 [ ] Send warm outreach email to first target clients (WaybackRevive restored clients)
+[ ] First evaluation request received and reviewed by team
 ```
 
 ---
@@ -315,14 +407,16 @@ NOTIFICATION TESTS
 - Annual billing option
 - Rollback after failed WP update
 - Selective plugin updates (exclude specific plugins)
-- Shell script: receive commands (not just heartbeat) — add Python-based command polling
+- Shell script: receive commands (not just heartbeat) — Python-based command polling
 - Client subdomain portal (`client.yourdomain.com` per client)
 - Malware scanning via WP-CLI + Wordfence CLI
 - SEO health snapshot (quarterly, Screaming Frog CLI or custom PHP crawler)
 - Better uptime chart (7/30/90 day sparkline in portal)
 - Email preference center (client can set which alerts they receive)
 - Resend report manually button (client-accessible)
-- Referral tracking (simple: track referrer_client_id, manual discount in Stripe)
+- Referral tracking (track referrer_client_id, auto-credit 1 month free)
+- Evaluation waitlist: auto-notify waitlisted prospects when new month starts (spots open)
+- Evaluation flow: automated site scanning (WP version, SSL, plugin count) to pre-fill admin review notes
 
 ---
 

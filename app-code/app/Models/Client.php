@@ -28,6 +28,9 @@ class Client extends Authenticatable
         'timezone',
         'whop_member_id',
         'is_active',
+        'path',
+        'source',
+        'onboarding_completed_at',
     ];
 
     protected $hidden = [
@@ -37,9 +40,10 @@ class Client extends Authenticatable
     ];
 
     protected $casts = [
-        'is_active'              => 'boolean',
-        'last_login_at'          => 'datetime',
-        'activation_expires_at'  => 'datetime',
+        'is_active'                => 'boolean',
+        'last_login_at'            => 'datetime',
+        'activation_expires_at'    => 'datetime',
+        'onboarding_completed_at'  => 'datetime',
     ];
 
     /**
@@ -79,5 +83,20 @@ class Client extends Authenticatable
     {
         return $this->hasOne(Subscription::class)
             ->ofMany(['created_at' => 'max'], fn ($q) => $q->where('whop_status', 'active'));
+    }
+
+    public function invites(): HasMany
+    {
+        return $this->hasMany(ClientInvite::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function hasCompletedOnboarding(): bool
+    {
+        return $this->onboarding_completed_at !== null;
     }
 }

@@ -87,18 +87,34 @@
         counters.forEach(function (c) { counterObs.observe(c); });
     }
 
-    // ── Plan CTA links — send to pricing with plan hash ──────
-    document.querySelectorAll('[data-plan]').forEach(function (btn) {
+    // ── Pricing CTA links — scroll to pricing on same page ──────
+    document.querySelectorAll('a[href="#pricing"]').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
-            var plan = btn.getAttribute('data-plan');
-            // If on pricing page just scroll, else navigate
             var pricingSection = document.getElementById('pricing');
             if (pricingSection) {
                 e.preventDefault();
                 pricingSection.scrollIntoView({ behavior: 'smooth' });
             }
-            // Otherwise href handles navigation
         });
     });
+
+    // ── How It Works path switcher ────────────────────────────
+    var hiwBtns = document.querySelectorAll('.hiw-path-btn');
+    if (hiwBtns.length) {
+        hiwBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var path = btn.getAttribute('data-path');
+                // Update buttons
+                hiwBtns.forEach(function (b) {
+                    b.classList.toggle('active', b === btn);
+                    b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+                });
+                // Show correct journey
+                document.querySelectorAll('.journey-content').forEach(function (panel) {
+                    panel.classList.toggle('active', panel.id === 'path-' + path);
+                });
+            });
+        });
+    }
 
 })();

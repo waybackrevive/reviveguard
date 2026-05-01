@@ -4,74 +4,136 @@
 
 ## Portal Philosophy
 
-The portal has one job: **give clients peace of mind.**
+The portal has two jobs: **give clients peace of mind** and **give clients real ownership**.
 
-Every screen should answer the unspoken question: "Is my website okay?" The answer is almost always yes. Make "yes" feel reassuring and trustworthy, not clinical.
+Every screen should answer the unspoken question: "Is my website okay?" But unlike a passive monitoring tool, clients should feel genuinely in control — they can choose their plan, add sites, manage add-ons, view invoices, and submit tickets, all without needing to contact us.
 
-**Design tone:** Calm, clean, professional. Like a premium dashboard — not a tech tool.
+**Design inspiration:** WPMaintenance's self-serve dashboard — clients own their experience. We provide the expertise behind it.
+
+**Design tone:** Calm, clean, professional. Light theme. Like a premium SaaS dashboard — not a tech tool.
 **Audience:** Non-technical small business owners. They don't know what PHP is. They care that their website is alive and protected.
 
 ---
 
 ## Technical Setup
 
-- **URL:** `portal.reviveguard.com` (Phase 1)
+- **URL:** `app.reviveguard.com/portal/*`
 - **Framework:** Laravel Livewire (server-rendered, no separate React app)
-- **Auth:** Laravel Breeze (email + password, forgot password via email)
+- **Auth:** Custom `client` guard (email + password, magic link for first login)
 - **Session:** PHP sessions, 8-hour timeout
 - **Mobile:** Responsive layout, works on any screen size
 - **Real-time feel:** Livewire polling every 60 seconds on dashboard (not websockets — polling is enough)
 
 ---
 
-## Authentication Screens
+## Navigation (Sidebar)
 
-### Login Page
-
-URL: `portal.reviveguard.com/login`
-
-**Elements:**
-- ReviveGuard logo (top center)
-- Heading: "Sign in to your dashboard"
-- Email field
-- Password field
-- "Forgot password?" link
-- "Sign in" button
-- No "Create account" link (clients are created by admin, not self-registered)
-
-**Behavior:**
-- Failed login: show inline error "Invalid email or password"
-- After 5 failed attempts: 60-second lockout with countdown shown
-- On success: redirect to Dashboard
-- "Forgot password?" sends reset link to email (standard Laravel Breeze flow)
-
----
-
-### Forgot Password / Reset Password
-
-Standard Laravel Breeze pages, branded. No custom logic needed.
-
----
-
-## Main Navigation
+## Navigation (Sidebar)
 
 Fixed sidebar on desktop, hamburger drawer on mobile.
 
-**Nav items:**
 ```
-[Logo]
+[● Revive Guard logo]
+
+[+ Add website]          ← prominent button, always visible
 
 ● Dashboard
-  Sites          (if client has multiple sites)
+  My Websites
+  Activity Log
   Reports
   Backups
-  Tickets
+  Support
 ─────────────
   Account
   Sign out
+
+[Operated by WaybackRevive LLC]
 ```
 
-For Phase 1, most clients have **1 site**. The "Sites" item still exists for future, but clicking into it just shows their one site.
+The **"+Add website"** button is the most prominent CTA in the nav — mirrors WPMaintenance. Clients grow their own portfolio without asking you. Every added site = more MRR.
+
+---
+
+## Screen 0: Site Onboarding Wizard
+
+URL: `/portal/add-website` (triggered by "+Add website" button)
+
+3-step wizard. No full-page reloads — Livewire steps.
+
+### Step 1 — Domain
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Add Website                                                 │
+│                                                             │
+│  ① Domain name ──────────── ② Package options ── ③ Order  │
+│  (active)                                                   │
+│                                                             │
+│  Company name:  [_________________________________]          │
+│                                                             │
+│  Domain name:   [🔍 www.yourwebsite.com ] [Check]           │
+│                                                             │
+│  Create login details                                       │
+│  We need access to your site to start protecting it.       │
+│                                                             │
+│  [WP Authorize us]   — or —   [Add credentials manually]   │
+│                                                             │
+│                              [Go to package options →]      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**"Authorize us"** for WordPress: Opens our plugin download page. Client installs plugin, plugin registers automatically (generates agent token, calls our API). "Check" button verifies we received the heartbeat.
+
+**"Add manually"**: Client enters WP admin URL + application password. We store it encrypted for initial setup only, then install plugin via WP REST API.
+
+### Step 2 — Package Options
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Choose your maintenance package                             │
+│                                                             │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  Monitor    │  │  Guard  ✓    │  │  Shield          │   │
+│  │  $19/mo     │  │  $49/mo      │  │  $99/mo          │   │
+│  │  [Select]   │  │  [Selected]  │  │  [Select]        │   │
+│  └─────────────┘  └──────────────┘  └──────────────────┘   │
+│                                                             │
+│  [Show/hide full plan comparison]                           │
+│                                                             │
+│  Add-ons:                                                   │
+│  ○ Extra backup storage (10GB)  +$5/mo                      │
+│  ○ Speed optimization audit     $49 one-time                │
+│                                 [Proceed to order →]        │
+│                                                             │
+│  ┌───────────────────────────────────────────────────┐      │
+│  │  SUMMARY                     [✎ Adjust domain]   │      │
+│  │  Domain: johnsbakery.com                          │      │
+│  │  Package: Guard — $49/mo                          │      │
+│  │  Add-ons: none                                    │      │
+│  │  Total: $49/mo                                    │      │
+│  │  [Proceed to order →]                             │      │
+│  └───────────────────────────────────────────────────┘      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Step 3 — Order
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Order Summary                                               │
+│                                                             │
+│  johnsbakery.com                                            │
+│  Guard plan — $49/month                                     │
+│  Billed monthly. Cancel anytime.                            │
+│                                                             │
+│  [→ Proceed to secure checkout]                             │
+│                                                             │
+│  ⓘ You haven't been charged yet.                           │
+│  Checkout is handled securely by Whop.                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+→ Redirects to Whop hosted checkout with `redirect_url` back to `/portal/welcome`
 
 ---
 
@@ -288,37 +350,90 @@ Message:  [                              ]
 
 ---
 
-## Screen 6: Account Settings
+## Screen 6: Account & Plan Management
 
-URL: `/account`
+URL: `/portal/account`
 
+Split into tabs: **My details** | **My plan** | **Billing & invoices**
+
+### Tab: My Details
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Account Settings                                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Name:           [John Smith              ]                  │
-│  Email:          [john@johnsbakery.com    ]                  │
-│  WhatsApp:       [+1 (415) 555-1234       ]                  │
-│                  (For urgent site alerts)                    │
-│                                                              │
-│  [Save Changes]                                              │
-│                                                              │
-├─── Change Password ─────────────────────────────────────────┤
-│  Current password:   [________________]                      │
-│  New password:       [________________]                      │
-│  Confirm password:   [________________]                      │
-│  [Update Password]                                           │
-│                                                              │
-├─── Your Plan ───────────────────────────────────────────────┤
-│  Current plan:  Guard — $49/month                            │
-│  Next billing:  May 1, 2025                                  │
-│  [Manage billing & invoices →]     ← links to Stripe portal  │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+Name:           [John Smith              ]
+Email:          [john@johnsbakery.com    ]
+WhatsApp:       [+1 (415) 555-1234       ]
+                (For urgent site alerts)
+
+[Save Changes]
+
+─── Change Password ──────────────────────────────────────────
+Current password:   [________________]
+New password:       [________________]
+Confirm password:   [________________]
+[Update Password]
 ```
 
-**"Manage billing & invoices →"** opens Stripe Customer Portal in new tab. Client can update card, view/download invoices, cancel subscription there. You don't build any of this.
+### Tab: My Plan
+
+```
+Current plan:    Guard — $49/month
+Included sites:  1 site
+Next billing:    May 1, 2025
+
+[↑ Upgrade to Shield]  [Downgrade to Monitor]
+
+─── Active Add-ons ───────────────────────────────────────────
+○ Extra backup storage (10GB)   +$5/mo      [Enable]
+○ Speed optimization audit      $49 once    [Purchase]
+
+─── Plan Feature Comparison ──────────────────────────────────
+[Show comparison table ▼]
+```
+
+**Upgrade:** Opens Whop upgrade flow. Takes effect immediately with proration.
+**Downgrade:** Queues for end of billing period. Shows clear date.
+**Add-on toggle:** Immediately updates Whop subscription, shows new total.
+
+### Tab: Billing & Invoices
+
+```
+TOTAL OUTSTANDING
+$0
+
+Payment method:  Visa ending 4242   [Update payment method →]
+
+INVOICES
+─────────────────────────────────────────────────────────────
+Date         Invoice #      Amount     Status
+Apr 1, 2025  RVG-2025-004  $49.00     Paid    [Download PDF]
+Mar 1, 2025  RVG-2025-003  $49.00     Paid    [Download PDF]
+Feb 1, 2025  RVG-2025-002  $49.00     Paid    [Download PDF]
+Jan 1, 2025  RVG-2025-001  $49.00     Paid    [Download PDF]
+─────────────────────────────────────────────────────────────
+
+* Prices exclude applicable taxes.
+
+[Update payment method →]    ← links to Whop billing portal
+[Invoice details →]          ← links to update billing address
+```
+
+---
+
+## Screen 7: My Websites
+
+URL: `/portal/websites`
+
+Shows all sites this client has added. For most clients: 1 site. For growing businesses: multiple.
+
+```
+MY WEBSITES
+
+johnsbakery.com          Guard     ● UP      [View dashboard]
+johnsbakeryblog.com      Monitor   ● UP      [View dashboard]
+
+[+ Add another website]
+```
+
+Clicking "View dashboard" switches the active site context and loads Screen 1 for that site.
 
 ---
 

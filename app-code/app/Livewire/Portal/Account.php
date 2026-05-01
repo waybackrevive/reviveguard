@@ -20,6 +20,8 @@ class Account extends Component
     public bool $profileSaved  = false;
     public bool $passwordSaved = false;
 
+    public string $activeTab = 'profile'; // 'profile' | 'plan' | 'billing'
+
     public function mount(): void
     {
         $client      = Auth::guard('client')->user();
@@ -77,13 +79,15 @@ class Account extends Component
     public function render(): \Illuminate\View\View
     {
         $client = Auth::guard('client')->user();
-        $sub    = $client->activeSubscription;
-        $plan   = optional($sub)->plan;
+        $sub      = $client->activeSubscription;
+        $plan     = optional($sub)->plan;
+        $invoices = $client->invoices()->orderByDesc('issued_at')->limit(24)->get();
 
         return view('livewire.portal.account', [
-            'client' => $client,
-            'sub'    => $sub,
-            'plan'   => $plan,
+            'client'   => $client,
+            'sub'      => $sub,
+            'plan'     => $plan,
+            'invoices' => $invoices,
         ])->layout('portal.layouts.app');
     }
 }
