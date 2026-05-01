@@ -132,9 +132,30 @@ class ClientResource extends Resource
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Active Clients'),
+                Tables\Filters\SelectFilter::make('path')
+                    ->label('Path')
+                    ->options([
+                        'alumni'     => 'Alumni (WaybackRevive)',
+                        'evaluation' => 'Evaluation (new client)',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('activate')
+                    ->label('Activate')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Client $record) => ! $record->is_active)
+                    ->requiresConfirmation()
+                    ->action(fn (Client $record) => $record->update(['is_active' => true])),
+                Tables\Actions\Action::make('suspend')
+                    ->label('Suspend')
+                    ->icon('heroicon-o-no-symbol')
+                    ->color('danger')
+                    ->visible(fn (Client $record) => $record->is_active)
+                    ->requiresConfirmation()
+                    ->modalDescription('This will revoke portal access immediately.')
+                    ->action(fn (Client $record) => $record->update(['is_active' => false])),
                 Tables\Actions\Action::make('impersonate')
                     ->label('Portal Login Link')
                     ->icon('heroicon-o-arrow-top-right-on-square')

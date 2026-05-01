@@ -113,6 +113,17 @@ class SiteEvaluationResource extends Resource
                     ]),
             ])
             ->actions([
+                Action::make('start_review')
+                    ->label('Start Review')
+                    ->icon('heroicon-o-magnifying-glass')
+                    ->color('info')
+                    ->visible(fn (SiteEvaluation $record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->action(function (SiteEvaluation $record) {
+                        $record->update(['status' => 'reviewing']);
+                        Notification::make()->title('Marked as reviewing')->success()->send();
+                    }),
+
                 Action::make('send_proposal')
                     ->label('Send proposal')
                     ->icon('heroicon-o-paper-airplane')

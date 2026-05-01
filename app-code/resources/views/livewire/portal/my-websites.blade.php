@@ -4,7 +4,7 @@
         @if (! $showWizard)
             <button
                 wire:click="openWizard"
-                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -15,7 +15,7 @@
     </div>
 
     @if ($showWizard)
-        <div class="bg-white rounded-2xl border border-blue-200 shadow-sm p-6 mb-6">
+        <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 mb-6">
             <livewire:portal.site-wizard :key="'wizard-' . now()->timestamp" />
         </div>
     @endif
@@ -30,7 +30,7 @@
             <p class="text-gray-500 text-sm mb-4">No websites added yet.</p>
             <button
                 wire:click="openWizard"
-                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
                 Add your first website
             </button>
@@ -82,12 +82,12 @@
                     <div class="mt-4 pt-4 border-t border-gray-100 flex gap-2">
                         <a
                             href="{{ route('portal.events') }}"
-                            class="text-xs text-blue-600 hover:underline"
+                            class="text-xs text-emerald-700 hover:underline"
                         >View events</a>
                         <span class="text-gray-200">|</span>
                         <a
                             href="{{ route('portal.reports') }}"
-                            class="text-xs text-blue-600 hover:underline"
+                            class="text-xs text-emerald-700 hover:underline"
                         >Reports</a>
                     </div>
                 </div>
@@ -95,3 +95,4 @@
         </div>
     @endif
 </div>
+

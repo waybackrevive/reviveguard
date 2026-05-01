@@ -8,7 +8,7 @@
                 wire:click="$set('activeTab', '{{ $tab }}')"
                 class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px
                     {{ $activeTab === $tab
-                        ? 'border-blue-600 text-blue-600'
+                        ? 'border-emerald-600 text-emerald-700'
                         : 'border-transparent text-gray-500 hover:text-gray-700' }}"
             >
                 {{ $label }}
@@ -32,26 +32,26 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
                     <input type="text" wire:model="name"
-                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('name') border-red-400 @enderror">
+                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 @error('name') border-red-400 @enderror">
                     @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input type="email" wire:model="email"
-                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('email') border-red-400 @enderror">
+                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 @error('email') border-red-400 @enderror">
                     @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone / WhatsApp</label>
                     <input type="text" wire:model="phone" placeholder="Optional"
-                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('phone') border-red-400 @enderror">
+                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 @error('phone') border-red-400 @enderror">
                     @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <button type="submit"
-                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                        class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors"
                         wire:loading.attr="disabled" wire:loading.class="opacity-60">
                     Save Changes
                 </button>
@@ -71,21 +71,21 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Current password</label>
                     <input type="password" wire:model="currentPassword"
-                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('currentPassword') border-red-400 @enderror">
+                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 @error('currentPassword') border-red-400 @enderror">
                     @error('currentPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">New password</label>
                     <input type="password" wire:model="newPassword" minlength="8"
-                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('newPassword') border-red-400 @enderror">
+                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 @error('newPassword') border-red-400 @enderror">
                     @error('newPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
                     <input type="password" wire:model="confirmPassword" minlength="8"
-                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                           class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
 
                 <button type="submit"
@@ -131,7 +131,7 @@
             <div class="mt-5 pt-5 border-t border-gray-100">
                 <p class="text-xs text-gray-400">
                     To change or cancel your plan, visit your
-                    <a href="https://whop.com" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Whop membership dashboard</a>.
+                    <a href="https://whop.com" target="_blank" rel="noopener" class="text-emerald-700 hover:underline">Whop membership dashboard</a>.
                 </p>
             </div>
         @else
@@ -176,7 +176,7 @@
                                 <td class="py-3">
                                     @if ($invoice->pdf_url)
                                         <a href="{{ $invoice->pdf_url }}" target="_blank" rel="noopener"
-                                           class="text-blue-600 hover:underline text-xs">
+                                           class="text-emerald-700 hover:underline text-xs">
                                             Download
                                         </a>
                                     @else
@@ -192,4 +192,3 @@
     </div>
     @endif
 </div>
-

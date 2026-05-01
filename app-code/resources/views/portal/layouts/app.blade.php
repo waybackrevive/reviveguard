@@ -40,6 +40,12 @@
                 Dashboard
             </a>
 
+            <a href="{{ route('portal.my-websites') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.my-websites') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+                My Websites
+            </a>
+
             <a href="{{ route('portal.events') }}"
                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.events') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -95,8 +101,9 @@
                     <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </summary>
                 <nav class="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50">
-                    <a href="{{ route('portal.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Dashboard</a>
-                    <a href="{{ route('portal.events') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Activity Log</a>
+                    <a href="{{ route('portal.dashboard') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Dashboard</a>
+                    <a href="{{ route('portal.my-websites') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Websites</a>
+                    <a href="{{ route('portal.events') }}"      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Activity Log</a>
                     <a href="{{ route('portal.reports') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Reports</a>
                     <a href="{{ route('portal.backups') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Backups</a>
                     <a href="{{ route('portal.tickets') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Support</a>

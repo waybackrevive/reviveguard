@@ -27,6 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->profile()
             ->authGuard('web')
             ->colors([
                 // Emerald green as primary accent — professional on Filament's default light background
