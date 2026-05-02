@@ -41,6 +41,7 @@ class MyWebsites extends Component
             ->orderBy('created_at')
             ->get();
 
-        return view('livewire.portal.my-websites', compact('sites', 'client'));
+        return view('livewire.portal.my-websites', compact('sites', 'client'))
+            ->layout('portal.layouts.app');
     }
 }
