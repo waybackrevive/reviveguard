@@ -700,35 +700,60 @@ curl http://127.0.0.1:3002/health
 ## 18. GitHub Actions CI/CD
 
 File already exists at `.github/workflows/deploy.yml`. It:
-1. Runs all 46 tests on every push to `main`
-2. On passing tests, SSH deploys to the server
+1. Runs tests on every push to `master`
+2. On passing tests, SSH deploys to the server automatically
 
-### Setup required secrets in GitHub:
-Go to your repo → Settings → Secrets and variables → Actions
+### Step 1 — Generate SSH key on server (one time only)
 
-| Secret | Value |
-|--------|-------|
-| `SSH_PRIVATE_KEY` | Your deploy user's private SSH key |
-| `SERVER_HOST` | Your server IP or domain |
-| `SERVER_USER` | `deploy` |
-| `SERVER_PATH` | `/var/www/reviveguard/app-code` |
+GitHub Actions connects to your server using an SSH key — **not** your root password. You must generate a key for the `deploy` user:
 
-### Deploy script runs on server (SSH):
 ```bash
-cd /var/www/reviveguard
-git pull origin main
-cd app-code
-composer install --no-dev --optimize-autoloader \
-  --ignore-platform-req=ext-pcntl \
-  --ignore-platform-req=ext-posix
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
-sudo supervisorctl restart reviveguard-worker:*
-pm2 restart reviveguard-pdf
+# SSH into server as root, then switch to deploy user
+su - deploy
+
+# Generate a new ED25519 key (press Enter 3 times — no passphrase)
+ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions
+
+# Authorize this key for deploy user login
+cat ~/.ssh/github_actions.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+# Print the PRIVATE key — copy ALL of this output including the header/footer lines
+cat ~/.ssh/github_actions
 ```
+
+Copy the entire output (from `-----BEGIN OPENSSH PRIVATE KEY-----` to `-----END OPENSSH PRIVATE KEY-----`).
+
+### Step 2 — Add secrets in GitHub
+
+Go to your repo → **Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret name | Value to paste |
+|---|---|
+| `SSH_PRIVATE_KEY` | The private key you just copied (entire contents of `~/.ssh/github_actions`) |
+| `SERVER_HOST` | Your VPS IP address (e.g. `167.x.x.x`) |
+| `SERVER_USER` | `deploy` |
+
+> You already added `SERVER_HOST` and `SERVER_USER` — just add `SSH_PRIVATE_KEY` now.
+
+### Step 3 — Allow deploy user to restart supervisor without password
+
+The deploy script runs `sudo supervisorctl restart ...`. Add a sudoers rule:
+
+```bash
+# As root on server:
+echo 'deploy ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl' | sudo tee /etc/sudoers.d/deploy-supervisor
+sudo chmod 440 /etc/sudoers.d/deploy-supervisor
+```
+
+### What the deploy does on each push to `master`:
+1. Pulls latest code from `master`
+2. Runs `composer install` (no dev deps)
+3. Runs `npm ci && npm run build`
+4. `config:cache`, `route:cache`, `view:cache`, `event:cache`
+5. `php artisan migrate --force`
+6. Restarts queue workers (`supervisorctl restart reviveguard-worker:*`)
+7. Restarts PDF service (`pm2 restart reviveguard-pdf`)
 
 ---
 

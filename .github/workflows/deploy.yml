@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - main
+      - master
 
 # Only one deployment at a time
 concurrency:
@@ -15,6 +15,9 @@ jobs:
     name: SSH deploy to VPS
     runs-on: ubuntu-latest
     environment: production
+    defaults:
+      run:
+        working-directory: app-code
 
     steps:
       - name: Checkout
@@ -24,8 +27,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, xml, curl, zip, pgsql, redis, bcmath
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, zip, pgsql, redis, bcmath, intl, gd
           coverage: none
 
       # ─── Install Composer dependencies (production only) ────────────────────
@@ -35,7 +38,9 @@ jobs:
             --no-dev \
             --no-interaction \
             --prefer-dist \
-            --optimize-autoloader
+            --optimize-autoloader \
+            --ignore-platform-req=ext-pcntl \
+            --ignore-platform-req=ext-posix
 
       # ─── Build frontend assets ──────────────────────────────────────────────
       - name: Setup Node.js
@@ -43,6 +48,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: app-code/package-lock.json
 
       - name: NPM install + build
         run: |
@@ -50,7 +56,6 @@ jobs:
           npm run build
 
       # ─── Run tests ──────────────────────────────────────────────────────────
-      # Note: tests run against local SQLite in CI; only smoke-tests
       - name: Run test suite
         run: |
           php artisan test --stop-on-failure
@@ -70,46 +75,44 @@ jobs:
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1
         with:
-          host:     ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
-          port:     ${{ secrets.VPS_PORT || 22 }}
+          host:     ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          port:     22
           script: |
             set -e
 
-            echo "=== [1/8] Pull latest code ==="
+            echo "=== [1/7] Pull latest code ==="
             cd /var/www/reviveguard
-            git pull origin main
+            git pull origin master
 
-            echo "=== [2/8] Composer install (production) ==="
+            echo "=== [2/7] Composer install ==="
+            cd /var/www/reviveguard/app-code
             composer install \
               --no-dev \
               --no-interaction \
               --prefer-dist \
-              --optimize-autoloader
+              --optimize-autoloader \
+              --ignore-platform-req=ext-pcntl \
+              --ignore-platform-req=ext-posix
 
-            echo "=== [3/8] NPM build ==="
+            echo "=== [3/7] NPM build ==="
             npm ci
             npm run build
 
-            echo "=== [4/8] Clear + cache config ==="
-            php artisan down --retry=5 --secret="${DEPLOY_SECRET}"
+            echo "=== [4/7] Clear + cache config ==="
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan event:cache
 
-            echo "=== [5/8] Run migrations ==="
+            echo "=== [5/7] Run migrations ==="
             php artisan migrate --force
 
-            echo "=== [6/8] Restart queue workers (Horizon) ==="
-            php artisan horizon:terminate
-            sudo supervisorctl restart reviveguard-horizon
+            echo "=== [6/7] Restart queue workers ==="
+            sudo supervisorctl restart reviveguard-worker:*
 
-            echo "=== [7/8] Restart Puppeteer service ==="
-            pm2 restart reviveguard-puppeteer
-
-            echo "=== [8/8] Bring app back online ==="
-            php artisan up
+            echo "=== [7/7] Restart Puppeteer service ==="
+            pm2 restart reviveguard-pdf
 
             echo "✓ Deploy complete"
