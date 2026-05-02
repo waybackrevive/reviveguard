@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'uptime_kuma.webhook'  => \App\Http\Middleware\VerifyUptimeKumaWebhook::class,
             'portal.auth'          => \App\Http\Middleware\AuthenticateClient::class,
             'portal.guest'         => \App\Http\Middleware\RedirectIfClientAuthenticated::class,
+            'portal.timeout'       => \App\Http\Middleware\SessionTimeout::class,
             'whop.webhook'         => \App\Http\Middleware\VerifyWhopWebhook::class,
         ]);
     })

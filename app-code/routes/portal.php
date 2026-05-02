@@ -33,7 +33,7 @@ Route::middleware('portal.guest')->group(function () {
 });
 
 // ── Authenticated portal routes ───────────────────────────────────────────────
-Route::middleware('portal.auth')->group(function () {
+Route::middleware(['portal.auth', 'portal.timeout'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('portal.logout');
 
     Route::get('/dashboard',    \App\Livewire\Portal\Dashboard::class)->name('portal.dashboard');

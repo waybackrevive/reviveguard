@@ -116,9 +116,9 @@
                 @foreach ($recentEvents as $event)
                     <li class="flex items-start gap-4 px-6 py-4">
                         <span class="mt-0.5 flex-shrink-0 text-lg">
-                            @if ($event->severity === 'critical') ✗
-                            @elseif ($event->severity === 'warning') ⚠
-                            @elseif ($event->severity === 'success') ✓
+                            @if ($event->severity->value === 'critical') ✗
+                            @elseif ($event->severity->value === 'warning') ⚠
+                            @elseif ($event->severity->value === 'success') ✓
                             @else ℹ @endif
                         </span>
                         <div class="flex-1 min-w-0">
