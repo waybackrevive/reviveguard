@@ -96,24 +96,17 @@
 
         @if ($agentKey)
             <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-5">
-                <p class="text-xs text-gray-500 mb-1 font-medium">Your agent key:</p>
-                <code class="text-sm font-mono text-gray-900 break-all">{{ $agentKey }}</code>
+                <p class="text-xs text-gray-500 mb-1 font-medium">Your agent key (copy this):</p>
+                <div class="flex items-center gap-2">
+                    <code class="text-sm font-mono text-gray-900 break-all flex-1" id="agent-key-text">{{ $agentKey }}</code>
+                    <button
+                        type="button"
+                        onclick="navigator.clipboard.writeText(document.getElementById('agent-key-text').textContent.trim()).then(() => { this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy', 2000); })"
+                        class="flex-shrink-0 text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-medium px-2 py-1 rounded transition-colors"
+                    >Copy</button>
+                </div>
             </div>
         @endif
-
-        @error('agentKeyInput')
-            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 text-sm text-red-700">{{ $message }}</div>
-        @enderror
-
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm agent key from plugin settings</label>
-            <input
-                type="text"
-                wire:model="agentKeyInput"
-                placeholder="Paste the agent key from your plugin settings..."
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-            >
-        </div>
 
         <div class="flex gap-3">
             <button
@@ -121,8 +114,8 @@
                 wire:loading.attr="disabled"
                 class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
             >
-                <span wire:loading.remove wire:target="submitStep2">Verify &amp; Continue</span>
-                <span wire:loading wire:target="submitStep2">Verifying...</span>
+                <span wire:loading.remove wire:target="submitStep2">I've installed the plugin &rarr;</span>
+                <span wire:loading wire:target="submitStep2">Saving...</span>
             </button>
             <button wire:click="cancel" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
         </div>

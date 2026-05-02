@@ -19,23 +19,12 @@ class HeartbeatController extends Controller
             'agent_version' => ['nullable', 'string', 'max:20'],
             'wp_version'    => ['nullable', 'string', 'max:20'],
             'php_version'   => ['nullable', 'string', 'max:20'],
-            'disk_usage_mb' => ['nullable', 'numeric', 'min:0'],  // plugin sends float
-            'debug_mode'    => ['nullable', 'boolean'],
+            'disk_usage_mb' => ['nullable', 'numeric', 'min:0'],
+            'debug_mode'    => ['nullable'],
             'plugin_count'  => ['nullable', 'integer', 'min:0'],
             'theme_name'    => ['nullable', 'string', 'max:255'],
-            'active_theme'  => ['nullable', 'string', 'max:255'],  // plugin field name
+            'site_url'      => ['nullable', 'url', 'max:500'],
         ]);
-
-        // Normalise: plugin sends active_theme, DB column is theme_name
-        if (empty($validated['theme_name']) && ! empty($validated['active_theme'])) {
-            $validated['theme_name'] = $validated['active_theme'];
-        }
-        unset($validated['active_theme']);
-
-        // DB column is integer — cast before dispatch
-        if (isset($validated['disk_usage_mb'])) {
-            $validated['disk_usage_mb'] = (int) $validated['disk_usage_mb'];
-        }
 
         // Dispatch async job to process status changes and emit events
         ProcessHeartbeat::dispatch($site->id, $validated);

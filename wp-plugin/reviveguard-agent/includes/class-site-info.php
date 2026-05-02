@@ -17,7 +17,7 @@ final class ReviveGuard_SiteInfo
         return [
             'wp_version'     => $this->getWpVersion(),
             'php_version'    => PHP_VERSION,
-            'active_theme'   => $this->getActiveTheme(),
+            'theme_name'     => $this->getActiveTheme(),
             'plugin_count'   => $this->getPluginCount(),
             'disk_usage_mb'  => $this->getDiskUsageMb(),
             'debug_mode'     => defined('WP_DEBUG') && WP_DEBUG,

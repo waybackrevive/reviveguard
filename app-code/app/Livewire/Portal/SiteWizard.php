@@ -24,10 +24,9 @@ class SiteWizard extends Component
     public string $siteLabel      = '';
     public string $confirmMessage = '';
 
-    // Step 2: show plugin download link + manual agent key entry
-    public string $agentKey      = '';  // raw token generated at step 1, shown to user once
-    public string $agentKeyInput = '';
-    public ?Site  $pendingSite   = null;
+    // Step 2: show plugin download link + agent key
+    public string $agentKey    = '';  // raw token generated at step 1, shown to user once
+    public ?Site  $pendingSite = null;
 
     // Step 3: status
     public bool   $heartbeatReceived = false;
@@ -50,11 +49,7 @@ class SiteWizard extends Component
 
         $client = Auth::guard('client')->user();
 
-        // Require an active plan before creating a site
-        if (! $client->activeSubscription()->exists()) {
-            $this->addError('siteUrl', 'You need an active plan to add a website. Please purchase a plan first.');
-            return;
-        }
+        // Prevent duplicate sites
         $existing = Site::where('client_id', $client->id)
             ->where('url', rtrim($this->siteUrl, '/'))
             ->first();
@@ -81,7 +76,7 @@ class SiteWizard extends Component
         $this->step = 2;
     }
 
-    // ── Step 2: verify agent key ──────────────────────────────────────────────
+    // ── Step 2: proceed to heartbeat check ───────────────────────────────────
 
     public function submitStep2(): void
     {
@@ -90,15 +85,7 @@ class SiteWizard extends Component
             return;
         }
 
-        $this->validate(['agentKeyInput' => ['required', 'string', 'size:64']]);
-
-        // Check user confirmed the correct token (proves they copied it into the plugin)
-        if ($this->agentKeyInput !== $this->agentKey) {
-            $this->addError('agentKeyInput', 'Token does not match. Copy the exact token shown above and paste it here.');
-            return;
-        }
-
-        $this->statusMessage = 'Plugin connected! Waiting for the first heartbeat...';
+        $this->statusMessage = 'Waiting for the first heartbeat from your site...';
         $this->step = 3;
     }
 
@@ -128,7 +115,7 @@ class SiteWizard extends Component
     public function cancel(): void
     {
         // Clean up pending site if wizard cancelled before heartbeat
-        if ($this->pendingSite && $this->pendingSite->last_heartbeat_at === null) {
+        if ($this->pendingSite && $this->pendingSite->last_seen_at === null) {
             $this->pendingSite->delete();
         }
 

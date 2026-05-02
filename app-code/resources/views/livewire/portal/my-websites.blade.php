@@ -2,22 +2,15 @@
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">My Websites</h1>
         @if (! $showWizard)
-            @if ($hasActivePlan)
-                <button
-                    wire:click="openWizard"
-                    class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Add website
-                </button>
-            @else
-                <a href="{{ route('portal.account') }}"
-                   class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                    ↑ Upgrade to add websites
-                </a>
-            @endif
+            <button
+                wire:click="openWizard"
+                class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add website
+            </button>
         @endif
     </div>
 
@@ -34,22 +27,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
                 </svg>
             </div>
-            @if ($hasActivePlan)
-                <p class="text-gray-500 text-sm mb-4">No websites added yet.</p>
-                <button
-                    wire:click="openWizard"
-                    class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                >
-                    Add your first website
-                </button>
-            @else
-                <p class="text-gray-500 text-sm mb-2">You need an active plan to add websites.</p>
-                <p class="text-xs text-gray-400 mb-4">Choose a plan and start protecting your site today.</p>
-                <a href="{{ route('portal.account') }}"
-                   class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                    ↑ Choose a plan
-                </a>
-            @endif
+            <p class="text-gray-500 text-sm mb-4">No websites added yet.</p>
+            <button
+                wire:click="openWizard"
+                class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+                Add your first website
+            </button>
         </div>
     @else
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -81,9 +65,9 @@
 
                     <div class="text-xs text-gray-500 space-y-1">
                         @if ($site->last_seen_at)
-                            <p>Last check-in: {{ $site->last_seen_at->diffForHumans() }}</p>
+                            <p>Last heartbeat: {{ $site->last_seen_at->diffForHumans() }}</p>
                         @else
-                            <p class="text-yellow-600">Waiting for first check-in...</p>
+                            <p class="text-yellow-600">Waiting for first heartbeat...</p>
                         @endif
 
                         @if ($site->ssl_expires_at)
