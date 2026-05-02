@@ -105,6 +105,12 @@ class SiteWizard extends Component
         }
 
         $this->buildCheckoutUrl($plan);
+
+        // Don't advance if checkout URL couldn't be built (e.g. plan ID not configured)
+        if (empty($this->checkoutUrl)) {
+            return;
+        }
+
         $this->step = 3;
     }
 

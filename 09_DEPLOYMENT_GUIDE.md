@@ -759,6 +759,66 @@ Only fill in B2 settings if the client's plan includes agent-triggered backups. 
 
 ## 20. Troubleshooting
 
+---
+
+## Live Log Commands (How to See What's Happening on Server)
+
+SSH in first, then use these:
+
+### Laravel app log — most useful. Shows PHP errors, exceptions, Livewire, Whop, etc.
+```bash
+# Stream live (Ctrl+C to stop)
+tail -f /var/www/reviveguard/app-code/storage/logs/laravel.log
+
+# Today's dated log (if using daily channel)
+tail -f /var/www/reviveguard/app-code/storage/logs/laravel-$(date +%Y-%m-%d).log
+
+# Last 100 lines
+tail -100 /var/www/reviveguard/app-code/storage/logs/laravel.log
+
+# Grep for specific keyword (e.g. Whop errors)
+grep -i "error\|exception\|whop\|checkout" /var/www/reviveguard/app-code/storage/logs/laravel.log | tail -50
+```
+
+### Nginx logs
+```bash
+sudo tail -f /var/log/nginx/access.log   # all HTTP requests
+sudo tail -f /var/log/nginx/error.log    # PHP-FPM / proxy errors
+```
+
+### PHP-FPM errors (if you see 502 Bad Gateway)
+```bash
+sudo tail -f /var/log/php8.4-fpm.log
+```
+
+### Queue worker log
+```bash
+tail -f /var/www/reviveguard/app-code/storage/logs/worker.log
+```
+
+### Whop checkout debugging
+```bash
+cd /var/www/reviveguard/app-code
+
+# Verify env vars are loaded into config
+php artisan tinker --execute="echo config('services.whop.plan_guard_id');"
+php artisan tinker --execute="echo config('services.whop.plan_monitor_id');"
+php artisan tinker --execute="echo config('services.whop.plan_shield_id');"
+
+# Check DB plans have whop_plan_id
+php artisan tinker --execute="\App\Models\Plan::all(['slug','whop_plan_id'])->each(fn(\$p)=>dump(\$p->toArray()));"
+```
+
+> **Most common cause of "Proceed to checkout" button doing nothing:**
+> `WHOP_PLAN_GUARD_ID` / `WHOP_PLAN_MONITOR_ID` / `WHOP_PLAN_SHIELD_ID` not set in `.env`.
+> Run the tinker commands above. If output is empty, add the IDs to `.env` then:
+> ```bash
+> php artisan config:cache
+> php artisan view:clear
+> ```
+
+---
+
 ### Admin panel broken / 500 error
 ```bash
 # Check logs
