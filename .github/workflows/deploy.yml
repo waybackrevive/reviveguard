@@ -30,7 +30,14 @@ jobs:
           extensions: mbstring, xml, curl, zip, pgsql, redis, bcmath, intl, gd
           coverage: none
 
-      - name: Composer install
+      # Create .env BEFORE composer install so post-autoload-dump artisan calls work
+      - name: Create CI .env
+        run: |
+          cp .env.example .env
+          echo "APP_KEY=base64:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=" >> .env
+          echo "APP_ENV=testing" >> .env
+
+      - name: Composer install (with dev deps for testing)
         run: |
           composer install \
             --no-interaction \
@@ -52,8 +59,7 @@ jobs:
           npm run build
 
       - name: Run test suite
-        run: |
-          php artisan test --stop-on-failure
+        run: vendor/bin/phpunit --stop-on-failure
         env:
           APP_ENV: testing
           APP_KEY: base64:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=
