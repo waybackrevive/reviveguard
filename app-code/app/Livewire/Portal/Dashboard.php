@@ -5,6 +5,7 @@ namespace App\Livewire\Portal;
 use App\Models\Backup;
 use App\Models\Event;
 use App\Models\Site;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -34,10 +35,10 @@ class Dashboard extends Component
         $this->site = Site::where('client_id', $client->id)->first();
     }
 
-    public function recentEvents(): \Illuminate\Database\Eloquent\Collection
+    public function recentEvents(): EloquentCollection
     {
         if (! $this->site) {
-            return collect();
+            return new EloquentCollection();
         }
 
         return Event::where('site_id', $this->site->id)

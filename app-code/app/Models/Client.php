@@ -47,11 +47,28 @@ class Client extends Authenticatable
     ];
 
     /**
-     * Map Breeze / auth to portal_password field.
+     * Map portal auth to portal_password field (Laravel <11 contract).
      */
     public function getAuthPassword(): string
     {
         return $this->portal_password ?? '';
+    }
+
+    /**
+     * Laravel 11 auth contract — explicit password column name.
+     */
+    public function getAuthPasswordName(): string
+    {
+        return 'portal_password';
+    }
+
+    /**
+     * Always return the UUID as a plain string so the session guard stores
+     * only the UUID (never the serialised model object).
+     */
+    public function getAuthIdentifier(): string
+    {
+        return (string) $this->getKey();
     }
 
     public function tenant(): BelongsTo
@@ -81,8 +98,11 @@ class Client extends Authenticatable
 
     public function activeSubscription(): HasOne
     {
+        // Note: ofMany() generates MAX(id) which fails on PostgreSQL UUID columns.
+        // Use a plain HasOne ordered by created_at instead.
         return $this->hasOne(Subscription::class)
-            ->ofMany(['created_at' => 'max'], fn ($q) => $q->where('whop_status', 'active'));
+            ->where('whop_status', 'active')
+            ->orderByDesc('created_at');
     }
 
     public function invites(): HasMany

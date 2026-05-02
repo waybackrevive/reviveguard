@@ -81,6 +81,7 @@ class AcceptInviteController extends Controller
 
         // Log the client into the portal guard
         auth('client')->login($client);
+        $request->session()->regenerate();
 
         return redirect()->route('portal.dashboard')
             ->with('success', 'Welcome to ReviveGuard! Your account is all set.');
