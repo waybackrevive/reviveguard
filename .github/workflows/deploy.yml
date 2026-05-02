@@ -11,10 +11,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: SSH deploy to VPS
+  # ─── Job 1: Build & Test ────────────────────────────────────────────────────
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
-    environment: production
     defaults:
       run:
         working-directory: app-code
@@ -23,7 +23,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ─── Install PHP + Composer ─────────────────────────────────────────────
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -31,7 +30,6 @@ jobs:
           extensions: mbstring, xml, curl, zip, pgsql, redis, bcmath, intl, gd
           coverage: none
 
-      # ─── Install Composer dependencies (production only) ────────────────────
       - name: Composer install
         run: |
           composer install \
@@ -42,7 +40,6 @@ jobs:
             --ignore-platform-req=ext-pcntl \
             --ignore-platform-req=ext-posix
 
-      # ─── Build frontend assets ──────────────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,7 +52,6 @@ jobs:
           npm ci
           npm run build
 
-      # ─── Run tests ──────────────────────────────────────────────────────────
       - name: Run test suite
         run: |
           php artisan test --stop-on-failure
@@ -71,8 +67,14 @@ jobs:
           WHOP_WEBHOOK_SECRET: test_secret
           UPTIME_KUMA_WEBHOOK_SECRET: test_secret
 
-      # ─── Deploy via SSH ─────────────────────────────────────────────────────
-      - name: Deploy to VPS
+  # ─── Job 2: Deploy via SSH ──────────────────────────────────────────────────
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: SSH deploy
         uses: appleboy/ssh-action@v1
         with:
           host:     ${{ secrets.SERVER_HOST }}
@@ -82,13 +84,18 @@ jobs:
           script: |
             set -e
 
+            # ── Load full user PATH (nvm, composer, npm, pm2) ──────────────────
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH="$HOME/.nvm/bin:$HOME/.composer/vendor/bin:/usr/local/bin:/usr/bin:$PATH"
+
             echo "=== [1/7] Pull latest code ==="
             cd /var/www/reviveguard
             git pull origin master
 
             echo "=== [2/7] Composer install ==="
             cd /var/www/reviveguard/app-code
-            composer install \
+            /usr/local/bin/composer install \
               --no-dev \
               --no-interaction \
               --prefer-dist \
@@ -100,19 +107,19 @@ jobs:
             npm ci
             npm run build
 
-            echo "=== [4/7] Clear + cache config ==="
+            echo "=== [4/7] Cache config, routes, views ==="
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan event:cache
 
-            echo "=== [5/7] Run migrations ==="
+            echo "=== [5/7] Migrations ==="
             php artisan migrate --force
 
             echo "=== [6/7] Restart queue workers ==="
-            sudo supervisorctl restart reviveguard-worker:*
+            sudo /usr/bin/supervisorctl restart reviveguard-worker:*
 
-            echo "=== [7/7] Restart Puppeteer service ==="
+            echo "=== [7/7] Restart PDF service ==="
             pm2 restart reviveguard-pdf
 
             echo "✓ Deploy complete"
