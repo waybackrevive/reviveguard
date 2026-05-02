@@ -41,9 +41,9 @@ class MyWebsites extends Component
             ->orderBy('created_at')
             ->get();
 
-        $hasSubscription = (bool) $client->activeSubscription;
+        $hasActivePlan = $client->activeSubscription()->exists();
 
-        return view('livewire.portal.my-websites', compact('sites', 'client', 'hasSubscription'))
+        return view('livewire.portal.my-websites', compact('sites', 'client', 'hasActivePlan'))
             ->layout('portal.layouts.app');
     }
 }

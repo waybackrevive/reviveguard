@@ -50,13 +50,11 @@ class SiteWizard extends Component
 
         $client = Auth::guard('client')->user();
 
-        // Gate: active subscription required to add a site
-        if (! $client->activeSubscription) {
-            $this->addError('siteUrl', 'You need an active plan to add a website. Please choose a plan first.');
+        // Require an active plan before creating a site
+        if (! $client->activeSubscription()->exists()) {
+            $this->addError('siteUrl', 'You need an active plan to add a website. Please purchase a plan first.');
             return;
         }
-
-        // Prevent duplicate sites
         $existing = Site::where('client_id', $client->id)
             ->where('url', rtrim($this->siteUrl, '/'))
             ->first();
@@ -113,7 +111,7 @@ class SiteWizard extends Component
         }
 
         $this->pendingSite->refresh();
-        if ($this->pendingSite->last_heartbeat_at !== null) {
+        if ($this->pendingSite->last_seen_at !== null) {
             $this->heartbeatReceived = true;
             $this->statusMessage     = 'Your site is live and being monitored!';
 
