@@ -19,10 +19,12 @@ class HeartbeatController extends Controller
             'agent_version' => ['nullable', 'string', 'max:20'],
             'wp_version'    => ['nullable', 'string', 'max:20'],
             'php_version'   => ['nullable', 'string', 'max:20'],
-            'disk_usage_mb' => ['nullable', 'integer', 'min:0'],
+            'disk_usage_mb' => ['nullable', 'numeric', 'min:0'],   // float from plugin
             'debug_mode'    => ['nullable', 'boolean'],
             'plugin_count'  => ['nullable', 'integer', 'min:0'],
             'theme_name'    => ['nullable', 'string', 'max:255'],
+            'active_theme'  => ['nullable', 'string', 'max:255'],  // plugin sends this key
+            'site_url'      => ['nullable', 'url', 'max:500'],     // plugin sends this too
         ]);
 
         // Dispatch async job to process status changes and emit events

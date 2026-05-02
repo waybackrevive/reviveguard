@@ -50,6 +50,12 @@ class SiteWizard extends Component
 
         $client = Auth::guard('client')->user();
 
+        // Gate: active subscription required to add a site
+        if (! $client->activeSubscription) {
+            $this->addError('siteUrl', 'You need an active plan to add a website. Please choose a plan first.');
+            return;
+        }
+
         // Prevent duplicate sites
         $existing = Site::where('client_id', $client->id)
             ->where('url', rtrim($this->siteUrl, '/'))

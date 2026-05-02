@@ -35,7 +35,8 @@ class ProcessHeartbeat implements ShouldQueue
             'disk_usage_mb' => $this->payload['disk_usage_mb'] ?? null,
             'debug_mode'    => $this->payload['debug_mode'] ?? null,
             'plugin_count'  => $this->payload['plugin_count'] ?? null,
-            'theme_name'    => $this->payload['theme_name'] ?? null,
+            // plugin sends 'active_theme'; fall back to 'theme_name' for compat
+            'theme_name'    => $this->payload['active_theme'] ?? $this->payload['theme_name'] ?? null,
             'status'        => SiteStatus::ACTIVE,
         ], fn ($v) => $v !== null));
 

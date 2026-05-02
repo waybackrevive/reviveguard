@@ -1,7 +1,7 @@
 <div>
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">My Websites</h1>
-        @if (! $showWizard)
+        @if (! $showWizard && $hasSubscription)
             <button
                 wire:click="openWizard"
                 class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -13,6 +13,22 @@
             </button>
         @endif
     </div>
+
+    {{-- No active subscription — show plan CTA --}}
+    @if (! $hasSubscription)
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+                <svg class="h-7 w-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">No active plan</h2>
+            <p class="text-sm text-gray-600 mb-6">You need an active ReviveGuard plan to add and monitor websites.<br>Choose a plan to get started — takes less than 2 minutes.</p>
+            <a href="{{ route('portal.account') }}"
+               class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                View plans &amp; billing
+            </a>
+        </div>
+
+    @else
 
     @if ($showWizard)
         <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 mb-6">
@@ -94,5 +110,6 @@
             @endforeach
         </div>
     @endif
-</div>
 
+    @endif {{-- hasSubscription --}}
+</div>
