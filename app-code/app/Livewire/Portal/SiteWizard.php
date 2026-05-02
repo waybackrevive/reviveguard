@@ -112,9 +112,15 @@ class SiteWizard extends Component
 
     public function proceedToCheckout(): void
     {
+        if (empty($this->checkoutUrl)) {
+            $this->addError('selectedPlan', 'Checkout URL is missing. Please contact support.');
+            return;
+        }
+
         // Create a pending site record so admin can see it and link post-payment
         $client   = Auth::guard('client')->user();
         $rawToken = bin2hex(random_bytes(32));
+        $plan     = collect($this->plans)->firstWhere('slug', $this->selectedPlan);
 
         Site::firstOrCreate(
             ['client_id' => $client->id, 'url' => rtrim($this->siteUrl, '/')],
@@ -122,13 +128,14 @@ class SiteWizard extends Component
                 'tenant_id'         => $client->tenant_id,
                 'name'              => $this->companyName ?: (parse_url($this->siteUrl, PHP_URL_HOST) ?: $this->siteUrl),
                 'status'            => SiteStatus::PENDING,
+                'plan_id'           => $plan['id'] ?? null,
                 'agent_token'       => hash('sha256', $rawToken),
                 'agent_token_last4' => substr($rawToken, -4),
                 'is_active'         => true,
             ]
         );
 
-        $this->redirect($this->checkoutUrl);
+        $this->redirect($this->checkoutUrl, navigate: false);
     }
 
     public function goBackTo(int $targetStep): void
@@ -145,17 +152,31 @@ class SiteWizard extends Component
 
     private function buildCheckoutUrl(array $plan): void
     {
-        if (empty($plan['whop_plan_id'])) {
-            $this->checkoutUrl = 'https://whop.com/reviveguard/';
+        // Prefer DB value, fall back to env config (in case seeder ran before env was set)
+        $planId = $plan['whop_plan_id'] ?? null;
+
+        if (empty($planId)) {
+            $planId = match($plan['slug'] ?? '') {
+                'monitor' => config('services.whop.plan_monitor_id'),
+                'guard'   => config('services.whop.plan_guard_id'),
+                'shield'  => config('services.whop.plan_shield_id'),
+                default   => null,
+            };
+        }
+
+        if (empty($planId)) {
+            $this->checkoutUrl = '';
+            $this->addError('selectedPlan', 'Checkout is not configured for this plan. Please contact support.');
             return;
         }
 
+        $base   = rtrim(config('services.whop.checkout_base', 'https://whop.com/checkout'), '/');
         $params = http_build_query([
             'redirect_url' => url('/portal/welcome'),
             'd'            => parse_url($this->siteUrl, PHP_URL_HOST),
         ]);
 
-        $this->checkoutUrl = "https://whop.com/checkout/{$plan['whop_plan_id']}?{$params}";
+        $this->checkoutUrl = "{$base}/{$planId}?{$params}";
     }
 
     public function getSelectedPlanData(): ?array

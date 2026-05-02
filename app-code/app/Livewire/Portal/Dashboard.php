@@ -14,6 +14,10 @@ class Dashboard extends Component
     /** @var \App\Models\Site|null */
     public ?Site $site = null;
 
+    /** UUID of the active site — driven by ?site_id= query param */
+    #[\Livewire\Attributes\Url(as: 'site_id')]
+    public ?string $activeSiteId = null;
+
     public function mount(): void
     {
         $this->loadSite();
@@ -27,12 +31,30 @@ class Dashboard extends Component
         $this->loadSite();
     }
 
+    public function switchSite(string $siteId): void
+    {
+        $this->activeSiteId = $siteId;
+        $this->loadSite();
+    }
+
     private function loadSite(): void
     {
         $client = Auth::guard('client')->user();
 
-        // Phase 1: clients have one site; take first active or any
-        $this->site = Site::where('client_id', $client->id)->first();
+        if ($this->activeSiteId) {
+            // Ensure the site belongs to this client (security check)
+            $this->site = Site::where('client_id', $client->id)
+                ->where('id', $this->activeSiteId)
+                ->first();
+        }
+
+        // Fall back to first site if nothing found or no ID given
+        if (! $this->site) {
+            $this->site = Site::where('client_id', $client->id)
+                ->whereIn('status', ['active', 'down', 'warning'])
+                ->first()
+                ?? Site::where('client_id', $client->id)->first();
+        }
     }
 
     public function recentEvents(): EloquentCollection
@@ -49,17 +71,24 @@ class Dashboard extends Component
 
     public function render(): \Illuminate\View\View
     {
+        $client     = Auth::guard('client')->user();
         $lastBackup = $this->site
             ? Backup::where('site_id', $this->site->id)
                 ->orderByDesc('created_at')
                 ->first()
             : null;
 
+        $allSites = Site::where('client_id', $client->id)
+            ->whereIn('status', ['active', 'down', 'warning', 'pending'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'url', 'status']);
+
         return view('livewire.portal.dashboard', [
-            'client'       => Auth::guard('client')->user(),
+            'client'       => $client,
             'site'         => $this->site,
             'recentEvents' => $this->recentEvents(),
             'lastBackup'   => $lastBackup,
+            'allSites'     => $allSites,
         ])->layout('portal.layouts.app');
     }
 }

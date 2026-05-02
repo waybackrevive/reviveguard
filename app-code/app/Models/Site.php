@@ -47,6 +47,7 @@ class Site extends Model
         'debug_mode',
         'is_active',
         'notes',
+        'hosting_credentials',
     ];
 
     protected $hidden = [
@@ -63,8 +64,9 @@ class Site extends Model
         'ssl_valid'          => 'boolean',
         'debug_mode'         => 'boolean',
         'is_active'          => 'boolean',
-        'uptime_30d'         => 'decimal:2',
-        'uptime_7d'          => 'decimal:2',
+        'uptime_30d'              => 'decimal:2',
+        'uptime_7d'               => 'decimal:2',
+        'hosting_credentials'     => 'encrypted:array',
     ];
 
     public function tenant(): BelongsTo

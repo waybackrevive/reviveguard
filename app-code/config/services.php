@@ -47,8 +47,12 @@ return [
     ],
 
     'whop' => [
-        'webhook_secret' => env('WHOP_WEBHOOK_SECRET', ''),
-        'api_key'        => env('WHOP_API_KEY', ''),
+        'webhook_secret'  => env('WHOP_WEBHOOK_SECRET', ''),
+        'api_key'         => env('WHOP_API_KEY', ''),
+        'plan_monitor_id' => env('WHOP_PLAN_MONITOR_ID', ''),
+        'plan_guard_id'   => env('WHOP_PLAN_GUARD_ID', ''),
+        'plan_shield_id'  => env('WHOP_PLAN_SHIELD_ID', ''),
+        'checkout_base'   => env('WHOP_CHECKOUT_BASE', 'https://whop.com/checkout'),
     ],
 
     'backblaze' => [
