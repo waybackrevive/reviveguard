@@ -7,8 +7,17 @@
     </h1>
 
     @if (! $site)
-        <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
-            No site found. Contact support to get your site added.
+        <div class="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+                <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">No website connected yet</h2>
+            <p class="text-sm text-gray-500 mb-6">Add your website to start monitoring uptime, backups, SSL, and more.</p>
+            <a href="{{ route('portal.my-websites') }}"
+               class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Add your website
+            </a>
         </div>
     @else
 
