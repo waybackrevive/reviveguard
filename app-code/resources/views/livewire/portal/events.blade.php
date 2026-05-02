@@ -64,13 +64,13 @@
                             </td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-                                    @if ($event->severity === 'critical')  bg-red-100 text-red-700
-                                    @elseif ($event->severity === 'warning') bg-amber-100 text-amber-700
-                                    @elseif ($event->severity === 'success') bg-green-100 text-green-700
+                                    @if ($event->severity->value === 'critical')  bg-red-100 text-red-700
+                                    @elseif ($event->severity->value === 'warning') bg-amber-100 text-amber-700
+                                    @elseif ($event->severity->value === 'success') bg-green-100 text-green-700
                                     @else bg-blue-50 text-blue-700 @endif">
-                                    @if ($event->severity === 'critical') ✗ Critical
-                                    @elseif ($event->severity === 'warning') ⚠ Warning
-                                    @elseif ($event->severity === 'success') ✓ Success
+                                    @if ($event->severity->value === 'critical') ✗ Critical
+                                    @elseif ($event->severity->value === 'warning') ⚠ Warning
+                                    @elseif ($event->severity->value === 'success') ✓ Success
                                     @else ℹ Info @endif
                                 </span>
                             </td>

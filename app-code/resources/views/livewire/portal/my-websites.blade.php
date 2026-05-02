@@ -41,25 +41,28 @@
                 <div class="bg-white rounded-2xl border border-gray-200 p-5">
                     <div class="flex items-start justify-between mb-3">
                         <div class="min-w-0">
-                            <p class="font-medium text-gray-900 text-sm truncate">{{ $site->label ?? $site->url }}</p>
+                            <p class="font-medium text-gray-900 text-sm truncate">{{ $site->name }}</p>
                             <p class="text-xs text-gray-400 truncate mt-0.5">{{ $site->url }}</p>
                         </div>
                         <span class="ml-2 flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
-                            @if (isset($site->status) && $site->status->value === 'DOWN')
+                            @if ($site->status->value === 'down')
                                 bg-red-100 text-red-700
-                            @elseif ($site->status?->value === 'UP')
+                            @elseif ($site->status->value === 'warning')
+                                bg-amber-100 text-amber-700
+                            @elseif ($site->status->value === 'active')
                                 bg-green-100 text-green-700
                             @else
                                 bg-gray-100 text-gray-600
                             @endif
                         ">
                             <span class="w-1.5 h-1.5 rounded-full
-                                @if (isset($site->status) && $site->status->value === 'DOWN') bg-red-500
-                                @elseif ($site->status?->value === 'UP') bg-green-500
+                                @if ($site->status->value === 'down') bg-red-500
+                                @elseif ($site->status->value === 'warning') bg-amber-500
+                                @elseif ($site->status->value === 'active') bg-green-500
                                 @else bg-gray-400
                                 @endif
                             "></span>
-                            {{ $site->status->value ?? 'Pending' }}
+                            {{ $site->status->label() }}
                         </span>
                     </div>
 

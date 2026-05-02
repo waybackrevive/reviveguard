@@ -14,6 +14,13 @@ class MyWebsites extends Component
 {
     public bool $showWizard = false;
 
+    public function mount(): void
+    {
+        if (request()->query('open') === '1') {
+            $this->showWizard = true;
+        }
+    }
+
     public function openWizard(): void
     {
         $this->showWizard = true;
@@ -41,9 +48,7 @@ class MyWebsites extends Component
             ->orderBy('created_at')
             ->get();
 
-        $hasActivePlan = $client->activeSubscription()->exists();
-
-        return view('livewire.portal.my-websites', compact('sites', 'client', 'hasActivePlan'))
+        return view('livewire.portal.my-websites', compact('sites', 'client'))
             ->layout('portal.layouts.app');
     }
 }

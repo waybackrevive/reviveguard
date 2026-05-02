@@ -35,7 +35,7 @@
             @php $current = request()->route()->getName(); @endphp
 
             {{-- ── Prominent Add Website CTA (per portal spec) ── --}}
-            <a href="{{ route('portal.my-websites') }}"
+            <a href="{{ route('portal.my-websites') }}?open=1"
                class="flex items-center justify-center gap-2 w-full px-3 py-2 mb-3 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Add website

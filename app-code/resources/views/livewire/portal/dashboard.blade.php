@@ -25,12 +25,18 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4 mb-8">
 
         {{-- Site status --}}
-        <div class="bg-white rounded-2xl border {{ $site->status->value === 'DOWN' ? 'border-red-200 bg-red-50' : 'border-gray-200' }} p-5">
+        @php
+            $statusVal = $site->status->value;
+            $isDown    = $statusVal === 'down';
+            $isWarning = $statusVal === 'warning';
+            $isActive  = $statusVal === 'active';
+        @endphp
+        <div class="bg-white rounded-2xl border {{ $isDown ? 'border-red-200 bg-red-50' : ($isWarning ? 'border-amber-200 bg-amber-50' : 'border-gray-200') }} p-5">
             <div class="flex items-center gap-2 mb-2">
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
-                    {{ $site->status->value === 'DOWN' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">
-                    <span class="w-1.5 h-1.5 rounded-full {{ $site->status->value === 'DOWN' ? 'bg-red-500' : 'bg-green-500' }}"></span>
-                    {{ $site->status->value === 'DOWN' ? 'SITE IS DOWN' : 'SITE IS UP' }}
+                    {{ $isDown ? 'bg-red-100 text-red-700' : ($isWarning ? 'bg-amber-100 text-amber-700' : ($isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600')) }}">
+                    <span class="w-1.5 h-1.5 rounded-full {{ $isDown ? 'bg-red-500' : ($isWarning ? 'bg-amber-500' : ($isActive ? 'bg-green-500' : 'bg-gray-400')) }}"></span>
+                    {{ $isDown ? 'SITE IS DOWN' : ($isWarning ? 'WARNING' : ($isActive ? 'SITE IS UP' : 'PENDING')) }}
                 </span>
             </div>
             <p class="text-sm font-medium text-gray-800 truncate">{{ $site->url ?? $site->name }}</p>
