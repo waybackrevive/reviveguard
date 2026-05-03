@@ -7,11 +7,10 @@ use App\Enums\SiteStatus;
 use App\Models\Event;
 use App\Models\Site;
 use App\Services\NotificationService;
-use Carbon\Carbon;
+use App\Services\WhoisXmlService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use Iodev\Whois\Factory;
 use Throwable;
 
 /**
@@ -28,8 +27,12 @@ final class CheckDomainExpiry implements ShouldQueue
 
     public int $tries = 2;
 
-    public function handle(): void
+    private WhoisXmlService $whoisXml;
+
+    public function handle(WhoisXmlService $whoisXml): void
     {
+        $this->whoisXml = $whoisXml;
+
         Site::where('status', '!=', SiteStatus::SUSPENDED->value)
             ->whereNotNull('domain')
             ->chunk(20, function ($sites): void {
@@ -40,31 +43,22 @@ final class CheckDomainExpiry implements ShouldQueue
                         Log::warning("Domain expiry check failed for {$site->domain}: " . $e->getMessage());
                     }
 
-                    // Respect WHOIS server rate limits
-                    sleep(2);
                 }
             });
     }
 
     private function checkDomain(Site $site): void
     {
-        $whois = Factory::get()->createWhois();
+        $data = $this->whoisXml->whois((string) $site->domain);
 
-        try {
-            $info = $whois->loadDomainInfo((string) $site->domain);
-        } catch (Throwable $e) {
-            // Unsupported TLD or WHOIS unavailable — skip silently
-            Log::info("WHOIS lookup skipped for {$site->domain}: " . $e->getMessage());
+        if (isset($data['error']) || ! isset($data['expires_at'])) {
+            Log::info("WHOIS lookup skipped for {$site->domain}: " . ($data['error'] ?? 'no expiry data'));
             return;
         }
 
-        if (! $info || ! $info->expirationDate) {
-            return;
-        }
-
-        $expiresAt = Carbon::createFromTimestamp((int) $info->expirationDate);
-        $daysLeft  = (int) now()->diffInDays($expiresAt, false);
-        $registrar = $info->registrar ?? null;
+        $expiresAt = \Carbon\Carbon::parse($data['expires_at']);
+        $daysLeft  = (int) $data['days_remaining'];
+        $registrar = $data['registrar'] ?? null;
 
         $site->update([
             'domain_expires_at' => $expiresAt->toDateString(),

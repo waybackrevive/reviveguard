@@ -7,6 +7,7 @@ use App\Enums\SiteStatus;
 use App\Models\Event;
 use App\Models\Site;
 use App\Services\NotificationService;
+use App\Services\WhoisXmlService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -24,8 +25,12 @@ final class CheckSslExpiry implements ShouldQueue
 
     public int $tries = 2;
 
-    public function handle(): void
+    private WhoisXmlService $whoisXml;
+
+    public function handle(WhoisXmlService $whoisXml): void
     {
+        $this->whoisXml = $whoisXml;
+
         Site::where('status', '!=', SiteStatus::SUSPENDED->value)
             ->whereNotNull('url')
             ->chunk(50, function ($sites): void {
@@ -41,63 +46,34 @@ final class CheckSslExpiry implements ShouldQueue
 
     private function checkSite(Site $site): void
     {
-        $host    = (string) parse_url($site->url, PHP_URL_HOST);
-        $timeout = 10;
+        $host = (string) parse_url($site->url, PHP_URL_HOST);
 
         if (empty($host)) {
             return;
         }
 
-        $context = stream_context_create([
-            'ssl' => [
-                'capture_peer_cert' => true,
-                'verify_peer'       => true,
-                'verify_peer_name'  => true,
-            ],
-        ]);
+        $data = $this->whoisXml->ssl($host);
 
-        $stream = @stream_socket_client(
-            "ssl://{$host}:443",
-            $errno,
-            $errstr,
-            $timeout,
-            STREAM_CLIENT_CONNECT,
-            $context
-        );
-
-        if (! $stream) {
+        if (isset($data['error'])) {
             $site->update(['ssl_valid' => false]);
             $this->createEvent(
                 $site,
                 'ssl_check_failed',
                 EventSeverity::WARNING,
                 "SSL check failed for {$site->domain}",
-                "Connection error: {$errstr}"
+                $data['error']
             );
             return;
         }
 
-        $params = stream_context_get_params($stream);
-        fclose($stream);
-
-        $certResource = $params['options']['ssl']['peer_certificate'] ?? null;
-        if (! $certResource) {
-            return;
-        }
-
-        $cert = openssl_x509_parse($certResource);
-        if (! $cert || ! isset($cert['validTo_time_t'])) {
-            return;
-        }
-
-        $expiresAt = Carbon::createFromTimestamp((int) $cert['validTo_time_t']);
-        $daysLeft  = (int) now()->diffInDays($expiresAt, false);
-        $issuer    = $cert['issuer']['O'] ?? ($cert['issuer']['CN'] ?? 'Unknown');
+        $expiresAt = Carbon::parse($data['expires_at']);
+        $daysLeft  = (int) $data['days_remaining'];
+        $issuer    = $data['issuer'] ?? 'Unknown';
 
         $site->update([
             'ssl_expires_at' => $expiresAt->toDateString(),
             'ssl_issuer'     => (string) $issuer,
-            'ssl_valid'      => $daysLeft > 0,
+            'ssl_valid'      => $data['valid'] ?? ($daysLeft > 0),
         ]);
 
         // Alert at 60, 30, 7 days — only once per threshold crossing

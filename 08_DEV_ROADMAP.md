@@ -49,7 +49,7 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
       - stancl/tenancy
       - laravel/horizon
       - laravel/breeze (Livewire stack)
-      - iodev/whois (domain expiry checking)
+      - iodev/whois (domain expiry checking — superseded by WhoisXML API)
       - resend/resend-php
       - spatie/laravel-permission (admin roles later)
       - barryvdh/laravel-dompdf (fallback, Puppeteer is primary PDF)
@@ -204,13 +204,13 @@ Time estimates below assume **part-time (20 hrs/week)** effort. Divide roughly i
       - Get uptime % for site (last 30 days)
 [ ] Route: POST /api/v1/webhooks/uptime-kuma
 [ ] Scheduler: CheckSslExpiry (daily at 06:00 UTC)
-      - Use PHP openssl_x509_parse via stream_context
-      - Update sites.ssl_expires_at
+      - Uses WhoisXmlService::ssl() — SSL Certificates API
+      - Update sites.ssl_expires_at, ssl_issuer, ssl_valid
       - Log event if threshold crossed (60/30/7 days)
       - Dispatch alert if threshold is 30 or 7 days
 [ ] Scheduler: CheckDomainExpiry (daily at 07:00 UTC)
-      - Use iodev/whois package
-      - Update sites.domain_expires_at
+      - Uses WhoisXmlService::whois() — WHOIS API (replaces iodev/whois)
+      - Update sites.domain_expires_at, registrar
       - Log event + alert at thresholds
 [ ] Scheduler: UpdateUptimeStats (every 6 hours)
       - Pull uptime % from Uptime Kuma API for all sites

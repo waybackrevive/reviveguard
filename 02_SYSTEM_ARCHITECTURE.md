@@ -213,7 +213,30 @@ reviveguard-backups/
 
 ---
 
-## 4. Data Flow — Key Scenarios
+### 3.7 WhoisXML API (External Domain Intelligence)
+
+**Why:** Replaces both `iodev/whois` (unreliable, rate-limited by WHOIS servers) and the previous PHP `stream_socket_client` SSL checks. Single API key powers 4 services.
+
+**APIs used (all via `App\Services\WhoisXmlService`):**
+
+| API | Endpoint | Used By |
+|-----|----------|---------|
+| WHOIS | `whoisxmlapi.com/whoisserver/WhoisService` | `CheckDomainExpiry` job + `ExternalScanService` |
+| SSL Certificates | `ssl-certificates.whoisxmlapi.com/api/v1` | `CheckSslExpiry` job + `ExternalScanService` |
+| DNS Lookup | `whoisxmlapi.com/whoisserver/DNSService` | `ExternalScanService` (A, MX, NS, SPF, DMARC) |
+| Domain Reputation | `domain-reputation.whoisxmlapi.com/api/v1` | `ExternalScanService` (spam/malware score 0–100) |
+
+**Config:** `config/services.php` → `whoisxml.key` → `WHOISXML_API_KEY` env var
+
+**Fallback:** `WhoisXmlService::ssl()` falls back to PHP `stream_socket_client` if the API fails so SSL checks are never silently skipped.
+
+**Risk scoring added to ExternalScanService:**
+- Reputation score ≥ 50 → +3 risk points (high)
+- Missing DMARC → +1 risk point
+- Missing MX records → +1 risk point
+- Missing SPF → +1 risk point
+
+---
 
 ### 4.1 Agent Heartbeat (every 5 min)
 ```

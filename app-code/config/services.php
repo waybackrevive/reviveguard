@@ -62,4 +62,8 @@ return [
         'bucket_name'=> env('B2_BUCKET_NAME', ''),
     ],
 
+    'whoisxml' => [
+        'key' => env('WHOISXML_API_KEY', ''),
+    ],
+
 ];

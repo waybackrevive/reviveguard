@@ -131,7 +131,7 @@ Every feature below is either **IN** or **OUT** of Phase 1 MVP. There is no "may
 **IN:**
 - Daily scheduled job: check SSL expiry for all active sites using PHP `openssl` functions
 - Alert thresholds: 60, 30, 7 days before expiry
-- Daily scheduled job: check domain expiry via WHOIS using `iodev/whois` PHP package
+- Daily scheduled job: check domain expiry via **WhoisXML API** (`WhoisXmlService`) — replaces `iodev/whois`
 - Alert thresholds: 60, 30, 7 days before expiry
 - One alert per threshold (not every day once triggered)
 - SSL data stored in `sites.ssl_expires_at`, `sites.ssl_issuer`
