@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\RunExternalSiteScan;
 use App\Models\Plan;
 use App\Models\SiteEvaluation;
 use Carbon\Carbon;
@@ -70,6 +71,9 @@ class EvaluationService
         // Send confirmation email
         $this->sendConfirmationEmail($evaluation, $waitlisted);
 
+        // Dispatch background external scan (non-blocking)
+        RunExternalSiteScan::dispatch($evaluation->id)->onQueue('default');
+
         Log::info('EvaluationService: evaluation submitted', [
             'evaluation_id' => $evaluation->id,
             'email'         => $evaluation->prospect_email,
@@ -77,6 +81,60 @@ class EvaluationService
         ]);
 
         return $evaluation;
+    }
+
+    // ── Plugin report upload ─────────────────────────────────────────────────
+
+    /**
+     * Accept a health-check plugin report token from the prospect.
+     * Token = base64( JSON_payload . '|' . HMAC-SHA256(payload, secret) )
+     * Returns decoded report array on success, throws on failure.
+     */
+    public function submitPluginReport(SiteEvaluation $evaluation, string $rawToken): array
+    {
+        $decoded = base64_decode($rawToken, strict: true);
+        if ($decoded === false) {
+            throw new \InvalidArgumentException('Invalid report token format.');
+        }
+
+        $lastPipe = strrpos($decoded, '|');
+        if ($lastPipe === false) {
+            throw new \InvalidArgumentException('Malformed report token.');
+        }
+
+        $payload   = substr($decoded, 0, $lastPipe);
+        $signature = substr($decoded, $lastPipe + 1);
+        $secret    = config('app.health_check_secret', config('app.key'));
+        $expected  = hash_hmac('sha256', $payload, $secret);
+
+        if (! hash_equals($expected, $signature)) {
+            throw new \InvalidArgumentException('Report token signature is invalid.');
+        }
+
+        $report = json_decode($payload, true);
+        if (! is_array($report)) {
+            throw new \InvalidArgumentException('Report payload is not valid JSON.');
+        }
+
+        // Idempotency check
+        $tokenHash = hash('sha256', $rawToken);
+        if (SiteEvaluation::where('report_token_hash', $tokenHash)->exists()) {
+            throw new \InvalidArgumentException('This report token has already been used.');
+        }
+
+        $evaluation->update([
+            'plugin_report'     => $report,
+            'report_token_hash' => $tokenHash,
+            'plugin_report_at'  => now(),
+        ]);
+
+        Log::info('EvaluationService: plugin report received', [
+            'evaluation_id' => $evaluation->id,
+            'wp_version'    => $report['wp_version'] ?? null,
+            'plugin_count'  => count($report['plugins'] ?? []),
+        ]);
+
+        return $report;
     }
 
     // ── Admin: send proposal ──────────────────────────────────────────────────

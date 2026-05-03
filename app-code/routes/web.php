@@ -9,9 +9,11 @@ Route::get('/', function () {
 });
 
 // ── Public site evaluation form ───────────────────────────────────────────────
-Route::get('/evaluate',        [EvaluationController::class, 'show'])->name('evaluate');
-Route::post('/evaluate',       [EvaluationController::class, 'store'])->name('evaluate.submit')->middleware('throttle:5,10');
-Route::get('/evaluate/thanks', [EvaluationController::class, 'thanks'])->name('evaluate.thanks');
+Route::get('/evaluate',                       [EvaluationController::class, 'show'])->name('evaluate');
+Route::post('/evaluate',                      [EvaluationController::class, 'store'])->name('evaluate.submit')->middleware('throttle:5,10');
+Route::get('/evaluate/thanks',                [EvaluationController::class, 'thanks'])->name('evaluate.thanks');
+Route::get('/evaluate/{id}/report',           [EvaluationController::class, 'showReport'])->name('evaluate.report.show');
+Route::post('/evaluate/{id}/report',          [EvaluationController::class, 'storeReport'])->name('evaluate.report.store')->middleware('throttle:10,10');
 
 Route::get('/admin-access', function () {
     return view('admin.access-code');

@@ -66,6 +66,13 @@ class SiteEvaluation extends Model
         'month_slot',
         'ip_address',
         'referrer_url',
+        // Scan fields
+        'scan_status',
+        'scan_results',
+        'scan_ran_at',
+        'plugin_report',
+        'report_token_hash',
+        'plugin_report_at',
     ];
 
     protected $casts = [
@@ -76,7 +83,11 @@ class SiteEvaluation extends Model
         'declined_at'         => 'datetime',
         'expired_at'          => 'datetime',
         'followup_sent_at'    => 'datetime',
+        'scan_ran_at'         => 'datetime',
+        'plugin_report_at'    => 'datetime',
         'waitlisted'          => 'boolean',
+        'scan_results'        => 'array',
+        'plugin_report'       => 'array',
     ];
 
     // ── Status helpers ────────────────────────────────────────────────────────

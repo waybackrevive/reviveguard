@@ -6,6 +6,8 @@ use App\Filament\Resources\SiteEvaluationResource\Pages;
 use App\Models\Plan;
 use App\Models\SiteEvaluation;
 use App\Services\EvaluationService;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -27,38 +29,197 @@ class SiteEvaluationResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $recordTitleAttribute = 'prospect_email';
 
-    // ── Form (edit admin notes only — prospect fields are read-only) ──────────
+    // ── Form ──────────────────────────────────────────────────────────────────
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            TextInput::make('prospect_name')->label('Name')->disabled(),
-            TextInput::make('prospect_email')->label('Email')->disabled(),
-            TextInput::make('site_url')->label('Site URL')->disabled(),
-            TextInput::make('site_type')->label('Site type')->disabled(),
-            Textarea::make('concern')->label('Concern')->disabled()->rows(3),
 
-            Select::make('status')
-                ->label('Status')
-                ->options([
-                    'pending'   => 'Pending',
-                    'reviewing' => 'Reviewing',
-                    'proposed'  => 'Proposed',
-                    'converted' => 'Converted',
-                    'declined'  => 'Declined',
-                    'expired'   => 'Expired',
-                ])
-                ->required(),
+            // ── Prospect info ────────────────────────────────────────────────
+            Section::make('Prospect')
+                ->columns(2)
+                ->schema([
+                    TextInput::make('prospect_name')->label('Name')->disabled(),
+                    TextInput::make('prospect_email')->label('Email')->disabled(),
+                    TextInput::make('site_url')->label('Site URL')->disabled()->columnSpanFull(),
+                    TextInput::make('site_type')->label('Site type')->disabled(),
+                    Textarea::make('concern')->label('Concern')->disabled()->rows(3)->columnSpanFull(),
+                ]),
 
-            Select::make('recommended_plan_id')
-                ->label('Recommended plan')
-                ->options(fn () => Plan::pluck('name', 'id'))
-                ->nullable(),
+            // ── Admin controls ───────────────────────────────────────────────
+            Section::make('Admin')
+                ->columns(2)
+                ->schema([
+                    Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'pending'   => 'Pending',
+                            'reviewing' => 'Reviewing',
+                            'proposed'  => 'Proposed',
+                            'converted' => 'Converted',
+                            'declined'  => 'Declined',
+                            'expired'   => 'Expired',
+                        ])
+                        ->required(),
 
-            Textarea::make('admin_notes')
-                ->label('Internal notes')
-                ->rows(4)
-                ->nullable(),
+                    Select::make('recommended_plan_id')
+                        ->label('Recommended plan')
+                        ->options(fn () => Plan::pluck('name', 'id'))
+                        ->nullable(),
+
+                    Textarea::make('admin_notes')
+                        ->label('Internal notes')
+                        ->rows(4)
+                        ->nullable()
+                        ->columnSpanFull(),
+                ]),
+
+            // ── External scan results ────────────────────────────────────────
+            Section::make('External Scan')
+                ->collapsible()
+                ->columns(3)
+                ->schema([
+                    Placeholder::make('scan_status_label')
+                        ->label('Scan status')
+                        ->content(fn (SiteEvaluation $record) => ucfirst($record->scan_status ?? 'pending')),
+
+                    Placeholder::make('scan_ran_at_label')
+                        ->label('Scanned at')
+                        ->content(fn (SiteEvaluation $record) => $record->scan_ran_at?->diffForHumans() ?? '—'),
+
+                    Placeholder::make('risk_level_label')
+                        ->label('Risk level')
+                        ->content(fn (SiteEvaluation $record) => ucfirst($record->scan_results['risk_level'] ?? '—')),
+
+                    // SSL
+                    Placeholder::make('ssl_valid')
+                        ->label('SSL valid')
+                        ->content(fn (SiteEvaluation $record) => match($record->scan_results['ssl']['valid'] ?? null) {
+                            true  => '✅ Yes',
+                            false => '❌ No',
+                            default => '—',
+                        }),
+
+                    Placeholder::make('ssl_expiry')
+                        ->label('SSL expiry')
+                        ->content(fn (SiteEvaluation $record) => isset($record->scan_results['ssl']['valid_to'])
+                            ? $record->scan_results['ssl']['valid_to'] . ' (' . ($record->scan_results['ssl']['days_remaining'] ?? '?') . ' days)'
+                            : '—'),
+
+                    Placeholder::make('ssl_issuer')
+                        ->label('SSL issuer')
+                        ->content(fn (SiteEvaluation $record) => $record->scan_results['ssl']['issuer'] ?? '—'),
+
+                    // HTTP
+                    Placeholder::make('http_up')
+                        ->label('Site reachable')
+                        ->content(fn (SiteEvaluation $record) => match($record->scan_results['http']['up'] ?? null) {
+                            true  => '✅ Yes (' . ($record->scan_results['http']['status_code'] ?? '') . ')',
+                            false => '❌ No',
+                            default => '—',
+                        }),
+
+                    Placeholder::make('http_response_time')
+                        ->label('Response time')
+                        ->content(fn (SiteEvaluation $record) => isset($record->scan_results['http']['response_time_ms'])
+                            ? $record->scan_results['http']['response_time_ms'] . ' ms'
+                            : '—'),
+
+                    Placeholder::make('http_https')
+                        ->label('HTTPS')
+                        ->content(fn (SiteEvaluation $record) => match($record->scan_results['http']['is_https'] ?? null) {
+                            true  => '✅ Yes',
+                            false => '⚠️ No',
+                            default => '—',
+                        }),
+
+                    // Security headers
+                    Placeholder::make('headers_grade')
+                        ->label('Security headers grade')
+                        ->content(fn (SiteEvaluation $record) => $record->scan_results['security_headers']['grade'] ?? '—'),
+
+                    Placeholder::make('headers_missing')
+                        ->label('Missing headers')
+                        ->content(fn (SiteEvaluation $record) => implode(', ', $record->scan_results['security_headers']['missing'] ?? []) ?: 'None'),
+
+                    // CMS
+                    Placeholder::make('cms_detected')
+                        ->label('CMS detected')
+                        ->content(fn (SiteEvaluation $record) => ucfirst($record->scan_results['cms']['detected'] ?? '—')),
+
+                    // WHOIS
+                    Placeholder::make('domain_expiry')
+                        ->label('Domain expiry')
+                        ->content(fn (SiteEvaluation $record) => $record->scan_results['whois']['expiry_date'] ?? '—'),
+
+                    Placeholder::make('domain_registrar')
+                        ->label('Registrar')
+                        ->content(fn (SiteEvaluation $record) => $record->scan_results['whois']['registrar'] ?? '—'),
+                ]),
+
+            // ── Plugin deep scan ─────────────────────────────────────────────
+            Section::make('Plugin Deep Scan')
+                ->collapsible()
+                ->columns(3)
+                ->schema([
+                    Placeholder::make('plugin_report_at_label')
+                        ->label('Report received')
+                        ->content(fn (SiteEvaluation $record) => $record->plugin_report_at?->diffForHumans() ?? 'Not yet submitted'),
+
+                    Placeholder::make('wp_version')
+                        ->label('WP version')
+                        ->content(fn (SiteEvaluation $record) => $record->plugin_report['wp_version'] ?? '—'),
+
+                    Placeholder::make('wp_update')
+                        ->label('WP update available')
+                        ->content(fn (SiteEvaluation $record) => match($record->plugin_report['wp_update_available'] ?? null) {
+                            true  => '⚠️ Yes',
+                            false => '✅ No',
+                            default => '—',
+                        }),
+
+                    Placeholder::make('php_version')
+                        ->label('PHP version')
+                        ->content(fn (SiteEvaluation $record) => $record->plugin_report['php_version'] ?? '—'),
+
+                    Placeholder::make('plugin_count')
+                        ->label('Total plugins')
+                        ->content(fn (SiteEvaluation $record) => $record->plugin_report['total_plugins'] ?? '—'),
+
+                    Placeholder::make('plugins_needing_update')
+                        ->label('Plugins needing update')
+                        ->content(fn (SiteEvaluation $record) => isset($record->plugin_report['plugins_needing_update'])
+                            ? ($record->plugin_report['plugins_needing_update'] === 0 ? '✅ None' : '⚠️ ' . $record->plugin_report['plugins_needing_update'])
+                            : '—'),
+
+                    Placeholder::make('backup_plugins')
+                        ->label('Backup plugins')
+                        ->content(fn (SiteEvaluation $record) => collect($record->plugin_report['backup_plugins'] ?? [])
+                            ->pluck('name')->implode(', ') ?: '⚠️ None detected'),
+
+                    Placeholder::make('security_plugins')
+                        ->label('Security plugins')
+                        ->content(fn (SiteEvaluation $record) => collect($record->plugin_report['security_plugins'] ?? [])
+                            ->pluck('name')->implode(', ') ?: '⚠️ None detected'),
+
+                    Placeholder::make('ssl_active_plugin')
+                        ->label('SSL active (plugin)')
+                        ->content(fn (SiteEvaluation $record) => match($record->plugin_report['ssl_active'] ?? null) {
+                            true  => '✅ Yes',
+                            false => '❌ No',
+                            default => '—',
+                        }),
+
+                    Placeholder::make('admin_user_count')
+                        ->label('Admin users')
+                        ->content(fn (SiteEvaluation $record) => $record->plugin_report['admin_user_count'] ?? '—'),
+
+                    Placeholder::make('db_size_mb')
+                        ->label('DB size (MB)')
+                        ->content(fn (SiteEvaluation $record) => isset($record->plugin_report['db_size_mb'])
+                            ? number_format((float) $record->plugin_report['db_size_mb'], 2) . ' MB'
+                            : '—'),
+                ]),
         ]);
     }
 
@@ -81,6 +242,26 @@ class SiteEvaluationResource extends Resource
                         'success' => 'converted',
                         'danger'  => fn ($state) => in_array($state, ['declined', 'expired']),
                     ]),
+
+                BadgeColumn::make('scan_status')
+                    ->label('Scan')
+                    ->colors([
+                        'gray'    => 'pending',
+                        'info'    => 'running',
+                        'success' => 'done',
+                        'danger'  => 'failed',
+                    ])
+                    ->toggleable(),
+
+                IconColumn::make('plugin_report')
+                    ->label('Deep scan')
+                    ->boolean()
+                    ->getStateUsing(fn (SiteEvaluation $record) => $record->plugin_report !== null)
+                    ->trueIcon('heroicon-o-check-badge')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->toggleable(),
 
                 IconColumn::make('waitlisted')
                     ->label('Waitlist')
