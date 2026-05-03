@@ -128,23 +128,27 @@ jobs:
               --ignore-platform-req=ext-pcntl \
               --ignore-platform-req=ext-posix
 
-            echo "=== [3/7] NPM build ==="
+            echo "=== [3/7] Fix storage permissions ==="
+            chmod -R 775 /var/www/reviveguard/app-code/storage
+            chmod -R 775 /var/www/reviveguard/app-code/bootstrap/cache
+
+            echo "=== [4/7] NPM build ==="
             npm ci
             npm run build
 
-            echo "=== [4/7] Cache config, routes, views ==="
+            echo "=== [5/7] Cache config, routes, views ==="
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan event:cache
 
-            echo "=== [5/7] Migrations ==="
+            echo "=== [6/7] Migrations ==="
             php artisan migrate --force
 
-            echo "=== [6/7] Restart queue workers ==="
+            echo "=== [7/7] Restart queue workers ==="
             sudo /usr/bin/supervisorctl restart reviveguard-worker:*
 
-            echo "=== [7/7] Restart PDF service ==="
+            echo "=== [8/8] Restart PDF service ==="
             pm2 restart reviveguard-pdf
 
             echo "✓ Deploy complete"
