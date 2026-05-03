@@ -96,6 +96,7 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     needs: build-and-test
+    environment: revive-guard
 
     steps:
       - name: SSH deploy
