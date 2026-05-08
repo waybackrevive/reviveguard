@@ -15,9 +15,13 @@ use Livewire\Component;
  */
 class MyWebsites extends Component
 {
-    public bool   $showWizard            = false;
-    public bool   $showCredentialsModal  = false;
-    public ?string $credentialsSiteId    = null;
+    public bool    $showWizard           = false;
+    public bool    $showCredentialsModal = false;
+    public ?string $credentialsSiteId   = null;
+
+    // Filters
+    public string  $search              = '';
+    public string  $filterStatus        = '';
 
     // Credentials form fields
     public string $credHostingProvider   = '';
@@ -194,10 +198,19 @@ class MyWebsites extends Component
     {
         $client = Auth::guard('client')->user();
 
-        $sites = Site::where('client_id', $client->id)
-            ->with('plan')
-            ->orderBy('created_at')
-            ->get();
+        $query = Site::where('client_id', $client->id)->with('plan');
+
+        if ($this->search) {
+            $query->where(fn ($q) => $q
+                ->where('name', 'ilike', "%{$this->search}%")
+                ->orWhere('url',  'ilike', "%{$this->search}%"));
+        }
+
+        if ($this->filterStatus && $this->filterStatus !== 'all') {
+            $query->where('status', $this->filterStatus);
+        }
+
+        $sites = $query->orderBy('created_at')->get();
 
         return view('livewire.portal.my-websites', compact('sites', 'client'))
             ->layout('portal.layouts.app');
