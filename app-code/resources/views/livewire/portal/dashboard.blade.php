@@ -6,18 +6,11 @@
 @if ($view === 'overview')
 
     {{-- Header --}}
-    <div class="flex items-center justify-between mb-7">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">
-                Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', $client->name)[0] }}.
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">Here's an overview of all your websites.</p>
-        </div>
-        <a href="{{ route('portal.my-websites') }}"
-           class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            + Add Website
-        </a>
+    <div class="mb-7">
+        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">
+            Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', $client->name)[0] }}.
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">Here's an overview of all your websites.</p>
     </div>
 
     {{-- Summary strip --}}

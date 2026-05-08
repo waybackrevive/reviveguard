@@ -8,21 +8,10 @@
     @endif
 
     {{-- Page header --}}
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">My Websites</h1>
-            @if ($sites->isNotEmpty())
-                <p class="text-sm text-gray-500 mt-1">{{ $sites->count() }} {{ Str::plural('website', $sites->count()) }} connected</p>
-            @endif
-        </div>
-        @if (! $showWizard)
-            <button wire:click="openWizard"
-                class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Add website
-            </button>
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">My Websites</h1>
+        @if ($sites->isNotEmpty())
+            <p class="text-sm text-gray-500 mt-1">{{ $sites->count() }} {{ Str::plural('website', $sites->count()) }} connected</p>
         @endif
     </div>
 
