@@ -11,84 +11,100 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
-    /** @var \App\Models\Site|null */
-    public ?Site $site = null;
+    /**
+     * 'overview' — show all-sites summary grid (multi-site clients)
+     * 'detail'   — show single site full dashboard
+     */
+    public string $view = 'overview';
 
-    /** UUID of the active site — driven by ?site_id= query param */
+    /** UUID of the active site (detail view) */
     #[\Livewire\Attributes\Url(as: 'site_id')]
     public ?string $activeSiteId = null;
 
     public function mount(): void
     {
-        $this->loadSite();
-    }
-
-    /**
-     * Called by wire:poll every 60s — reload the site and recent events.
-     */
-    public function refresh(): void
-    {
-        $this->loadSite();
-    }
-
-    public function switchSite(string $siteId): void
-    {
-        $this->activeSiteId = $siteId;
-        $this->loadSite();
-    }
-
-    private function loadSite(): void
-    {
-        $client = Auth::guard('client')->user();
+        $client    = Auth::guard('client')->user();
+        $siteCount = Site::where('client_id', $client->id)->count();
 
         if ($this->activeSiteId) {
-            // Ensure the site belongs to this client (security check)
-            $this->site = Site::where('client_id', $client->id)
-                ->where('id', $this->activeSiteId)
-                ->first();
-        }
-
-        // Fall back to first site if nothing found or no ID given
-        if (! $this->site) {
-            $this->site = Site::where('client_id', $client->id)
-                ->whereIn('status', ['active', 'down', 'warning'])
-                ->first()
-                ?? Site::where('client_id', $client->id)->first();
+            $this->view = 'detail';
+        } elseif ($siteCount <= 1) {
+            // Single-site clients go straight to detail
+            $this->view        = 'detail';
+            $this->activeSiteId = Site::where('client_id', $client->id)->value('id');
+        } else {
+            $this->view = 'overview';
         }
     }
 
-    public function recentEvents(): EloquentCollection
+    public function refresh(): void
     {
-        if (! $this->site) {
-            return new EloquentCollection();
-        }
+        // Livewire re-renders on wire:poll — no extra state needed
+    }
 
-        return Event::where('site_id', $this->site->id)
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get();
+    /** Switch to full detail view for a specific site */
+    public function viewSite(string $siteId): void
+    {
+        $client = Auth::guard('client')->user();
+        // Security: ensure the site belongs to this client
+        $exists = Site::where('client_id', $client->id)->where('id', $siteId)->exists();
+        if ($exists) {
+            $this->activeSiteId = $siteId;
+            $this->view         = 'detail';
+        }
+    }
+
+    /** Go back to the overview grid */
+    public function backToOverview(): void
+    {
+        $this->activeSiteId = null;
+        $this->view         = 'overview';
     }
 
     public function render(): \Illuminate\View\View
     {
-        $client     = Auth::guard('client')->user();
-        $lastBackup = $this->site
-            ? Backup::where('site_id', $this->site->id)
-                ->orderByDesc('created_at')
-                ->first()
-            : null;
+        $client = Auth::guard('client')->user();
 
+        // ── All sites (used by both overview cards and site switcher) ────────
         $allSites = Site::where('client_id', $client->id)
-            ->whereIn('status', ['active', 'down', 'warning', 'pending'])
             ->orderBy('name')
-            ->get(['id', 'name', 'url', 'status']);
+            ->get();
+
+        // ── Detail view data ─────────────────────────────────────────────────
+        $site         = null;
+        $lastBackup   = null;
+        $recentEvents = new EloquentCollection();
+
+        if ($this->view === 'detail' && $this->activeSiteId) {
+            $site = $allSites->firstWhere('id', $this->activeSiteId);
+
+            if ($site) {
+                $lastBackup = Backup::where('site_id', $site->id)
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                $recentEvents = Event::where('site_id', $site->id)
+                    ->orderByDesc('created_at')
+                    ->limit(6)
+                    ->get();
+            }
+        }
+
+        // ── Overview summary counters ────────────────────────────────────────
+        $summaryDown       = $allSites->where('status.value', 'down')->count();
+        $summarySslSoon    = $allSites->filter(fn ($s) =>
+            $s->ssl_expires_at && now()->diffInDays($s->ssl_expires_at, false) <= 30
+        )->count();
+        $summaryNoBackup   = 0; // computed per-site in blade (keep render lean)
 
         return view('livewire.portal.dashboard', [
-            'client'       => $client,
-            'site'         => $this->site,
-            'recentEvents' => $this->recentEvents(),
-            'lastBackup'   => $lastBackup,
-            'allSites'     => $allSites,
+            'client'        => $client,
+            'allSites'      => $allSites,
+            'site'          => $site,
+            'lastBackup'    => $lastBackup,
+            'recentEvents'  => $recentEvents,
+            'summaryDown'   => $summaryDown,
+            'summarySslSoon'=> $summarySslSoon,
         ])->layout('portal.layouts.app');
     }
 }
