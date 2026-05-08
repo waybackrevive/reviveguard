@@ -47,12 +47,14 @@ return [
     ],
 
     'whop' => [
-        'webhook_secret'  => env('WHOP_WEBHOOK_SECRET', ''),
-        'api_key'         => env('WHOP_API_KEY', ''),
-        'plan_monitor_id' => env('WHOP_PLAN_MONITOR_ID', ''),
-        'plan_guard_id'   => env('WHOP_PLAN_GUARD_ID', ''),
-        'plan_shield_id'  => env('WHOP_PLAN_SHIELD_ID', ''),
-        'checkout_base'   => env('WHOP_CHECKOUT_BASE', 'https://whop.com/checkout'),
+        'sandbox'         => env('WHOP_SANDBOX', false),
+        'webhook_secret'  => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_WEBHOOK_SECRET', '') : env('WHOP_WEBHOOK_SECRET', ''),
+        'api_key'         => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_API_KEY', '') : env('WHOP_API_KEY', ''),
+        'api_base'        => env('WHOP_SANDBOX', false) ? 'https://sandbox-api.whop.com/api/v1' : 'https://api.whop.com/api/v2',
+        'plan_monitor_id' => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_PLAN_MONITOR_ID', '') : env('WHOP_PLAN_MONITOR_ID', ''),
+        'plan_guard_id'   => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_PLAN_GUARD_ID', '') : env('WHOP_PLAN_GUARD_ID', ''),
+        'plan_shield_id'  => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_PLAN_SHIELD_ID', '') : env('WHOP_PLAN_SHIELD_ID', ''),
+        'checkout_base'   => env('WHOP_SANDBOX', false) ? 'https://sandbox.whop.com/checkout' : env('WHOP_CHECKOUT_BASE', 'https://whop.com/checkout'),
     ],
 
     'backblaze' => [

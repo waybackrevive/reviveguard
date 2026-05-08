@@ -61,8 +61,9 @@ final class CheckDomainExpiry implements ShouldQueue
         $registrar = $data['registrar'] ?? null;
 
         $site->update([
-            'domain_expires_at' => $expiresAt->toDateString(),
-            'registrar'         => $registrar,
+            'domain_expires_at'      => $expiresAt->toDateString(),
+            'registrar'              => $registrar,
+            'whoisxml_last_checked_at' => now(),
         ]);
 
         foreach ([60, 30, 7] as $threshold) {

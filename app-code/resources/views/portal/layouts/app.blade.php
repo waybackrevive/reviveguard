@@ -20,7 +20,7 @@
 </head>
 <body class="h-full bg-gray-50 text-gray-900">
 
-<div class="min-h-full flex">
+<div class="min-h-full flex flex-col lg:flex-row relative">
 
     {{-- ── Sidebar (desktop) ─────────────────────────────────────────── --}}
     <aside id="portalSidebar" class="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200 transition-transform duration-200">
@@ -100,30 +100,30 @@
     </aside>
 
     {{-- ── Mobile top nav ──────────────────────────────────────────────── --}}
-    <div class="lg:hidden w-full">
+    <div class="lg:hidden w-full" x-data="{ open: false }" @click.outside="open = false">
         <div class="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-200">
             <span class="inline-flex items-center gap-2 text-lg font-bold"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span><span class="text-gray-900">Revive</span><span class="text-emerald-600">Guard</span></span>
-            <details class="relative">
-                <summary class="cursor-pointer list-none p-2 rounded-lg hover:bg-gray-100">
-                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                </summary>
-                <nav class="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50">
-                    <a href="{{ route('portal.dashboard') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Dashboard</a>
-                    <a href="{{ route('portal.my-websites') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Websites</a>
-                    <a href="{{ route('portal.events') }}"      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Activity Log</a>
-                    <a href="{{ route('portal.reports') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Reports</a>
-                    <a href="{{ route('portal.backups') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Backups</a>
-                    <a href="{{ route('portal.tickets') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Support</a>
-                    <a href="{{ route('portal.account') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Account</a>
-                    <div class="border-t border-gray-200 mt-1 pt-1">
-                        <form method="POST" action="{{ route('portal.logout') }}">
-                            @csrf
-                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Sign out</button>
-                        </form>
-                    </div>
-                </nav>
-            </details>
+            <button @click="open = !open" type="button" class="cursor-pointer p-2 rounded-lg hover:bg-gray-100 focus:outline-none" aria-label="Open navigation">
+                <svg x-show="!open" class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <svg x-show="open" class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
+        <nav x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+             class="absolute top-14 left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-2 z-50">
+            <a href="{{ route('portal.dashboard') }}"   class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">Dashboard</a>
+            <a href="{{ route('portal.my-websites') }}" class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">My Websites</a>
+            <a href="{{ route('portal.events') }}"      class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">Activity Log</a>
+            <a href="{{ route('portal.reports') }}"     class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">Reports</a>
+            <a href="{{ route('portal.backups') }}"     class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">Backups</a>
+            <a href="{{ route('portal.tickets') }}"     class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">Support</a>
+            <a href="{{ route('portal.account') }}"     class="block px-5 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 font-medium">Account</a>
+            <div class="border-t border-gray-200 mt-1 pt-1">
+                <form method="POST" action="{{ route('portal.logout') }}">
+                    @csrf
+                    <button type="submit" class="w-full text-left px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50">Sign out</button>
+                </form>
+            </div>
+        </nav>
     </div>
 
     {{-- ── Main content ────────────────────────────────────────────────── --}}

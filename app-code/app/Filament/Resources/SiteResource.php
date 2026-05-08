@@ -14,6 +14,7 @@ use App\Models\Report;
 use App\Models\Site;
 use App\Models\SiteCommand;
 use App\Services\NotificationService;
+use App\Services\WhoisXmlService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -139,7 +140,15 @@ class SiteResource extends Resource
                     ->label('Domain Expires')
                     ->date()
                     ->sortable()
+                    ->description(fn (Site $record) => $record->registrar ? 'via ' . $record->registrar : null)
                     ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->diffInDays() < 30 ? 'warning' : null),
+
+                Tables\Columns\TextColumn::make('whoisxml_last_checked_at')
+                    ->label('WHOIS Checked')
+                    ->since()
+                    ->sortable()
+                    ->toggleable()
+                    ->placeholder('Never'),
 
                 Tables\Columns\TextColumn::make('last_seen_at')
                     ->label('Last Seen')
@@ -299,6 +308,64 @@ class SiteResource extends Resource
                             ->body("WP update command queued for {$record->name}. Agent will pick it up within 5 minutes.")
                             ->success()
                             ->send();
+                    }),
+
+                Tables\Actions\Action::make('recheck_domain')
+                    ->label('Re-check Domain')
+                    ->icon('heroicon-o-magnifying-glass')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Re-check Domain Info')
+                    ->modalDescription('Calls WhoisXML API with a hard refresh (costs 5 credits) to fetch fresh WHOIS data. Use when domain info looks stale or stuck.')
+                    ->action(function (Site $record): void {
+                        if (! $record->domain) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('No domain set')
+                                ->body('This site has no domain configured.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        try {
+                            $whoisXml = app(WhoisXmlService::class);
+                            $data = $whoisXml->whois((string) $record->domain, hardRefresh: true);
+
+                            if (isset($data['error'])) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('WHOIS lookup failed')
+                                    ->body($data['error'])
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+
+                            $updates = ['whoisxml_last_checked_at' => now()];
+                            if (isset($data['expires_at'])) {
+                                $updates['domain_expires_at'] = $data['expires_at'];
+                            }
+                            if (! empty($data['registrar'])) {
+                                $updates['registrar'] = $data['registrar'];
+                            }
+                            $record->update($updates);
+
+                            $msg = isset($data['expires_at'])
+                                ? "Expires: {$data['expires_at']} ({$data['days_remaining']} days). Registrar: " . ($data['registrar'] ?? 'n/a')
+                                : 'No expiry date in WHOIS record.';
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Domain info updated')
+                                ->body($msg)
+                                ->success()
+                                ->send();
+
+                        } catch (\Throwable $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     }),
             ])
             ->bulkActions([

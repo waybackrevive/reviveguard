@@ -43,19 +43,25 @@ class WhoisXmlService
     // 1. WHOIS — domain expiry, creation date, registrar, nameservers
     // ─────────────────────────────────────────────────────────────────────────
 
-    public function whois(string $domain): array
+    public function whois(string $domain, bool $hardRefresh = false): array
     {
         $domain = $this->stripWww($domain);
 
         try {
+            $query = [
+                'apiKey'          => $this->apiKey,
+                'domainName'      => $domain,
+                'outputFormat'    => 'JSON',
+                'preferFresh'     => 1,
+                'da'              => 0,  // skip DA to save credits
+            ];
+
+            if ($hardRefresh) {
+                $query['_hardRefresh'] = 1;
+            }
+
             $resp = $this->http->get('https://www.whoisxmlapi.com/whoisserver/WhoisService', [
-                'query' => [
-                    'apiKey'          => $this->apiKey,
-                    'domainName'      => $domain,
-                    'outputFormat'    => 'JSON',
-                    'preferFresh'     => 1,
-                    'da'              => 0,  // skip DA to save credits
-                ],
+                'query' => $query,
             ]);
 
             $data = json_decode((string) $resp->getBody(), true);
