@@ -33,10 +33,17 @@ class PlatformSetting extends Model
 
     /**
      * Read a setting value, falling back to $default if not set.
+     *
+     * Returns the default silently when the DB is unavailable (e.g. during
+     * artisan package:discover on a fresh CI run before migrations have run).
      */
     public static function get(string $key, mixed $default = null): ?string
     {
-        $record = Cache::remember("pset:{$key}", 600, fn () => static::find($key));
+        try {
+            $record = Cache::remember("pset:{$key}", 600, fn () => static::find($key));
+        } catch (\Exception) {
+            return $default !== null ? (string) $default : null;
+        }
 
         if (! $record) {
             return $default !== null ? (string) $default : null;
