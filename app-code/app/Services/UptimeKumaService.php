@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PlatformSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -16,8 +17,8 @@ class UptimeKumaService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim((string) config('services.uptime_kuma.url', ''), '/');
-        $this->apiKey  = (string) config('services.uptime_kuma.api_key', '');
+        $this->baseUrl = rtrim(PlatformSetting::get('uptime_kuma_url',    config('services.uptime_kuma.url', ''))    ?? '', '/');
+        $this->apiKey  = PlatformSetting::get('uptime_kuma_api_key', config('services.uptime_kuma.api_key', '')) ?? '';
     }
 
     /**

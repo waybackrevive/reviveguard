@@ -4,6 +4,7 @@ namespace App\Livewire\Portal;
 
 use App\Enums\SiteStatus;
 use App\Models\Plan;
+use App\Models\PlatformSetting;
 use App\Models\Site;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -90,10 +91,12 @@ class MyWebsites extends Component
         $planId = null;
 
         if ($plan) {
-            $planId = $plan->whop_plan_id ?? match($plan->slug) {
-                'monitor' => config('services.whop.plan_monitor_id'),
-                'guard'   => config('services.whop.plan_guard_id'),
-                'shield'  => config('services.whop.plan_shield_id'),
+            $sandbox = PlatformSetting::getBool('whop_sandbox', config('services.whop.sandbox', false));
+            $pfx     = $sandbox ? 'whop_sandbox_' : 'whop_';
+            $planId  = $plan->whop_plan_id ?? match($plan->slug) {
+                'monitor' => PlatformSetting::get("{$pfx}plan_monitor_id", config('services.whop.plan_monitor_id')),
+                'guard'   => PlatformSetting::get("{$pfx}plan_guard_id",   config('services.whop.plan_guard_id')),
+                'shield'  => PlatformSetting::get("{$pfx}plan_shield_id",  config('services.whop.plan_shield_id')),
                 default   => null,
             };
         }
@@ -103,7 +106,9 @@ class MyWebsites extends Component
             return;
         }
 
-        $base   = rtrim(config('services.whop.checkout_base', 'https://whop.com/checkout'), '/');
+        $sandbox = PlatformSetting::getBool('whop_sandbox', config('services.whop.sandbox', false));
+        $pfx     = $sandbox ? 'whop_sandbox_' : 'whop_';
+        $base    = rtrim(PlatformSetting::get("{$pfx}checkout_base", config('services.whop.checkout_base', 'https://whop.com/checkout')), '/');
         $params = http_build_query([
             'redirect_url' => url('/portal/welcome'),
             'd'            => parse_url($site->url, PHP_URL_HOST),

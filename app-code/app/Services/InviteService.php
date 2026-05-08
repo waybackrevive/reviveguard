@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\ClientInvite;
+use App\Models\PlatformSetting;
 use App\Models\SiteEvaluation;
 use App\Models\User;
 use Carbon\Carbon;
@@ -28,7 +29,7 @@ class InviteService
 
     public function __construct()
     {
-        $this->from   = config('services.resend.from', 'team@reviveguard.com');
+        $this->from   = PlatformSetting::get('resend_from', config('services.resend.from', 'team@reviveguard.com')) ?? 'team@reviveguard.com';
         $this->appUrl = rtrim(config('app.url'), '/');
     }
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\RunExternalSiteScan;
 use App\Models\Plan;
+use App\Models\PlatformSetting;
 use App\Models\SiteEvaluation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,7 @@ class EvaluationService
     public function __construct()
     {
         $this->tenantId   = config('app.tenant_id', '00000000-0000-0000-0000-000000000001');
-        $this->from       = config('services.resend.from', 'team@reviveguard.com');
+        $this->from       = PlatformSetting::get('resend_from', config('services.resend.from', 'team@reviveguard.com')) ?? 'team@reviveguard.com';
         $this->appUrl     = rtrim(config('app.url'), '/');
         $this->monthlyCap = (int) config('app.evaluation_monthly_cap', 10);
     }

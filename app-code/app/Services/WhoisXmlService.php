@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PlatformSetting;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +29,7 @@ class WhoisXmlService
 
     public function __construct()
     {
-        $this->apiKey = config('services.whoisxml.key', '');
+        $this->apiKey = PlatformSetting::get('whoisxml_api_key', config('services.whoisxml.key', '')) ?? '';
         $this->http   = new Client([
             'timeout'         => 12,
             'connect_timeout' => 8,

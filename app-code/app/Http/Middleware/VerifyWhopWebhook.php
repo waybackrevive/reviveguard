@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PlatformSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,7 +19,10 @@ class VerifyWhopWebhook
 {
     public function handle(Request $request, Closure $next): SymfonyResponse
     {
-        $secret = config('services.whop.webhook_secret', '');
+        $sandbox   = PlatformSetting::getBool('whop_sandbox', config('services.whop.sandbox', false));
+        $secretKey = $sandbox ? 'whop_sandbox_webhook_secret' : 'whop_webhook_secret';
+        $fallback  = $sandbox ? config('services.whop.sandbox_webhook_secret', '') : config('services.whop.webhook_secret', '');
+        $secret    = PlatformSetting::get($secretKey, $fallback) ?? '';
 
         if (empty($secret)) {
             Log::error('VerifyWhopWebhook: WHOP_WEBHOOK_SECRET is not configured');

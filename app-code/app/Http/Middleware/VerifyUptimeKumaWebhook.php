@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PlatformSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,7 +16,7 @@ class VerifyUptimeKumaWebhook
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        $secret = (string) config('services.uptime_kuma.webhook_secret', '');
+        $secret = PlatformSetting::get('uptime_kuma_webhook_secret', config('services.uptime_kuma.webhook_secret', '')) ?? '';
 
         // If no secret is configured, skip validation (dev/unconfigured mode)
         if (empty($secret)) {

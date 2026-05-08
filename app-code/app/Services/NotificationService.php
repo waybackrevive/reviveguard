@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Backup;
 use App\Models\Client;
+use App\Models\PlatformSetting;
 use App\Models\Report;
 use App\Models\Site;
 use App\Models\Ticket;
@@ -25,7 +26,7 @@ class NotificationService
 
     public function __construct()
     {
-        $this->from = config('services.resend.from', 'notifications@reviveguard.com');
+        $this->from = PlatformSetting::get('resend_from', config('services.resend.from', 'notifications@reviveguard.com')) ?? 'notifications@reviveguard.com';
     }
 
     // ── Site status alerts ────────────────────────────────────────────────────

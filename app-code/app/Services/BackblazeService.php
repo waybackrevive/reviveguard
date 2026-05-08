@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PlatformSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -23,10 +24,10 @@ class BackblazeService
 
     public function __construct()
     {
-        $this->keyId      = (string) config('services.backblaze.key_id', '');
-        $this->appKey     = (string) config('services.backblaze.app_key', '');
-        $this->bucketId   = (string) config('services.backblaze.bucket_id', '');
-        $this->bucketName = (string) config('services.backblaze.bucket_name', '');
+        $this->keyId      = PlatformSetting::get('b2_key_id',      config('services.backblaze.key_id', ''))      ?? '';
+        $this->appKey     = PlatformSetting::get('b2_app_key',     config('services.backblaze.app_key', ''))     ?? '';
+        $this->bucketId   = PlatformSetting::get('b2_bucket_id',   config('services.backblaze.bucket_id', ''))   ?? '';
+        $this->bucketName = PlatformSetting::get('b2_bucket_name', config('services.backblaze.bucket_name', '')) ?? '';
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
