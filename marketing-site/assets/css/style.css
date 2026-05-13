@@ -1534,6 +1534,70 @@ p {
     margin-top: .5rem
 }
 
+/* Sites included badge */
+.plan-sites {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-top: .6rem
+}
+
+.plan-sites-num {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    background: var(--bg-3);
+    color: var(--text);
+    font-size: .78rem;
+    font-weight: 700;
+    padding: .28rem .75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-mid)
+}
+
+.plan-sites-num::before {
+    content: '🌐';
+    font-size: .72rem
+}
+
+.plan-sites--popular .plan-sites-num {
+    background: var(--green-light);
+    color: var(--green-dim);
+    border-color: rgba(5,150,105,.3)
+}
+
+.plan-sites-extra {
+    font-size: .75rem;
+    color: var(--text-dim)
+}
+
+/* Additional site add-on card */
+.addon-card--sites {
+    grid-column: span 2;
+    background: var(--bg-2)
+}
+
+.addon-site-pill {
+    display: inline-block;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--green-dim);
+    background: var(--green-light);
+    border: 1px solid rgba(5,150,105,.25);
+    padding: .2rem .65rem;
+    border-radius: 999px
+}
+
+.addon-price--sites {
+    font-size: .85rem !important;
+    color: var(--text-dim) !important;
+    font-weight: 500 !important;
+    white-space: nowrap;
+    align-self: flex-start;
+    padding-top: .25rem
+}
+
 .plan-cta {
     margin-top: auto
 }
