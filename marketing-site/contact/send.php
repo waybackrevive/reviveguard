@@ -13,14 +13,15 @@ declare(strict_types=1);
 // ── HOSTINGER SETUP NOTE ─────────────────────────────────────────────────────
 // 1. Log in to Hostinger hPanel → Emails → Email Accounts
 // 2. Create these two email accounts (or whichever you choose to use):
-//      hello@reviveguard.com       ← receives all contact form messages
+//      support@reviveguard.com     ← receives ALL contact form messages (filter here)
 //      noreply@reviveguard.com     ← used as the "From" address when sending
 // 3. FROM_EMAIL *must* exactly match an email account that exists on your
 //    Hostinger hosting — if it doesn't match, Hostinger's mail server will
 //    reject or spam-flag the message.
-// 4. TO_EMAIL can be any address (even a Gmail) — it's just where mail is forwarded.
+// 4. TO_EMAIL can be any address — set it to support@ and then forward/filter
+//    from there to hello@ or wherever you want different topic types to go.
 // ─────────────────────────────────────────────────────────────────────────────
-const TO_EMAIL      = 'hello@reviveguard.com';     // inbox that receives submissions
+const TO_EMAIL      = 'support@reviveguard.com';   // receives ALL form submissions
 const TO_NAME       = 'ReviveGuard Team';
 const FROM_EMAIL    = 'noreply@reviveguard.com';   // MUST exist in Hostinger hPanel → Emails
 const FROM_NAME     = 'ReviveGuard Contact Form';
@@ -28,7 +29,7 @@ const SUBJECT_PREFIX = '[ReviveGuard Contact]';
 
 // Emergency copies — this address is CC'd when topic = emergency
 // You can set this to the same as TO_EMAIL if you only want one inbox
-const EMERGENCY_CC  = 'hello@reviveguard.com';
+const EMERGENCY_CC  = 'support@reviveguard.com';
 
 // Allowed origin for CORS (set to your domain)
 const ALLOWED_ORIGIN = 'https://reviveguard.com';

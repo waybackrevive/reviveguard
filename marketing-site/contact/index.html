@@ -718,8 +718,8 @@
                     <h5>Account</h5>
                     <a href="https://app.reviveguard.com/portal/login">Client Login</a>
                     <a href="https://app.reviveguard.com/evaluate">Request Evaluation</a>
-                    <a href="mailto:hello@reviveguard.com">Alumni Invite</a>
-                    <a href="/contact/">Contact Us</a>
+                    <a href="/contact/?topic=alumni">Alumni Invite</a>
+                    <a href="/contact/" aria-current="page">Contact Us</a>
                 </div>
             </div>
             <div class="footer__bottom">
@@ -736,6 +736,25 @@
     <script src="../assets/js/main.js"></script>
     <script>
         document.getElementById('year').textContent = new Date().getFullYear();
+
+        // ── Auto-select topic from URL param (?topic=alumni etc.) ──
+        (function () {
+            const param = new URLSearchParams(window.location.search).get('topic');
+            if (!param) return;
+            const card = document.querySelector('.contact-topic[data-topic="' + param + '"]');
+            const select = document.getElementById('topic_select');
+            if (select.querySelector('option[value="' + param + '"]')) {
+                select.value = param;
+                document.getElementById('topicInput').value = param;
+                handleTopicChange(param);
+                if (card) {
+                    document.querySelectorAll('.contact-topic').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    // Scroll the topic card into view
+                    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+                }
+            }
+        })();
 
         // ── Topic card selection ─────────────────────────────────
         const topicCards = document.querySelectorAll('.contact-topic');
