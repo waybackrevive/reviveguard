@@ -1495,8 +1495,13 @@ p {
     margin-bottom: .3rem
 }
 
-.plan-for-label--default { color: var(--text-dim); }
-.plan-for-label--popular { color: var(--green); }
+.plan-for-label--default {
+    color: var(--text-dim);
+}
+
+.plan-for-label--popular {
+    color: var(--green);
+}
 
 .plan-for-text {
     font-size: .82rem;
@@ -1564,7 +1569,7 @@ p {
 .plan-sites--popular .plan-sites-num {
     background: var(--green-light);
     color: var(--green-dim);
-    border-color: rgba(5,150,105,.3)
+    border-color: rgba(5, 150, 105, .3)
 }
 
 .plan-sites-extra {
@@ -1584,7 +1589,7 @@ p {
     font-weight: 600;
     color: var(--green-dim);
     background: var(--green-light);
-    border: 1px solid rgba(5,150,105,.25);
+    border: 1px solid rgba(5, 150, 105, .25);
     padding: .2rem .65rem;
     border-radius: 999px
 }
