@@ -1427,26 +1427,111 @@ p {
 .plan-feature {
     display: flex;
     align-items: flex-start;
-    gap: .6rem;
+    gap: .65rem;
     font-size: .88rem;
     color: var(--text-muted)
 }
 
-.plan-feature::before {
-    content: '✓';
-    color: var(--green);
-    font-weight: 700;
+.plan-feature-icon {
     flex-shrink: 0;
-    margin-top: .05rem
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--green-light);
+    color: var(--green-dim);
+    font-size: .7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: .1rem;
+    line-height: 1
 }
 
-.plan-feature.no {
+.plan-feature.no .plan-feature-icon {
+    background: var(--bg-3);
+    color: var(--border-hi)
+}
+
+.plan-feature-body {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem
+}
+
+.plan-feature-name {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35
+}
+
+.plan-feature.no .plan-feature-name {
+    font-weight: 400;
+    color: var(--text-dim);
+    text-decoration: line-through;
+    text-decoration-color: var(--border-mid)
+}
+
+.plan-feature-desc {
+    font-size: .78rem;
+    color: var(--text-dim);
+    line-height: 1.45
+}
+
+/* Plan card divider between price and features */
+.plan-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.25rem 0
+}
+
+/* Best-for label */
+.plan-for-label {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    margin-bottom: .3rem
+}
+
+.plan-for-label--default { color: var(--text-dim); }
+.plan-for-label--popular { color: var(--green); }
+
+.plan-for-text {
+    font-size: .82rem;
+    color: var(--text-muted);
+    line-height: 1.55
+}
+
+/* Value tagline */
+.plan-tagline {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    margin-bottom: .85rem;
+    padding: .4rem .75rem;
+    border-radius: var(--radius-sm);
+    display: inline-block
+}
+
+.plan-tagline--default {
+    background: var(--bg-2);
     color: var(--text-dim)
 }
 
-.plan-feature.no::before {
-    content: '–';
-    color: var(--border-hi)
+.plan-tagline--popular {
+    background: var(--green-light);
+    color: var(--green-dim)
+}
+
+/* CTA sub-note */
+.plan-cta-note {
+    text-align: center;
+    font-size: .75rem;
+    color: var(--text-dim);
+    margin-top: .5rem
 }
 
 .plan-cta {
