@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Block internal/app paths if they ever appear at this domain
+Disallow: /assets/js/
+Disallow: /contact/send.php
+
+Sitemap: https://reviveguard.com/sitemap.xml

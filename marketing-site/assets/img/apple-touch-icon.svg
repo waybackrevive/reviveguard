@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="40" fill="#059669"/>
+  <circle cx="52" cy="62" r="18" fill="#ffffff"/>
+  <circle cx="52" cy="62" r="9" fill="#34d399" opacity="0.85"/>
+  <text x="78" y="122" font-family="Inter,Arial,sans-serif" font-size="72" font-weight="800" fill="#ffffff" letter-spacing="-2">RG</text>
+</svg>
