@@ -13,6 +13,7 @@ use App\Support\MonitorSettings;
 use App\Support\PlanCatalog;
 use App\Support\PlanStripePriceSync;
 use App\Support\StripeConfig;
+use App\Support\StripeSubscriptionMetadata;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Stripe\BillingPortal\Session as PortalSession;
@@ -154,22 +155,12 @@ class StripeBillingService
             throw new \RuntimeException('Could not read your subscription from Stripe. Please contact support.');
         }
 
-        $metadata = array_merge(
-            (array) ($stripeSub->metadata ?? []),
-            [
-                'client_id' => $client->id,
-                'site_id'   => $site->id,
-                'plan_id'   => $newPlan->id,
-                'tenant_id' => $this->tenantId,
-            ],
-        );
-
         $updated = StripeSubscription::update($subscription->stripe_subscription_id, [
             'items' => [
                 ['id' => $itemId, 'price' => $newPriceId],
             ],
             'proration_behavior' => 'create_prorations',
-            'metadata'           => $metadata,
+            'metadata'           => StripeSubscriptionMetadata::forSitePlan($client, $site, $newPlan, $this->tenantId),
         ]);
 
         $this->applyStripeSubscriptionState($subscription, $updated, $newPlan);
