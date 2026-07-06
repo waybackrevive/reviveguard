@@ -12,10 +12,11 @@ class ToastStack extends Component
 
     public function mount(): void
     {
-        $this->hydrateFromSession();
+        $this->loadSessionFlashes();
     }
 
-    public function hydrateFromSession(): void
+    /** Session flashes after full page or wire:navigate redirect — not a Livewire lifecycle hook. */
+    public function loadSessionFlashes(): void
     {
         $map = [
             'success'      => 'success',
@@ -24,7 +25,7 @@ class ToastStack extends Component
         ];
 
         foreach ($map as $key => $type) {
-            if ($message = session($key)) {
+            if ($message = session()->pull($key)) {
                 $this->push($type, $message);
             }
         }

@@ -3,7 +3,7 @@
     aria-live="polite"
     aria-atomic="true"
     x-data
-    x-on:livewire:navigated.window="$wire.hydrateFromSession()"
+    x-on:livewire:navigated.window="$wire.loadSessionFlashes()"
 >
     @foreach ($toasts as $toast)
         <div
