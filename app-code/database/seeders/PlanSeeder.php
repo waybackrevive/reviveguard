@@ -16,8 +16,6 @@ class PlanSeeder extends Seeder
                 'name'          => 'Monitor',
                 'slug'          => 'monitor',
                 'price_monthly' => 49.00,
-                'stripe_price_id'      => env('STRIPE_PRICE_MONITOR_ID'),
-                'stripe_test_price_id' => env('STRIPE_TEST_PRICE_MONITOR_ID'),
                 'features'      => [
                     'uptime_monitoring'           => true,
                     'ssl_monitoring'              => true,
@@ -35,8 +33,6 @@ class PlanSeeder extends Seeder
                 'name'          => 'Guard',
                 'slug'          => 'guard',
                 'price_monthly' => 99.00,
-                'stripe_price_id'      => env('STRIPE_PRICE_GUARD_ID'),
-                'stripe_test_price_id' => env('STRIPE_TEST_PRICE_GUARD_ID'),
                 'features'      => [
                     'uptime_monitoring'           => true,
                     'ssl_monitoring'              => true,
@@ -54,8 +50,6 @@ class PlanSeeder extends Seeder
                 'name'          => 'Shield',
                 'slug'          => 'shield',
                 'price_monthly' => 179.00,
-                'stripe_price_id'      => env('STRIPE_PRICE_SHIELD_ID'),
-                'stripe_test_price_id' => env('STRIPE_TEST_PRICE_SHIELD_ID'),
                 'features'      => [
                     'uptime_monitoring'           => true,
                     'ssl_monitoring'              => true,
@@ -72,9 +66,23 @@ class PlanSeeder extends Seeder
         ];
 
         foreach ($plans as $plan) {
+            $slug = $plan['slug'];
+            $row  = array_merge($plan, ['tenant_id' => $tenantId, 'is_active' => true]);
+
+            $testPrice = \App\Support\PlanStripePriceSync::configPrice($slug, true);
+            $livePrice = \App\Support\PlanStripePriceSync::configPrice($slug, false);
+
+            if ($testPrice) {
+                $row['stripe_test_price_id'] = $testPrice;
+            }
+
+            if ($livePrice) {
+                $row['stripe_price_id'] = $livePrice;
+            }
+
             Plan::updateOrCreate(
-                ['slug' => $plan['slug'], 'tenant_id' => $tenantId],
-                array_merge($plan, ['tenant_id' => $tenantId, 'is_active' => true])
+                ['slug' => $slug, 'tenant_id' => $tenantId],
+                $row,
             );
         }
     }

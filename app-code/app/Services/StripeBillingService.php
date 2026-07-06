@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Models\Subscription;
 use App\Support\MonitorSettings;
 use App\Support\PlanCatalog;
+use App\Support\PlanStripePriceSync;
 use App\Support\StripeConfig;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -68,6 +69,9 @@ class StripeBillingService
 
     public function createCheckoutSession(Client $client, Site $site, Plan $plan): string
     {
+        PlanStripePriceSync::syncFromConfig();
+        $plan->refresh();
+
         $priceId = $plan->resolvedStripePriceId();
 
         if (empty($priceId)) {
@@ -114,6 +118,9 @@ class StripeBillingService
      */
     public function upgradeSitePlan(Client $client, Site $site, Plan $newPlan): Subscription
     {
+        PlanStripePriceSync::syncFromConfig();
+        $newPlan->refresh();
+
         if ($site->client_id !== $client->id) {
             throw new \RuntimeException('Site not found.');
         }

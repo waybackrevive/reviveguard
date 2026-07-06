@@ -145,6 +145,7 @@ jobs:
 
             echo "=== [6/7] Migrations ==="
             php artisan migrate --force
+            php artisan plans:sync-stripe-prices
 
             echo "=== [7/7] Restart queue workers ==="
             sudo /usr/bin/supervisorctl restart reviveguard-worker:*

@@ -54,6 +54,20 @@ return [
         'test_key'           => env('STRIPE_TEST_KEY', ''),
         'test_secret'        => env('STRIPE_TEST_SECRET', ''),
         'test_webhook_secret'=> env('STRIPE_TEST_WEBHOOK_SECRET', ''),
+        'prices' => [
+            'monitor' => [
+                'live' => env('STRIPE_PRICE_MONITOR_ID'),
+                'test' => env('STRIPE_TEST_PRICE_MONITOR_ID'),
+            ],
+            'guard' => [
+                'live' => env('STRIPE_PRICE_GUARD_ID'),
+                'test' => env('STRIPE_TEST_PRICE_GUARD_ID'),
+            ],
+            'shield' => [
+                'live' => env('STRIPE_PRICE_SHIELD_ID'),
+                'test' => env('STRIPE_TEST_PRICE_SHIELD_ID'),
+            ],
+        ],
     ],
 
     'reviveguard' => [

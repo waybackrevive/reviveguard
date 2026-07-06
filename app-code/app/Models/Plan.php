@@ -83,13 +83,18 @@ class Plan extends Model
     {
         $test = \App\Support\StripeConfig::isTestMode();
 
-        $fromDb = $test ? $this->stripe_test_price_id : $this->stripe_price_id;
+        $candidates = [
+            $test ? $this->stripe_test_price_id : $this->stripe_price_id,
+            $this->stripePriceFromConfig($test),
+        ];
 
-        if (! empty($fromDb)) {
-            return $fromDb;
+        foreach ($candidates as $id) {
+            if (\App\Support\StripePriceId::isValid($id)) {
+                return $id;
+            }
         }
 
-        return $this->stripePriceFromEnv($test);
+        return null;
     }
 
     public function hasStripeCheckout(): bool
@@ -114,27 +119,14 @@ class Plan extends Model
                 default   => 'STRIPE_PRICE_*_ID',
             };
 
-            return "Stripe {$mode} price is not set for the {$this->name} plan. Add {$env} in .env or Admin → Platform Settings, then run: php artisan db:seed --class=PlanSeeder";
+            return "Stripe {$mode} price is not set for the {$this->name} plan. Add {$env} to .env, run `php artisan config:clear` (or redeploy), then `php artisan plans:sync-stripe-prices`.";
         }
 
         return \App\Support\StripePriceId::describeProblem($id, "{$this->name} plan");
     }
 
-    private function stripePriceFromEnv(bool $test): ?string
+    private function stripePriceFromConfig(bool $test): ?string
     {
-        $envKey = match ($this->slug) {
-            'monitor' => $test ? 'STRIPE_TEST_PRICE_MONITOR_ID' : 'STRIPE_PRICE_MONITOR_ID',
-            'guard'   => $test ? 'STRIPE_TEST_PRICE_GUARD_ID' : 'STRIPE_PRICE_GUARD_ID',
-            'shield'  => $test ? 'STRIPE_TEST_PRICE_SHIELD_ID' : 'STRIPE_PRICE_SHIELD_ID',
-            default   => null,
-        };
-
-        if (! $envKey) {
-            return null;
-        }
-
-        $value = env($envKey);
-
-        return $value !== null && $value !== '' ? $value : null;
+        return \App\Support\PlanStripePriceSync::configPrice($this->slug, $test);
     }
 }
