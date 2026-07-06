@@ -286,7 +286,7 @@ class NotificationService
             data: [
                 'clientName'   => explode(' ', $client->name)[0],
                 'planName'     => $plan?->name ?? 'ReviveGuard',
-                'validUntil'   => $subscription?->whop_valid_until?->format('F j, Y') ?? null,
+                'validUntil'   => $subscription?->nextBillingDate()?->format('F j, Y') ?? null,
                 'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/dashboard',
             ],
             type: 'plan_updated',

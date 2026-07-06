@@ -2,7 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Models\PlatformSetting;
+use App\Support\StripeConfig;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -34,7 +34,9 @@ class AdminPanelProvider extends PanelProvider
                 // Emerald green as primary accent — professional on Filament's default light background
                 'primary' => Color::hex('#059669'),
             ])
-            ->brandName(PlatformSetting::getBool('whop_sandbox', config('services.whop.sandbox', false)) ? '⚠ SANDBOX MODE — ReviveGuard Admin' : 'ReviveGuard Admin • WaybackRevive')
+            ->brandName(StripeConfig::isTestMode()
+                ? '⚠ STRIPE TEST MODE — ReviveGuard Admin'
+                : 'ReviveGuard Admin • WaybackRevive')
             ->sidebarCollapsibleOnDesktop()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')

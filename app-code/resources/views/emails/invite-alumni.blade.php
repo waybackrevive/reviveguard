@@ -44,7 +44,7 @@
 
         <p>
             Click the button below to create your portal account and get started. No credit card is
-            required at this step — your subscription is already set up on Whop.
+            required at this step — your subscription is managed through Stripe.
         </p>
 
         <div class="cta-wrap">

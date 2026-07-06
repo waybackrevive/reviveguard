@@ -30,6 +30,8 @@ class Client extends Authenticatable
         'phone',
         'timezone',
         'whop_member_id',
+        'stripe_id',
+        'stripe_test_id',
         'is_active',
         'path',
         'source',
@@ -104,7 +106,10 @@ class Client extends Authenticatable
         // Note: ofMany() generates MAX(id) which fails on PostgreSQL UUID columns.
         // Use a plain HasOne ordered by created_at instead.
         return $this->hasOne(Subscription::class)
-            ->where('whop_status', 'active')
+            ->where(function ($q) {
+                $q->whereIn('stripe_status', ['active', 'trialing'])
+                    ->orWhere('whop_status', 'active');
+            })
             ->orderByDesc('created_at');
     }
 
@@ -121,5 +126,20 @@ class Client extends Authenticatable
     public function hasCompletedOnboarding(): bool
     {
         return $this->onboarding_completed_at !== null;
+    }
+
+    /** Stripe Customer ID for the active billing mode. */
+    public function stripeCustomerId(): ?string
+    {
+        if (\App\Support\StripeConfig::isTestMode()) {
+            return $this->stripe_test_id ?: null;
+        }
+
+        return $this->stripe_id;
+    }
+
+    public function stripeCustomerIdColumn(): string
+    {
+        return \App\Support\StripeConfig::isTestMode() ? 'stripe_test_id' : 'stripe_id';
     }
 }

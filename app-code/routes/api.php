@@ -5,7 +5,7 @@ use App\Http\Controllers\Agent\EventController;
 use App\Http\Controllers\Agent\HeartbeatController;
 use App\Http\Controllers\Agent\PluginListController;
 use App\Http\Controllers\Webhook\UptimeKumaController;
-use App\Http\Controllers\Webhook\WhopController;
+use App\Http\Controllers\Webhook\StripeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +29,6 @@ Route::prefix('v1/agent')
 Route::post('v1/webhooks/uptime-kuma', UptimeKumaController::class)
     ->middleware(['uptime_kuma.webhook', 'throttle:60,1']);
 
-// Whop billing webhooks — validated by HMAC-SHA256 signature
-Route::post('v1/webhooks/whop', WhopController::class)
-    ->middleware(['whop.webhook', 'throttle:60,1']);
+// Stripe billing webhooks — validated by Stripe-Signature header
+Route::post('v1/webhooks/stripe', StripeController::class)
+    ->middleware(['stripe.webhook', 'throttle:60,1']);

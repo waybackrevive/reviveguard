@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Dispatched when a Whop membership.went_valid event is received.
+ * Dispatched when a Stripe subscription is activated (checkout or webhook).
  *
  * Responsibilities:
  *  1. Check if client already has a site record — create one if not

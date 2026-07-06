@@ -19,7 +19,11 @@ class Subscription extends Model
     protected $fillable = [
         'tenant_id',
         'client_id',
+        'site_id',
         'plan_id',
+        'stripe_subscription_id',
+        'stripe_status',
+        'stripe_current_period_end',
         'whop_membership_id',
         'whop_plan_id',
         'whop_status',
@@ -30,10 +34,11 @@ class Subscription extends Model
     ];
 
     protected $casts = [
-        'whop_valid_until' => 'datetime',
-        'activated_at'     => 'datetime',
-        'cancelled_at'     => 'datetime',
-        'suspended_at'     => 'datetime',
+        'whop_valid_until'          => 'datetime',
+        'stripe_current_period_end' => 'datetime',
+        'activated_at'              => 'datetime',
+        'cancelled_at'              => 'datetime',
+        'suspended_at'              => 'datetime',
     ];
 
     public function tenant(): BelongsTo
@@ -46,6 +51,11 @@ class Subscription extends Model
         return $this->belongsTo(Client::class);
     }
 
+    public function site(): BelongsTo
+    {
+        return $this->belongsTo(Site::class);
+    }
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
@@ -53,8 +63,28 @@ class Subscription extends Model
 
     public function isActive(): bool
     {
+        if ($this->stripe_status) {
+            return in_array($this->stripe_status, ['active', 'trialing'], true);
+        }
+
         return $this->whop_status === 'active';
     }
+
+    /** Client-facing billing status label */
+    public function billingStatusLabel(): string
+    {
+        $status = $this->stripe_status ?? $this->whop_status ?? 'pending';
+
+        return match ($status) {
+            'active', 'trialing' => 'Active',
+            'past_due', 'unpaid' => 'Past due',
+            'canceled', 'cancelled' => 'Canceled',
+            default => ucfirst(str_replace('_', ' ', $status)),
+        };
+    }
+
+    public function nextBillingDate(): ?\Carbon\Carbon
+    {
+        return $this->stripe_current_period_end ?? $this->whop_valid_until;
+    }
 }
-
-

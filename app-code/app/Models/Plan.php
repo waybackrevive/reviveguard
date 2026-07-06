@@ -21,6 +21,7 @@ class Plan extends Model
         'slug',
         'price_monthly',
         'stripe_price_id',
+        'stripe_test_price_id',
         'whop_plan_id',
         'features',
         'is_active',
@@ -60,5 +61,15 @@ class Plan extends Model
     public function getSupportTicketsPerMonthAttribute(): int
     {
         return $this->features['support_tickets_per_month'] ?? 0;
+    }
+
+    /** Stripe Price ID for the active mode (live or test). */
+    public function resolvedStripePriceId(): ?string
+    {
+        if (\App\Support\StripeConfig::isTestMode()) {
+            return $this->stripe_test_price_id ?: $this->stripe_price_id;
+        }
+
+        return $this->stripe_price_id;
     }
 }

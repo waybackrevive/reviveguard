@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Services\StripeBillingService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -76,18 +77,37 @@ class Account extends Component
         $this->passwordSaved = true;
     }
 
+    public function openBillingPortal(StripeBillingService $billing)
+    {
+        $client = Auth::guard('client')->user();
+
+        try {
+            $url = $billing->createBillingPortalSession($client);
+        } catch (\Throwable $e) {
+            $this->addError('billing', $e->getMessage());
+            return;
+        }
+
+        return redirect()->away($url);
+    }
+
     public function render(): \Illuminate\View\View
     {
         $client = Auth::guard('client')->user();
         $sub      = $client->activeSubscription;
         $plan     = optional($sub)->plan;
         $invoices = $client->invoices()->orderByDesc('issued_at')->limit(24)->get();
+        $siteSubscriptions = $client->subscriptions()
+            ->with(['plan', 'site'])
+            ->orderByDesc('created_at')
+            ->get();
 
         return view('livewire.portal.account', [
-            'client'   => $client,
-            'sub'      => $sub,
-            'plan'     => $plan,
-            'invoices' => $invoices,
+            'client'            => $client,
+            'sub'               => $sub,
+            'plan'              => $plan,
+            'invoices'          => $invoices,
+            'siteSubscriptions' => $siteSubscriptions,
         ])->layout('portal.layouts.app');
     }
 }

@@ -42,7 +42,7 @@
         <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
             @php $current = request()->route()->getName(); @endphp
 
-            <a href="{{ route('portal.sites', ['open' => 1]) }}"
+            <a href="{{ route('portal.sites.add') }}"
                class="flex items-center justify-center gap-2 w-full px-3 py-2.5 mb-4 rounded-card text-sm font-semibold bg-brand hover:bg-brand-dark text-white transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Add site
@@ -107,6 +107,11 @@
     <main id="portalMain" class="flex-1 lg:pl-60 transition-all duration-200">
         <div class="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
             @php $client = auth('client')->user(); @endphp
+    @if (\App\Support\StripeConfig::isTestMode())
+        <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            <strong>Stripe test mode.</strong> Payments are simulated — no real charges.
+        </div>
+    @endif
             @if ($client?->workspace_name)
                 <p class="hidden lg:block text-xs text-gray-400 mb-4">{{ $client->workspace_name }}</p>
             @endif

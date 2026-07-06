@@ -102,8 +102,9 @@ class ClientResource extends Resource
                     ->label('Sites')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('activeSubscription.whop_status')
+                Tables\Columns\TextColumn::make('activeSubscription.stripe_status')
                     ->label('Subscription')
+                    ->formatStateUsing(fn ($state, $record) => $record->activeSubscription?->billingStatusLabel() ?? '—')
                     ->badge()
                     ->color(fn ($state) => match($state) {
                         'active'    => 'success',

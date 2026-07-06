@@ -132,7 +132,9 @@
         {{ \Carbon\Carbon::parse($invoice->period_start)->format('M j, Y') }}
         &ndash;
         {{ \Carbon\Carbon::parse($invoice->period_end)->format('M j, Y') }}
-        @if ($invoice->whop_charge_id)
+        @if ($invoice->stripe_invoice_id)
+            &nbsp;&middot;&nbsp; Stripe: {{ $invoice->stripe_invoice_id }}
+        @elseif ($invoice->whop_charge_id)
             &nbsp;&middot;&nbsp; Charge ID: {{ $invoice->whop_charge_id }}
         @endif
     </p>

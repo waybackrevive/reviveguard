@@ -25,11 +25,91 @@ class InvoiceService
     }
 
     /**
-     * Create an Invoice from a Whop charge.succeeded payload.
-     *
-     * Expected $chargeData keys:
-     *   id, membership_id (whop_member_id), amount_cents, currency,
-     *   created_at (unix ts), plan_id (optional)
+     * Create an Invoice from a Stripe invoice.paid payload.
+     */
+    public function createFromStripeInvoice(object $stripeInvoice): ?Invoice
+    {
+        if (empty($stripeInvoice->id)) {
+            return null;
+        }
+
+        if (Invoice::where('stripe_invoice_id', $stripeInvoice->id)->exists()) {
+            return null;
+        }
+
+        $tenantId = config('app.tenant_id', '00000000-0000-0000-0000-000000000001');
+
+        $client = Client::where('stripe_id', $stripeInvoice->customer)
+            ->orWhere('stripe_test_id', $stripeInvoice->customer)
+            ->first();
+
+        if (! $client && ! empty($stripeInvoice->customer_email)) {
+            $client = Client::where('email', $stripeInvoice->customer_email)->first();
+        }
+
+        if (! $client) {
+            Log::warning('InvoiceService: no client found for Stripe invoice', [
+                'stripe_invoice_id' => $stripeInvoice->id,
+                'customer'          => $stripeInvoice->customer ?? null,
+            ]);
+
+            throw new \RuntimeException('Client not found for Stripe invoice: ' . $stripeInvoice->id);
+        }
+
+        $subscription = null;
+        if (! empty($stripeInvoice->subscription)) {
+            $subscription = \App\Models\Subscription::where('stripe_subscription_id', $stripeInvoice->subscription)->first();
+        }
+
+        $issuedAt = isset($stripeInvoice->created)
+            ? \Carbon\Carbon::createFromTimestamp((int) $stripeInvoice->created)
+            : now();
+
+        $periodStart = isset($stripeInvoice->period_start)
+            ? \Carbon\Carbon::createFromTimestamp((int) $stripeInvoice->period_start)->toDateString()
+            : $issuedAt->copy()->startOfMonth()->toDateString();
+
+        $periodEnd = isset($stripeInvoice->period_end)
+            ? \Carbon\Carbon::createFromTimestamp((int) $stripeInvoice->period_end)->toDateString()
+            : $issuedAt->copy()->endOfMonth()->toDateString();
+
+        $amountCents = (int) ($stripeInvoice->amount_paid ?? $stripeInvoice->total ?? 0);
+
+        $lineItems = [];
+        foreach ($stripeInvoice->lines->data ?? [] as $line) {
+            $lineItems[] = [
+                'description'  => $line->description ?? 'ReviveGuard subscription',
+                'amount_cents' => (int) ($line->amount ?? 0),
+            ];
+        }
+
+        if ($lineItems === []) {
+            $lineItems[] = [
+                'description'  => 'ReviveGuard subscription',
+                'amount_cents' => $amountCents,
+            ];
+        }
+
+        return Invoice::create([
+            'tenant_id'          => $tenantId,
+            'client_id'          => $client->id,
+            'subscription_id'    => $subscription?->id,
+            'invoice_number'     => $this->generateInvoiceNumber($tenantId),
+            'period_start'       => $periodStart,
+            'period_end'         => $periodEnd,
+            'issued_at'          => $issuedAt->toDateString(),
+            'subtotal_cents'     => $amountCents,
+            'tax_cents'          => 0,
+            'total_cents'        => $amountCents,
+            'currency'           => strtoupper($stripeInvoice->currency ?? 'USD'),
+            'status'             => 'paid',
+            'stripe_invoice_id'  => $stripeInvoice->id,
+            'line_items'         => $lineItems,
+        ]);
+    }
+
+    /**
+     * @deprecated Legacy Whop integration — retained for historical records only.
      */
     public function createFromWhopCharge(array $chargeData): Invoice
     {

@@ -64,7 +64,7 @@ class AcceptInviteController extends Controller
 
         // Create site record now if the invite included a site URL.
         // Agent token is generated here so the client can install the plugin immediately.
-        // Uptime Kuma monitor is created when the first heartbeat arrives (or on Whop webhook).
+        // Uptime Kuma monitor is created when the first heartbeat arrives (or on Stripe webhook).
         if ($invite->site_url) {
             $rawToken = bin2hex(random_bytes(32));
             Site::create([

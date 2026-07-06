@@ -100,48 +100,81 @@
 
     {{-- ── Plan tab ─────────────────────────────────────────────────────── --}}
     @if ($activeTab === 'plan')
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="text-base font-semibold text-gray-900 mb-4">Your Plan</h2>
-
-        @if ($plan)
-            <div class="flex items-start justify-between">
-                <div>
-                    <p class="text-lg font-semibold text-gray-900">{{ $plan->name }}</p>
-                    @if ($plan->price_monthly)
-                        <p class="text-sm text-gray-500 mt-0.5">
-                            ${{ number_format($plan->price_monthly, 0) }} / month
-                        </p>
-                    @endif
-                    @if ($sub?->whop_status)
-                        <span class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs font-semibold
-                            {{ $sub->whop_status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
-                            <span class="w-1.5 h-1.5 rounded-full {{ $sub->whop_status === 'active' ? 'bg-green-500' : 'bg-yellow-500' }}"></span>
-                            {{ ucfirst($sub->whop_status) }}
-                        </span>
-                    @endif
-                </div>
+    <div class="space-y-6">
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <h2 class="text-base font-semibold text-gray-900">Your subscriptions</h2>
+                @if ($client->stripeCustomerId())
+                    <button type="button" wire:click="openBillingPortal"
+                            class="px-4 py-2 text-sm font-semibold text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors"
+                            wire:loading.attr="disabled" wire:target="openBillingPortal">
+                        Manage billing
+                    </button>
+                @endif
             </div>
 
-            @if ($sub?->whop_valid_until)
-                <div class="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-500">
-                    <p>Next billing: <strong class="text-gray-800">{{ $sub->whop_valid_until->format('F j, Y') }}</strong></p>
+            @error('billing')
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ $message }}</div>
+            @enderror
+
+            @if ($siteSubscriptions->isEmpty())
+                <p class="text-sm text-gray-500">No active subscriptions yet. Add a site and choose a plan to get started.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+                                <th class="pb-2 pr-4">Site</th>
+                                <th class="pb-2 pr-4">Plan</th>
+                                <th class="pb-2 pr-4">Status</th>
+                                <th class="pb-2">Next billing</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach ($siteSubscriptions as $siteSub)
+                                <tr>
+                                    <td class="py-3 pr-4 text-gray-800">
+                                        {{ $siteSub->site?->client_label ?: ($siteSub->site?->name ?? '—') }}
+                                    </td>
+                                    <td class="py-3 pr-4 text-gray-600">{{ $siteSub->plan?->name ?? '—' }}</td>
+                                    <td class="py-3 pr-4">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
+                                            {{ $siteSub->isActive() ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
+                                            {{ $siteSub->billingStatusLabel() }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 text-gray-600">
+                                        {{ $siteSub->nextBillingDate()?->format('M j, Y') ?? '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             @endif
 
-            <div class="mt-5 pt-5 border-t border-gray-100">
-                <p class="text-xs text-gray-400">
-                    To change or cancel your plan, visit your
-                    <a href="https://whop.com" target="_blank" rel="noopener" class="text-emerald-700 hover:underline">Whop membership dashboard</a>.
-                </p>
-            </div>
-        @else
-            <p class="text-sm text-gray-500">No active plan found. Contact support if you believe this is an error.</p>
-        @endif
+            <p class="mt-5 pt-5 border-t border-gray-100 text-xs text-gray-400">
+                Update payment method, view receipts, or cancel a subscription in the Stripe billing portal.
+            </p>
+        </div>
     </div>
     @endif
 
     {{-- ── Billing & Invoices tab ───────────────────────────────────────── --}}
     @if ($activeTab === 'billing')
+    <div class="space-y-6">
+        @if ($client->stripeCustomerId())
+            <div class="bg-white rounded-2xl border border-gray-200 p-6">
+                <h2 class="text-base font-semibold text-gray-900 mb-2">Payment &amp; subscriptions</h2>
+                <p class="text-sm text-gray-500 mb-4">Update your card, download receipts, or manage subscriptions.</p>
+                <button type="button" wire:click="openBillingPortal"
+                        class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                        wire:loading.attr="disabled" wire:target="openBillingPortal">
+                    Open billing portal
+                </button>
+            </div>
+        @endif
+
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="text-base font-semibold text-gray-900 mb-4">Invoices</h2>
 
@@ -189,6 +222,7 @@
                 </table>
             </div>
         @endif
+    </div>
     </div>
     @endif
 </div>

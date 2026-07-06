@@ -51,7 +51,7 @@ class WelcomeWizard extends Component
             'onboarding_completed_at' => now(),
         ]);
 
-        $this->redirect(route('portal.sites', ['open' => 1]), navigate: true);
+        $this->redirect(route('portal.sites.add'), navigate: true);
     }
 
     public function render(): \Illuminate\View\View

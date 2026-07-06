@@ -18,6 +18,8 @@
 | 06 | `06_AGENT_PLUGIN_SPEC.md` | WordPress plugin + HTML site agent full spec |
 | 07 | `07_CLIENT_PORTAL_SPEC.md` | Portal screens, UX flows, what client sees |
 | 08 | `08_DEV_ROADMAP.md` | Phase-by-phase build plan with time estimates |
+| 09 | `09_DEV_EXECUTION_PLAN.md` | Architect execution plan + risks |
+| 10 | `10_PORTAL_UX_MASTER_PLAN.md` | **Portal UX source of truth** — table layout, flows, sprints B/C2/C3 |
 
 ---
 

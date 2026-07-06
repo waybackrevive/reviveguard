@@ -46,15 +46,19 @@ return [
         'from'    => env('MAIL_FROM_ADDRESS', 'notifications@reviveguard.com'),
     ],
 
-    'whop' => [
-        'sandbox'         => env('WHOP_SANDBOX', false),
-        'webhook_secret'  => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_WEBHOOK_SECRET', '') : env('WHOP_WEBHOOK_SECRET', ''),
-        'api_key'         => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_API_KEY', '') : env('WHOP_API_KEY', ''),
-        'api_base'        => env('WHOP_SANDBOX', false) ? 'https://sandbox-api.whop.com/api/v1' : 'https://api.whop.com/api/v2',
-        'plan_monitor_id' => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_PLAN_MONITOR_ID', '') : env('WHOP_PLAN_MONITOR_ID', ''),
-        'plan_guard_id'   => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_PLAN_GUARD_ID', '') : env('WHOP_PLAN_GUARD_ID', ''),
-        'plan_shield_id'  => env('WHOP_SANDBOX', false) ? env('WHOP_SANDBOX_PLAN_SHIELD_ID', '') : env('WHOP_PLAN_SHIELD_ID', ''),
-        'checkout_base'   => env('WHOP_SANDBOX', false) ? 'https://sandbox.whop.com/checkout' : env('WHOP_CHECKOUT_BASE', 'https://whop.com/checkout'),
+    'stripe' => [
+        'test_mode'          => env('STRIPE_TEST_MODE', false),
+        'key'                => env('STRIPE_KEY', ''),
+        'secret'             => env('STRIPE_SECRET', ''),
+        'webhook_secret'     => env('STRIPE_WEBHOOK_SECRET', ''),
+        'test_key'           => env('STRIPE_TEST_KEY', ''),
+        'test_secret'        => env('STRIPE_TEST_SECRET', ''),
+        'test_webhook_secret'=> env('STRIPE_TEST_WEBHOOK_SECRET', ''),
+    ],
+
+    'reviveguard' => [
+        'plugin_download_url' => env('REVIVEGUARD_PLUGIN_DOWNLOAD_URL', ''),
+        'api_url'             => env('REVIVEGUARD_API_URL', 'https://app.reviveguard.com'),
     ],
 
     'backblaze' => [

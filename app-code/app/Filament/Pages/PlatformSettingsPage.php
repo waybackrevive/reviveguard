@@ -42,83 +42,68 @@ class PlatformSettingsPage extends Page
             ->schema([
                 Forms\Components\Tabs::make('settings_tabs')
                     ->tabs([
-                        // ── Billing (Whop) ─────────────────────────────────
-                        Forms\Components\Tabs\Tab::make('Billing (Whop)')
+                        // ── Billing (Stripe) ───────────────────────────────
+                        Forms\Components\Tabs\Tab::make('Billing (Stripe)')
                             ->icon('heroicon-o-credit-card')
                             ->schema([
-                                Forms\Components\Toggle::make('whop_sandbox')
-                                    ->label('Sandbox / Test Mode')
-                                    ->helperText('When ON, all Whop calls go to sandbox.whop.com and use sandbox credentials. Turn OFF on production.')
-                                    ->reactive()
+                                Forms\Components\Toggle::make('stripe_test_mode')
+                                    ->label('Stripe Test Mode')
+                                    ->helperText('When ON, checkouts use test API keys and test price IDs. Safe for testing on production — no real charges.')
                                     ->columnSpanFull(),
 
-                                Forms\Components\Section::make('Production Credentials')
-                                    ->description('Used when Sandbox Mode is OFF.')
+                                Forms\Components\Section::make('Live credentials')
+                                    ->description('Used when Test Mode is OFF.')
                                     ->schema([
-                                        Forms\Components\TextInput::make('whop_api_key')
-                                            ->label('API Key')
-                                            ->password()
-                                            ->revealable()
-                                            ->placeholder('Leave blank to keep existing value')
-                                            ->helperText('From Whop dashboard → Developer → API keys'),
+                                        Forms\Components\TextInput::make('stripe_secret_key')
+                                            ->label('Live Secret Key')
+                                            ->password()->revealable()
+                                            ->placeholder('sk_live_… or leave blank to keep existing')
+                                            ->helperText('Falls back to STRIPE_SECRET in .env'),
 
-                                        Forms\Components\TextInput::make('whop_webhook_secret')
-                                            ->label('Webhook Secret')
-                                            ->password()
-                                            ->revealable()
-                                            ->placeholder('Leave blank to keep existing value'),
+                                        Forms\Components\TextInput::make('stripe_webhook_secret')
+                                            ->label('Live Webhook Secret')
+                                            ->password()->revealable()
+                                            ->placeholder('whsec_…'),
 
-                                        Forms\Components\TextInput::make('whop_plan_monitor_id')
-                                            ->label('Monitor Plan ID')
-                                            ->placeholder('plan_xxxxxxx'),
+                                        Forms\Components\TextInput::make('stripe_price_monitor_id')
+                                            ->label('Monitor price (live)')
+                                            ->placeholder('price_…'),
 
-                                        Forms\Components\TextInput::make('whop_plan_guard_id')
-                                            ->label('Guard Plan ID')
-                                            ->placeholder('plan_xxxxxxx'),
+                                        Forms\Components\TextInput::make('stripe_price_guard_id')
+                                            ->label('Guard price (live)')
+                                            ->placeholder('price_…'),
 
-                                        Forms\Components\TextInput::make('whop_plan_shield_id')
-                                            ->label('Shield Plan ID')
-                                            ->placeholder('plan_xxxxxxx'),
-
-                                        Forms\Components\TextInput::make('whop_checkout_base')
-                                            ->label('Checkout Base URL')
-                                            ->url()
-                                            ->default('https://whop.com/checkout')
-                                            ->placeholder('https://whop.com/checkout'),
+                                        Forms\Components\TextInput::make('stripe_price_shield_id')
+                                            ->label('Shield price (live)')
+                                            ->placeholder('price_…'),
                                     ])->columns(2),
 
-                                Forms\Components\Section::make('Sandbox Credentials')
-                                    ->description('Used when Sandbox Mode is ON.')
+                                Forms\Components\Section::make('Test credentials')
+                                    ->description('Used when Test Mode is ON. Create products in Stripe Dashboard → Test mode.')
                                     ->schema([
-                                        Forms\Components\TextInput::make('whop_sandbox_api_key')
-                                            ->label('Sandbox API Key')
-                                            ->password()
-                                            ->revealable()
-                                            ->placeholder('Leave blank to keep existing value'),
+                                        Forms\Components\TextInput::make('stripe_test_secret_key')
+                                            ->label('Test Secret Key')
+                                            ->password()->revealable()
+                                            ->placeholder('sk_test_…')
+                                            ->helperText('Falls back to STRIPE_TEST_SECRET in .env'),
 
-                                        Forms\Components\TextInput::make('whop_sandbox_webhook_secret')
-                                            ->label('Sandbox Webhook Secret')
-                                            ->password()
-                                            ->revealable()
-                                            ->placeholder('Leave blank to keep existing value'),
+                                        Forms\Components\TextInput::make('stripe_test_webhook_secret')
+                                            ->label('Test Webhook Secret')
+                                            ->password()->revealable()
+                                            ->placeholder('whsec_…')
+                                            ->helperText('Point test webhook to the same /api/v1/webhooks/stripe URL'),
 
-                                        Forms\Components\TextInput::make('whop_sandbox_plan_monitor_id')
-                                            ->label('Sandbox Monitor Plan ID')
-                                            ->placeholder('plan_xxxxxxx'),
+                                        Forms\Components\TextInput::make('stripe_test_price_monitor_id')
+                                            ->label('Monitor price (test)')
+                                            ->placeholder('price_…'),
 
-                                        Forms\Components\TextInput::make('whop_sandbox_plan_guard_id')
-                                            ->label('Sandbox Guard Plan ID')
-                                            ->placeholder('plan_xxxxxxx'),
+                                        Forms\Components\TextInput::make('stripe_test_price_guard_id')
+                                            ->label('Guard price (test)')
+                                            ->placeholder('price_…'),
 
-                                        Forms\Components\TextInput::make('whop_sandbox_plan_shield_id')
-                                            ->label('Sandbox Shield Plan ID')
-                                            ->placeholder('plan_xxxxxxx'),
-
-                                        Forms\Components\TextInput::make('whop_sandbox_checkout_base')
-                                            ->label('Sandbox Checkout Base URL')
-                                            ->url()
-                                            ->default('https://sandbox.whop.com/checkout')
-                                            ->placeholder('https://sandbox.whop.com/checkout'),
+                                        Forms\Components\TextInput::make('stripe_test_price_shield_id')
+                                            ->label('Shield price (test)')
+                                            ->placeholder('price_…'),
                                     ])->columns(2),
                             ]),
 
@@ -227,22 +212,20 @@ class PlatformSettingsPage extends Page
     {
         $data = $this->form->getState();
 
-        // ── Whop ──────────────────────────────────────────────────────────────
-        PlatformSetting::setBool('whop_sandbox', (bool) ($data['whop_sandbox'] ?? false));
+        // ── Stripe ────────────────────────────────────────────────────────────
+        PlatformSetting::setBool('stripe_test_mode', (bool) ($data['stripe_test_mode'] ?? false));
 
-        $this->saveIfFilled('whop_api_key',                   $data['whop_api_key'] ?? null,                   encrypted: true);
-        $this->saveIfFilled('whop_webhook_secret',            $data['whop_webhook_secret'] ?? null,            encrypted: true);
-        $this->saveIfFilled('whop_sandbox_api_key',           $data['whop_sandbox_api_key'] ?? null,           encrypted: true);
-        $this->saveIfFilled('whop_sandbox_webhook_secret',    $data['whop_sandbox_webhook_secret'] ?? null,    encrypted: true);
+        $this->saveIfFilled('stripe_secret_key',            $data['stripe_secret_key'] ?? null,            encrypted: true);
+        $this->saveIfFilled('stripe_webhook_secret',        $data['stripe_webhook_secret'] ?? null,        encrypted: true);
+        $this->saveIfFilled('stripe_test_secret_key',       $data['stripe_test_secret_key'] ?? null,       encrypted: true);
+        $this->saveIfFilled('stripe_test_webhook_secret',   $data['stripe_test_webhook_secret'] ?? null,   encrypted: true);
 
-        PlatformSetting::set('whop_plan_monitor_id',          $data['whop_plan_monitor_id'] ?? null);
-        PlatformSetting::set('whop_plan_guard_id',            $data['whop_plan_guard_id'] ?? null);
-        PlatformSetting::set('whop_plan_shield_id',           $data['whop_plan_shield_id'] ?? null);
-        PlatformSetting::set('whop_checkout_base',            $data['whop_checkout_base'] ?? null);
-        PlatformSetting::set('whop_sandbox_plan_monitor_id',  $data['whop_sandbox_plan_monitor_id'] ?? null);
-        PlatformSetting::set('whop_sandbox_plan_guard_id',    $data['whop_sandbox_plan_guard_id'] ?? null);
-        PlatformSetting::set('whop_sandbox_plan_shield_id',   $data['whop_sandbox_plan_shield_id'] ?? null);
-        PlatformSetting::set('whop_sandbox_checkout_base',    $data['whop_sandbox_checkout_base'] ?? null);
+        $this->syncPlanStripePrice('monitor', $data['stripe_price_monitor_id'] ?? null, false);
+        $this->syncPlanStripePrice('guard',   $data['stripe_price_guard_id'] ?? null, false);
+        $this->syncPlanStripePrice('shield',  $data['stripe_price_shield_id'] ?? null, false);
+        $this->syncPlanStripePrice('monitor', $data['stripe_test_price_monitor_id'] ?? null, true);
+        $this->syncPlanStripePrice('guard',   $data['stripe_test_price_guard_id'] ?? null, true);
+        $this->syncPlanStripePrice('shield',  $data['stripe_test_price_shield_id'] ?? null, true);
 
         // ── Email ─────────────────────────────────────────────────────────────
         $this->saveIfFilled('resend_api_key', $data['resend_api_key'] ?? null, encrypted: true);
@@ -275,6 +258,16 @@ class PlatformSettingsPage extends Page
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private function syncPlanStripePrice(string $slug, ?string $priceId, bool $test): void
+    {
+        if ($priceId === null || $priceId === '') {
+            return;
+        }
+
+        $column = $test ? 'stripe_test_price_id' : 'stripe_price_id';
+        \App\Models\Plan::where('slug', $slug)->update([$column => $priceId]);
+    }
+
     /**
      * Only persist an encrypted field if the admin actually typed something.
      * Leaving the field blank keeps the existing DB value.
@@ -292,23 +285,19 @@ class PlatformSettingsPage extends Page
      */
     private function loadSettings(): array
     {
-        $sandbox = PlatformSetting::getBool('whop_sandbox', config('services.whop.sandbox', false));
-
         return [
-            // Whop
-            'whop_sandbox'                 => $sandbox,
-            'whop_api_key'                 => '',   // never pre-fill secrets
-            'whop_webhook_secret'          => '',
-            'whop_sandbox_api_key'         => '',
-            'whop_sandbox_webhook_secret'  => '',
-            'whop_plan_monitor_id'         => PlatformSetting::get('whop_plan_monitor_id',         config('services.whop.plan_monitor_id')),
-            'whop_plan_guard_id'           => PlatformSetting::get('whop_plan_guard_id',           config('services.whop.plan_guard_id')),
-            'whop_plan_shield_id'          => PlatformSetting::get('whop_plan_shield_id',          config('services.whop.plan_shield_id')),
-            'whop_checkout_base'           => PlatformSetting::get('whop_checkout_base',           config('services.whop.checkout_base', 'https://whop.com/checkout')),
-            'whop_sandbox_plan_monitor_id' => PlatformSetting::get('whop_sandbox_plan_monitor_id', config('services.whop.sandbox_plan_monitor_id')),
-            'whop_sandbox_plan_guard_id'   => PlatformSetting::get('whop_sandbox_plan_guard_id',   config('services.whop.sandbox_plan_guard_id')),
-            'whop_sandbox_plan_shield_id'  => PlatformSetting::get('whop_sandbox_plan_shield_id',  config('services.whop.sandbox_plan_shield_id')),
-            'whop_sandbox_checkout_base'   => PlatformSetting::get('whop_sandbox_checkout_base',   'https://sandbox.whop.com/checkout'),
+            // Stripe
+            'stripe_test_mode'               => PlatformSetting::getBool('stripe_test_mode', config('services.stripe.test_mode', false)),
+            'stripe_secret_key'              => '',
+            'stripe_webhook_secret'          => '',
+            'stripe_test_secret_key'         => '',
+            'stripe_test_webhook_secret'     => '',
+            'stripe_price_monitor_id'        => \App\Models\Plan::where('slug', 'monitor')->value('stripe_price_id'),
+            'stripe_price_guard_id'          => \App\Models\Plan::where('slug', 'guard')->value('stripe_price_id'),
+            'stripe_price_shield_id'         => \App\Models\Plan::where('slug', 'shield')->value('stripe_price_id'),
+            'stripe_test_price_monitor_id'   => \App\Models\Plan::where('slug', 'monitor')->value('stripe_test_price_id'),
+            'stripe_test_price_guard_id'     => \App\Models\Plan::where('slug', 'guard')->value('stripe_test_price_id'),
+            'stripe_test_price_shield_id'    => \App\Models\Plan::where('slug', 'shield')->value('stripe_test_price_id'),
 
             // Email
             'resend_api_key'   => '',
