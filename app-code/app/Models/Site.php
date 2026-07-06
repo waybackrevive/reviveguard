@@ -23,6 +23,7 @@ class Site extends Model
         'plan_id',
         'subscription_id',
         'name',
+        'client_label',
         'url',
         'type',
         'agent_token',
@@ -138,6 +139,52 @@ class Site extends Model
     public function isDown(): bool
     {
         return $this->status === SiteStatus::DOWN;
+    }
+
+    public function hasAgentConnected(): bool
+    {
+        return $this->last_seen_at !== null;
+    }
+
+    /**
+     * Client-facing status bucket — never "down" for sites still in setup.
+     *
+     * @return 'setup'|'protected'|'warning'|'issue'|'checkout'
+     */
+    public function portalStatusKey(): string
+    {
+        if ($this->status === SiteStatus::PENDING) {
+            return 'checkout';
+        }
+
+        if (! $this->hasAgentConnected()) {
+            return 'setup';
+        }
+
+        return match ($this->status) {
+            SiteStatus::DOWN      => 'issue',
+            SiteStatus::WARNING   => 'warning',
+            SiteStatus::ACTIVE    => 'protected',
+            SiteStatus::SUSPENDED => 'setup',
+            default               => 'setup',
+        };
+    }
+
+    public function portalStatusLabel(): string
+    {
+        return match ($this->portalStatusKey()) {
+            'checkout'  => 'Complete checkout',
+            'setup'     => 'Setup needed',
+            'protected' => 'Protected',
+            'warning'   => 'Needs attention',
+            'issue'     => "We're on it",
+            default     => 'Setup needed',
+        };
+    }
+
+    public function displayName(): string
+    {
+        return $this->client_label ?: $this->name;
     }
 
     public function sslExpiresInDays(): ?int

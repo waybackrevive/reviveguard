@@ -20,6 +20,7 @@ class Plan extends Model
         'name',
         'slug',
         'price_monthly',
+        'stripe_price_id',
         'whop_plan_id',
         'features',
         'is_active',

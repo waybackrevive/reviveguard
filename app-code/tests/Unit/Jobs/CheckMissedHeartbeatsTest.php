@@ -127,6 +127,23 @@ class CheckMissedHeartbeatsTest extends TestCase
         $this->assertNotEquals(SiteStatus::DOWN, $site->status);
     }
 
+    public function test_does_not_flag_site_that_never_connected(): void
+    {
+        $site = $this->makeSite([
+            'status'       => SiteStatus::ACTIVE,
+            'last_seen_at' => null,
+        ]);
+
+        $alertService = Mockery::mock(AlertService::class);
+        $alertService->shouldNotReceive('siteDown');
+
+        $job = new CheckMissedHeartbeats();
+        $job->handle($alertService);
+
+        $site->refresh();
+        $this->assertEquals(SiteStatus::ACTIVE, $site->status);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();

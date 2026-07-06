@@ -14,7 +14,11 @@ class RedirectIfClientAuthenticated
     public function handle(Request $request, Closure $next): mixed
     {
         if (Auth::guard('client')->check()) {
-            return redirect()->route('portal.dashboard');
+            $client = Auth::guard('client')->user();
+
+            return redirect()->route(
+                $client->hasCompletedOnboarding() ? 'portal.sites' : 'portal.welcome-setup'
+            );
         }
 
         return $next($request);

@@ -83,7 +83,7 @@ class AcceptInviteController extends Controller
         auth('client')->login($client);
         $request->session()->regenerate();
 
-        return redirect()->route('portal.dashboard')
+        return redirect()->route('portal.welcome-setup')
             ->with('success', 'Welcome to ReviveGuard! Your account is all set.');
     }
 }

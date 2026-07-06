@@ -63,7 +63,7 @@ class ActivateController extends Controller
         Auth::guard('client')->login($client, remember: true);
         $request->session()->regenerate();
 
-        return redirect()->route('portal.dashboard')
+        return redirect()->route('portal.welcome-setup')
             ->with('status', 'Your account is active. Welcome to ReviveGuard!');
     }
 

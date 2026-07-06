@@ -42,6 +42,15 @@ class MyWebsites extends Component
     {
         if (request()->query('open') === '1') {
             $this->showWizard = true;
+            return;
+        }
+
+        $client = Auth::guard('client')->user();
+        $siteCount = Site::where('client_id', $client->id)->count();
+
+        if ($siteCount === 1 && ! request()->has('list')) {
+            $site = Site::where('client_id', $client->id)->first();
+            $this->redirect(route('portal.sites.show', $site), navigate: true);
         }
     }
 
@@ -203,16 +212,31 @@ class MyWebsites extends Component
         if ($this->search) {
             $query->where(fn ($q) => $q
                 ->where('name', 'ilike', "%{$this->search}%")
+                ->orWhere('client_label', 'ilike', "%{$this->search}%")
                 ->orWhere('url',  'ilike', "%{$this->search}%"));
         }
 
         if ($this->filterStatus && $this->filterStatus !== 'all') {
-            $query->where('status', $this->filterStatus);
+            match ($this->filterStatus) {
+                'setup'     => $query->where(fn ($q) => $q->where('status', SiteStatus::PENDING)->orWhereNull('last_seen_at')),
+                'protected' => $query->where('status', SiteStatus::ACTIVE)->whereNotNull('last_seen_at'),
+                'issue'     => $query->where('status', SiteStatus::DOWN)->whereNotNull('last_seen_at'),
+                'warning'   => $query->where('status', SiteStatus::WARNING),
+                'checkout'  => $query->where('status', SiteStatus::PENDING),
+                default     => $query->where('status', $this->filterStatus),
+            };
         }
 
         $sites = $query->orderBy('created_at')->get();
 
-        return view('livewire.portal.my-websites', compact('sites', 'client'))
+        $summary = [
+            'total'     => $sites->count(),
+            'protected' => $sites->filter(fn ($s) => $s->portalStatusKey() === 'protected')->count(),
+            'setup'     => $sites->filter(fn ($s) => in_array($s->portalStatusKey(), ['setup', 'checkout']))->count(),
+            'issues'    => $sites->filter(fn ($s) => in_array($s->portalStatusKey(), ['issue', 'warning']))->count(),
+        ];
+
+        return view('livewire.portal.my-websites', compact('sites', 'client', 'summary'))
             ->layout('portal.layouts.app');
     }
 }

@@ -9,11 +9,32 @@
 
     {{-- Page header --}}
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">My Websites</h1>
+        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Sites</h1>
         @if ($sites->isNotEmpty())
-            <p class="text-sm text-gray-500 mt-1">{{ $sites->count() }} {{ Str::plural('website', $sites->count()) }} connected</p>
+            <p class="text-sm text-gray-500 mt-1">{{ $summary['total'] }} {{ Str::plural('site', $summary['total']) }} in your workspace</p>
         @endif
     </div>
+
+    @if ($sites->isNotEmpty())
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="bg-white rounded-card border border-gray-200 px-4 py-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ $summary['total'] }}</p>
+        </div>
+        <div class="bg-white rounded-card border border-gray-200 px-4 py-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Protected</p>
+            <p class="text-2xl font-bold text-brand mt-1">{{ $summary['protected'] }}</p>
+        </div>
+        <div class="bg-white rounded-card border border-gray-200 px-4 py-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Setup needed</p>
+            <p class="text-2xl font-bold text-gray-600 mt-1">{{ $summary['setup'] }}</p>
+        </div>
+        <div class="bg-white rounded-card border {{ $summary['issues'] > 0 ? 'border-red-200 bg-red-50/30' : 'border-gray-200' }} px-4 py-4 shadow-sm">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Issues</p>
+            <p class="text-2xl font-bold {{ $summary['issues'] > 0 ? 'text-red-600' : 'text-gray-900' }} mt-1">{{ $summary['issues'] }}</p>
+        </div>
+    </div>
+    @endif
 
     {{-- Add Website Wizard --}}
     @if ($showWizard)
@@ -35,11 +56,12 @@
         {{-- Status filter --}}
         <select wire:model.live="filterStatus"
             class="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition text-gray-600">
-            <option value="">All Status</option>
-            <option value="active">Online</option>
-            <option value="down">Down</option>
-            <option value="warning">Warning</option>
-            <option value="pending">Pending</option>
+            <option value="">All status</option>
+            <option value="protected">Protected</option>
+            <option value="setup">Setup needed</option>
+            <option value="issue">We're on it</option>
+            <option value="warning">Needs attention</option>
+            <option value="checkout">Complete checkout</option>
         </select>
         {{-- Count --}}
         <span class="ml-auto text-sm text-gray-400 font-medium">{{ $sites->count() }} {{ Str::plural('site', $sites->count()) }}</span>
@@ -69,27 +91,21 @@
         <div class="space-y-3">
             @foreach ($sites as $site)
                 @php
-                    $statusVal  = $site->status->value;
-                    $isPending  = $statusVal === 'pending';
-                    $isDown     = $statusVal === 'down';
-                    $isWarning  = $statusVal === 'warning';
-                    $isActive   = $statusVal === 'active';
-                    $hasAgent   = ! is_null($site->agent_installed_at);
+                    $ps         = $site->portalStatusKey();
                     $sslDays    = $site->ssl_expires_at ? (int) now()->diffInDays($site->ssl_expires_at, false) : null;
                     $domDays    = $site->domain_expires_at ? (int) now()->diffInDays($site->domain_expires_at, false) : null;
                     $lastSeen   = $site->last_seen_at;
-                    $lastOld    = $lastSeen && $lastSeen->diffInHours(now()) > 24;
                 @endphp
 
-                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden
-                    {{ $isDown ? 'border-l-4 border-l-red-500' : ($isWarning ? 'border-l-4 border-l-amber-400' : ($isPending ? 'border-l-4 border-l-gray-300' : 'border-l-4 border-l-emerald-400')) }}">
+                <div class="bg-white rounded-card border border-gray-200 shadow-sm overflow-hidden
+                    {{ $ps === 'issue' ? 'border-l-4 border-l-red-500' : ($ps === 'warning' ? 'border-l-4 border-l-amber-400' : ($ps === 'protected' ? 'border-l-4 border-l-brand' : 'border-l-4 border-l-gray-300')) }}">
 
                     {{-- ── Main row ──────────────────────────────────────────────── --}}
                     <div class="px-6 pt-5 pb-4 flex items-start justify-between gap-4">
                         {{-- Left: site info --}}
                         <div class="min-w-0">
                             <div class="flex items-center gap-3 flex-wrap">
-                                <h3 class="text-base font-bold text-gray-900">{{ $site->name }}</h3>
+                                <h3 class="text-base font-bold text-gray-900">{{ $site->displayName() }}</h3>
                                 @if ($site->plan)
                                     <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-medium">
                                         {{ $site->plan->name }} · ${{ number_format($site->plan->price_monthly, 0) }}/mo
@@ -104,14 +120,14 @@
                         </div>
                         {{-- Right: status pill --}}
                         <span class="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold mt-0.5
-                            {{ $isDown ? 'bg-red-100 text-red-700' : ($isWarning ? 'bg-amber-100 text-amber-700' : ($isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')) }}">
-                            <span class="w-1.5 h-1.5 rounded-full {{ $isDown ? 'bg-red-500 animate-pulse' : ($isWarning ? 'bg-amber-500' : ($isActive ? 'bg-emerald-500' : 'bg-gray-400')) }}"></span>
-                            @if($isDown) Down @elseif($isWarning) Warning @elseif($isActive) Online @elseif($isPending) Pending @else Unknown @endif
+                            {{ $ps === 'issue' ? 'bg-red-100 text-red-700' : ($ps === 'warning' ? 'bg-amber-100 text-amber-700' : ($ps === 'protected' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600')) }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ $ps === 'issue' ? 'bg-red-500 animate-pulse' : ($ps === 'warning' ? 'bg-amber-500' : ($ps === 'protected' ? 'bg-emerald-500' : 'bg-gray-400')) }}"></span>
+                            {{ $site->portalStatusLabel() }}
                         </span>
                     </div>
 
                     {{-- ── Pending checkout banner ───────────────────────────────── --}}
-                    @if ($isPending)
+                    @if ($ps === 'checkout')
                         <div class="mx-6 mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                             <svg class="w-4 h-4 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
                             <p class="flex-1 text-sm text-amber-800"><strong>Awaiting payment.</strong> Complete checkout to activate monitoring.</p>
@@ -165,33 +181,31 @@
                             <div class="px-4 mt-3 sm:mt-0">
                                 <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1 mb-1">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    Last Heartbeat
+                                    Last seen
                                 </p>
                                 @if ($lastSeen)
-                                    <p class="text-sm font-bold {{ $lastOld ? 'text-red-600' : 'text-gray-900' }}">{{ $lastSeen->diffForHumans() }}</p>
-                                @elseif ($hasAgent)
-                                    <p class="text-sm font-semibold text-amber-600">Waiting for first heartbeat…</p>
+                                    <p class="text-sm font-bold text-gray-900">{{ $lastSeen->diffForHumans() }}</p>
                                 @else
-                                    <p class="text-sm text-gray-300">—</p>
+                                    <p class="text-sm text-gray-400">Not connected yet</p>
                                 @endif
                             </div>
                         </div>
 
                         {{-- ── Plugin not connected banner ───────────────────────── --}}
-                        @if (! $hasAgent)
-                            <div class="mx-6 mb-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs text-amber-700">
+                        @if ($ps === 'setup')
+                            <div class="mx-6 mb-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs text-amber-800">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                                <span>Plugin not connected — <a href="{{ route('portal.my-websites', ['open' => 1]) }}" class="font-semibold underline decoration-amber-400 hover:text-amber-900">view install guide</a> to start monitoring.</span>
+                                <span><strong>One step left:</strong> connect the ReviveGuard plugin — <a href="{{ route('portal.sites', ['open' => 1]) }}" class="font-semibold underline">view install guide</a></span>
                             </div>
                         @endif
 
                         {{-- ── Action row ────────────────────────────────────────── --}}
                         <div class="border-t border-gray-100 px-6 py-3 flex items-center gap-4">
-                            <a href="{{ route('portal.dashboard', ['site_id' => $site->id]) }}"
-                               class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 border border-emerald-200 bg-white hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors">
-                                View Dashboard
+                            <a href="{{ route('portal.sites.show', $site) }}"
+                               class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand border border-emerald-200 bg-white hover:bg-brand-light px-3 py-1.5 rounded-lg transition-colors">
+                                Open site
                             </a>
-                            <a href="{{ route('portal.events') }}" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Events</a>
+                            <a href="{{ route('portal.alerts') }}" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Alerts</a>
                             <a href="{{ route('portal.reports') }}" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Reports</a>
                             <button wire:click="openCredentials('{{ $site->id }}')" title="Access credentials"
                                 class="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-emerald-600 transition-colors border border-gray-200 hover:border-emerald-300 px-3 py-1.5 rounded-lg">

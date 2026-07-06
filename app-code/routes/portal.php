@@ -7,20 +7,17 @@ use App\Http\Controllers\Portal\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 // ── Post-payment confirmation (no auth required) ──────────────────────────────
-// Whop redirects here after successful checkout. Just a "check your email" page.
 Route::get('/welcome', [AuthController::class, 'welcome'])->name('portal.welcome');
 
 // ── Account activation (magic link, no auth required) ────────────────────────
-// Token is validated inside the controller (Hash::check against stored hash).
 Route::get('/activate/{client}',  [ActivateController::class, 'show'])->name('portal.activate');
 Route::post('/activate/{client}', [ActivateController::class, 'activate'])->name('portal.activate.submit');
 
-// ── Invite acceptance (new invite-first onboarding, no auth required) ─────────
-// Plain token from email URL; token is validated via SHA-256 lookup in InviteService.
+// ── Invite acceptance ─────────────────────────────────────────────────────────
 Route::get('/accept-invite',  [AcceptInviteController::class, 'show'])->name('portal.accept-invite');
 Route::post('/accept-invite', [AcceptInviteController::class, 'store'])->name('portal.accept-invite.submit');
 
-// ── Guest-only routes (redirect to dashboard if already logged in) ────────────
+// ── Guest-only routes ─────────────────────────────────────────────────────────
 Route::middleware('portal.guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('portal.login');
     Route::post('/login', [AuthController::class, 'login'])->name('portal.login.submit');
@@ -32,15 +29,27 @@ Route::middleware('portal.guest')->group(function () {
     Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('portal.password.update');
 });
 
-// ── Authenticated portal routes ───────────────────────────────────────────────
+// ── Authenticated — welcome setup (before onboarding gate) ───────────────────
 Route::middleware(['portal.auth', 'portal.timeout'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('portal.logout');
+    Route::get('/welcome-setup', \App\Livewire\Portal\WelcomeWizard::class)->name('portal.welcome-setup');
+});
 
-    Route::get('/dashboard',    \App\Livewire\Portal\Dashboard::class)->name('portal.dashboard');
-    Route::get('/my-websites',  \App\Livewire\Portal\MyWebsites::class)->name('portal.my-websites');
-    Route::get('/events',       \App\Livewire\Portal\Events::class)->name('portal.events');
-    Route::get('/reports',      \App\Livewire\Portal\Reports::class)->name('portal.reports');
-    Route::get('/backups',      \App\Livewire\Portal\Backups::class)->name('portal.backups');
-    Route::get('/tickets',      \App\Livewire\Portal\Tickets::class)->name('portal.tickets');
-    Route::get('/account',      \App\Livewire\Portal\Account::class)->name('portal.account');
+// ── Authenticated portal (requires welcome setup complete) ───────────────────
+Route::middleware(['portal.auth', 'portal.timeout', 'portal.onboarded'])->group(function () {
+    Route::redirect('/dashboard', '/portal/sites')->name('portal.dashboard');
+    Route::redirect('/my-websites', '/portal/sites')->name('portal.my-websites');
+
+    Route::get('/sites', \App\Livewire\Portal\MyWebsites::class)->name('portal.sites');
+    Route::get('/sites/{site}', \App\Livewire\Portal\SiteShow::class)->name('portal.sites.show');
+
+    Route::get('/alerts', \App\Livewire\Portal\Events::class)->name('portal.alerts');
+    Route::redirect('/events', '/portal/alerts')->name('portal.events');
+
+    Route::get('/reports', \App\Livewire\Portal\Reports::class)->name('portal.reports');
+    Route::get('/tickets', \App\Livewire\Portal\Tickets::class)->name('portal.tickets');
+    Route::get('/billing', \App\Livewire\Portal\Account::class)->name('portal.billing');
+    Route::redirect('/account', '/portal/billing')->name('portal.account');
+
+    Route::redirect('/backups', '/portal/sites')->name('portal.backups');
 });

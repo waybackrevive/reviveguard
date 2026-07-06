@@ -49,7 +49,17 @@ class MigrationAndSeedTest extends TestCase
         $this->assertSame('monthly', $monitor->backup_frequency);
         $this->assertSame(30, $monitor->retention_days);
         $this->assertSame(0, $monitor->support_tickets_per_month);
-        $this->assertSame(19.00, (float) $monitor->price_monthly);
+        $this->assertSame(49.00, (float) $monitor->price_monthly);
+    }
+
+    /** @test */
+    public function guard_and_shield_plan_prices_match_marketing(): void
+    {
+        $this->seed(\Database\Seeders\TenantSeeder::class);
+        $this->seed(\Database\Seeders\PlanSeeder::class);
+
+        $this->assertSame(99.00, (float) Plan::where('slug', 'guard')->first()?->price_monthly);
+        $this->assertSame(179.00, (float) Plan::where('slug', 'shield')->first()?->price_monthly);
     }
 
     /** @test */

@@ -20,7 +20,7 @@ class Reports extends Component
 
         $report = Report::where('id', $reportId)
             ->where('client_id', $client->id)
-            ->where('status', 'ready')
+            ->where('status', 'completed')
             ->firstOrFail();
 
         /** @var BackblazeService $b2 */
@@ -35,7 +35,7 @@ class Reports extends Component
         $client = Auth::guard('client')->user();
 
         $reports = Report::where('client_id', $client->id)
-            ->where('status', 'ready')
+            ->where('status', 'completed')
             ->orderByDesc('created_at')
             ->get();
 

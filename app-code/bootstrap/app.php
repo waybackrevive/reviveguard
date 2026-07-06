@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.auth'          => \App\Http\Middleware\AuthenticateClient::class,
             'portal.guest'         => \App\Http\Middleware\RedirectIfClientAuthenticated::class,
             'portal.timeout'       => \App\Http\Middleware\SessionTimeout::class,
+            'portal.onboarded'     => \App\Http\Middleware\EnsurePortalOnboarding::class,
             'whop.webhook'         => \App\Http\Middleware\VerifyWhopWebhook::class,
         ]);
     })

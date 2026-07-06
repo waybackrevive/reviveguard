@@ -15,8 +15,8 @@ class PlanSeeder extends Seeder
             [
                 'name'          => 'Monitor',
                 'slug'          => 'monitor',
-                'price_monthly' => 19.00,
-                'whop_plan_id'  => env('WHOP_PLAN_MONITOR_ID'),
+                'price_monthly' => 49.00,
+                'stripe_price_id' => env('STRIPE_PRICE_MONITOR_ID'),
                 'features'      => [
                     'uptime_monitoring'           => true,
                     'ssl_monitoring'              => true,
@@ -33,8 +33,8 @@ class PlanSeeder extends Seeder
             [
                 'name'          => 'Guard',
                 'slug'          => 'guard',
-                'price_monthly' => 49.00,
-                'whop_plan_id'  => env('WHOP_PLAN_GUARD_ID'),
+                'price_monthly' => 99.00,
+                'stripe_price_id' => env('STRIPE_PRICE_GUARD_ID'),
                 'features'      => [
                     'uptime_monitoring'           => true,
                     'ssl_monitoring'              => true,
@@ -51,8 +51,8 @@ class PlanSeeder extends Seeder
             [
                 'name'          => 'Shield',
                 'slug'          => 'shield',
-                'price_monthly' => 99.00,
-                'whop_plan_id'  => env('WHOP_PLAN_SHIELD_ID'),
+                'price_monthly' => 179.00,
+                'stripe_price_id' => env('STRIPE_PRICE_SHIELD_ID'),
                 'features'      => [
                     'uptime_monitoring'           => true,
                     'ssl_monitoring'              => true,

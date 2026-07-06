@@ -142,6 +142,74 @@ Homepage: "Request Site Evaluation" (only public entry point)
 
 ---
 
+### Path C — Agencies & Freelancers (Phase 2 GTM)
+
+**Who:** SEO agencies, maintenance freelancers, and small dev shops managing multiple client WordPress sites.
+
+**How this differs from Path B:** You evaluate the **agency once** (trust + portfolio sample), not every site manually. Individual sites get **automated scan only**; human review triggers only on risk flags.
+
+**Why later, not first:** Alumni prove operations and revenue. Agencies need volume UX and per-site billing — same product, different front door.
+
+---
+
+## 3b. Onboarding Philosophy — Why We Evaluate (and WP Umbrella Doesn't)
+
+**WP Umbrella** sells a self-serve tool. The agency owns the risk. If a site breaks, that's on them. No evaluation needed — they sign up and add sites.
+
+**ReviveGuard** sells **done-for-you outcomes**. You promise peace of mind. That means you only accept sites you can actually protect — evaluation is not bureaucracy, it is **liability control**.
+
+### The Three-Speed Model (your focused business model)
+
+| Path | Trust level | Evaluation depth | Time to onboard |
+|------|-------------|------------------|-----------------|
+| **A — Alumni** | High (we restored their site) | Automated scan only; admin may pre-set plan | Same day |
+| **B — New inbound** | Unknown | Full evaluation (auto scan + human review + optional healthcheck plugin) | 2–5 days |
+| **C — Agency** | Medium (vet the partner once) | Agency application + auto scan per site; human only on flags | 1–2 days after approval |
+
+**This is your moat.** Competitors either evaluate everyone (slow) or no one (risky). You stratify by trust.
+
+### Site Risk Matrix (drives plan recommendation and accept/decline)
+
+After automated scan (`ExternalScanService` + optional plugin report), each site lands in a tier:
+
+| Site profile | Examples | Minimum plan | Action |
+|--------------|----------|--------------|--------|
+| **Low** | Brochure WP, few plugins, no commerce | Monitor | Fast-track proposal |
+| **Standard** | Business WP, contact forms, 10–30 plugins | Guard | Default recommendation |
+| **High** | WooCommerce, memberships, bookings, LMS | Shield | Proposal must include Shield; explain why |
+| **Critical / unsupported** | Custom app on WP, multisite network, abandoned code, illegal content signals | — | Decline politely or refer out |
+
+**Revenue sites get more care, not less scrutiny.** A WooCommerce store on Monitor is a business risk for you — the evaluation flow should **require Shield** and document that in the proposal email.
+
+### Decision rules (admin uses these in Filament)
+
+1. **Approve + propose** — site fits our stack, plan matches risk tier
+2. **Approve + Shield required** — revenue/complexity site; client must accept higher tier or we decline
+3. **Waitlist** — monthly cap (26) reached; capture email, auto-notify when slot opens
+4. **Decline** — unsupported stack, reputation risk, or we cannot guarantee outcomes; send helpful note
+
+### What alumni skip (and what they don't)
+
+Alumni skip **human evaluation queue** because trust and stack knowledge already exist from WaybackRevive.
+
+They do **not** skip:
+- Plugin installation (agent must connect)
+- Plan selection and Stripe payment
+- Automated scan (runs in background for admin visibility)
+
+If an alumni site scans as **high-risk** (e.g. they added WooCommerce since restore), admin gets a flag to upsell Shield before or after onboarding — not block them, but protect margin and SLA.
+
+### What agencies get (Phase 2)
+
+- One agency account, many sites, per-site billing
+- Automated scan on every new site; human review only when `risk_level` is `high` or `critical`
+- Agency agrees to terms: no unsupported site types without Shield or pre-approval
+- White-label reports optional later
+
+**One sentence:** Evaluate strangers, trust alumni, automate agencies.
+
+---
+
 ### Segment 3 — Freelancers / Agencies (Phase 2)
 
 Reseller accounts — white-label the portal under their own brand for their clients. Drives volume without proportional support cost. Not in Phase 1 scope.
@@ -150,46 +218,49 @@ Reseller accounts — white-label the portal under their own brand for their cli
 
 ## 4. Service Plans
 
-### Plan A — Monitor | $19/month
-**Who:** Static/HTML sites, or WordPress owners who just want basic assurance
+### Plan A — Monitor | $49/month (1 site included)
+**Who:** Portfolio sites, landing pages, or any live site that needs visibility without hands-on updates
 
 **Included:**
 - 24/7 uptime monitoring (checked every 5 minutes)
 - SSL certificate expiry alert (60/30/7 days notice)
 - Domain expiry alert (60/30/7 days notice)
-- Monthly backup (1 full backup, stored 30 days)
+- Weekly cloud backup (stored 30 days)
 - Monthly health report (email PDF)
+
+**Additional sites:** +$29/month per site
 
 **Not included:** WordPress updates, malware scanning, content edits
 
 ---
 
-### Plan B — Guard | $49/month
-**Who:** Active WordPress sites, small businesses
+### Plan B — Guard | $99/month (1 site included)
+**Who:** Active WordPress business sites generating leads or revenue
 
 **Included:**
 - Everything in Monitor
-- Weekly backups (stored 90 days)
-- WordPress core updates (auto, tested)
-- Plugin and theme updates (auto, with rollback protection)
-- Weekly malware scan (Wordfence CLI or similar)
-- Broken link check (monthly)
+- Daily backups (stored 90 days)
+- WordPress core updates (managed)
+- Plugin and theme updates (managed)
 - 1 support request/month (via portal)
+
+**Additional sites:** +$49/month per site
 
 **Not included:** Content edits, design changes, emergency malware cleanup (add-on)
 
 ---
 
-### Plan C — Shield | $99/month
-**Who:** Revenue-generating websites, established small businesses
+### Plan C — Shield | $179/month (1 site included)
+**Who:** Revenue-generating websites where downtime directly costs money
 
 **Included:**
 - Everything in Guard
 - Daily backups (stored 180 days)
 - Up to 1 hour of content edits/month (text, images, minor layout)
 - Priority support (response within 24 hours)
-- Quarterly SEO health snapshot report
 - Emergency restore SLA (within 4 hours of reported issue)
+
+**Additional sites:** +$59/month per site
 
 **Not included:** Full redesign, new feature development, SEO campaigns
 
@@ -198,12 +269,12 @@ Reseller accounts — white-label the portal under their own brand for their cli
 ### Add-ons (available to all plans)
 | Add-on | Price |
 |---|---|
-| Emergency malware cleanup | $79 flat |
-| Extra content edit hours | $35/hour |
-| Speed optimization audit | $49 one-time |
-| SSL installation | $29 one-time |
-| Extra backup storage (per 10GB) | $5/month |
-| Emergency restore (for Monitor clients) | $49/incident |
+| Emergency malware cleanup | $149 flat |
+| Extra content edit hours | $65/hour |
+| Speed optimization audit | $99 one-time |
+| SSL installation | $49 one-time |
+| Extra backup storage (per 10GB) | $9/month |
+| Emergency restore (for Monitor clients) | $99/incident |
 
 ---
 
@@ -212,10 +283,10 @@ Reseller accounts — white-label the portal under their own brand for their cli
 ### Phase 1 Target: 10 clients
 
 Conservative plan mix assumption:
-- 4× Monitor ($19) = $76/mo
-- 4× Guard ($49) = $196/mo
-- 2× Shield ($99) = $198/mo
-- **Total: $470 MRR**
+- 4× Monitor ($49) = $196/mo
+- 4× Guard ($99) = $396/mo
+- 2× Shield ($179) = $358/mo
+- **Total: $950 MRR**
 
 Infrastructure cost at this scale: ~$25/mo (VPS + Backblaze)
 Net margin: ~95%
@@ -361,7 +432,7 @@ The biggest risk in maintenance SaaS is clients cancelling because they "don't s
 
 | Metric | Target |
 |---|---|
-| MRR | $470 (10 clients) |
+| MRR | $950 (10 clients) |
 | Churn rate | < 5%/month |
 | Avg response time to support ticket | < 24 hours |
 | Backup success rate | > 99% |

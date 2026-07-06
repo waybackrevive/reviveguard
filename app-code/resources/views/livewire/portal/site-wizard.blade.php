@@ -33,6 +33,14 @@
         <p class="text-sm text-gray-500 mb-5">Tell us about your site and how we can access it.</p>
 
         <div class="space-y-4">
+            {{-- Client label (optional — for agencies managing client sites) --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Client or site label <span class="text-gray-400 font-normal">(optional)</span></label>
+                <input type="text" wire:model="clientLabel" placeholder="e.g. Joe's Bakery"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p class="text-xs text-gray-400 mt-1">Helps you identify this site if you manage many clients.</p>
+            </div>
+
             {{-- Company name --}}
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Company name</label>

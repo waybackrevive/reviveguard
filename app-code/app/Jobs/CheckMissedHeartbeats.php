@@ -19,14 +19,14 @@ class CheckMissedHeartbeats implements ShouldQueue
     {
         $cutoff = now()->subMinutes(self::MISSED_THRESHOLD_MINUTES);
 
-        // Find active sites that haven't checked in
+        // Only flag sites that previously connected (last_seen_at set) but missed the window.
+        // Sites still in setup (never heartbeated) stay pending — never show as "down" to clients.
         $missedSites = Site::where('is_active', true)
             ->where('status', '!=', SiteStatus::DOWN->value)
             ->where('status', '!=', SiteStatus::SUSPENDED->value)
-            ->where(function ($query) use ($cutoff) {
-                $query->whereNull('last_seen_at')
-                    ->orWhere('last_seen_at', '<', $cutoff);
-            })
+            ->where('status', '!=', SiteStatus::PENDING->value)
+            ->whereNotNull('last_seen_at')
+            ->where('last_seen_at', '<', $cutoff)
             ->get();
 
         foreach ($missedSites as $site) {

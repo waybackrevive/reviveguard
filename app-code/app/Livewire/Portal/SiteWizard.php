@@ -22,6 +22,7 @@ class SiteWizard extends Component
     public int $step = 1;
 
     // ── Step 1 ────────────────────────────────────────────────────────────────
+    public string $clientLabel   = '';
     public string $companyName   = '';
     public string $siteUrl       = '';
     public string $accessMethod  = 'authorize'; // 'authorize' | 'manual'
@@ -60,6 +61,7 @@ class SiteWizard extends Component
     public function goToStep2(): void
     {
         $rules = [
+            'clientLabel' => ['nullable', 'string', 'max:150'],
             'companyName' => ['nullable', 'string', 'max:255'],
             'siteUrl'     => ['required', 'url', 'max:500'],
         ];
@@ -134,6 +136,7 @@ class SiteWizard extends Component
             [
                 'tenant_id'         => $client->tenant_id,
                 'name'              => $this->companyName ?: (parse_url($this->siteUrl, PHP_URL_HOST) ?: $this->siteUrl),
+                'client_label'      => $this->clientLabel ?: null,
                 'status'            => SiteStatus::PENDING,
                 'plan_id'           => $plan['id'] ?? null,
                 'agent_token'       => hash('sha256', $rawToken),
