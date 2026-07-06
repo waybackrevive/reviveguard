@@ -133,13 +133,12 @@ jobs:
             rm -f /var/www/reviveguard/app-code/public/downloads/reviveguard-agent.zip
             cd /var/www/reviveguard/wp-plugin
             zip -qr ../app-code/public/downloads/reviveguard-agent.zip reviveguard-agent -x "*.git*"
+            test -f /var/www/reviveguard/app-code/public/downloads/reviveguard-agent.zip
 
             echo "=== [4/8] Fix storage permissions ==="
-            # Runtime zips in storage/app/temp are owned by www-data and break chmod -R
-            sudo rm -rf /var/www/reviveguard/app-code/storage/app/temp/*
-            sudo rm -f /var/www/reviveguard/app-code/storage/framework/cache/reviveguard-agent.zip
-            chmod -R 775 /var/www/reviveguard/app-code/storage
-            chmod -R 775 /var/www/reviveguard/app-code/bootstrap/cache
+            # chmod directories only — avoids failing on www-data-owned runtime files in storage/
+            find /var/www/reviveguard/app-code/storage -type d -exec chmod 775 {} \;
+            find /var/www/reviveguard/app-code/bootstrap/cache -type d -exec chmod 775 {} \;
 
             echo "=== [5/8] NPM build ==="
             npm ci
