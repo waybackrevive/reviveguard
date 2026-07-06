@@ -93,7 +93,7 @@ class SiteHealthService
 
     private function refreshUptime(Site $site): void
     {
-        if (! $site->url) {
+        if (! $site->url || $site->isMonitoringPaused()) {
             return;
         }
 

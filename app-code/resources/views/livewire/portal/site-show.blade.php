@@ -165,6 +165,20 @@
                 Monitoring starts after you complete checkout on the Plan tab.
             </div>
         @else
+            @if ($site->monitoring_paused)
+                <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="text-sm text-amber-900">
+                        <strong>Monitoring is on hold.</strong> Uptime checks and down alerts are paused
+                        @if ($site->monitoring_paused_at)
+                            since {{ $site->monitoring_paused_at->format('M j, Y') }}.
+                        @endif
+                    </div>
+                    <button wire:click="toggleMonitoringPause" class="text-sm font-semibold text-amber-900 bg-white border border-amber-300 px-4 py-2 rounded-lg hover:bg-amber-100">
+                        Resume monitoring
+                    </button>
+                </div>
+            @endif
+
             <div class="mb-5 rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-3 flex flex-wrap items-center gap-4">
                 <div class="flex items-center gap-2 text-sm text-gray-700">
                     <span class="font-semibold text-violet-900">Monitor</span>
@@ -189,6 +203,12 @@
                     <span class="text-xs text-emerald-700">Saved</span>
                 @endif
                 <p class="text-xs text-gray-500 w-full sm:w-auto sm:ml-auto">Higher frequency available on Shield. SSL &amp; domain checked daily.</p>
+                @if (! $site->monitoring_paused)
+                    <button wire:click="toggleMonitoringPause" wire:confirm="Pause uptime monitoring and down alerts for this site?"
+                        class="text-xs font-semibold text-gray-500 hover:text-amber-700 underline w-full sm:w-auto">
+                        Pause monitoring
+                    </button>
+                @endif
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">

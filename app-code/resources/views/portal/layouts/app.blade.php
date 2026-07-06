@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ config('app.name') }} — Client Portal</title>
+    <script>
+        try {
+            if (localStorage.getItem('rg-sidebar-collapsed') === '1') {
+                document.documentElement.classList.add('portal-sidebar-collapsed');
+            }
+        } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -21,9 +28,18 @@
     </script>
     <style>
         @media (min-width: 1024px) {
-            body.portal-sidebar-collapsed #portalSidebar { transform: translateX(-100%); }
-            body.portal-sidebar-collapsed #portalMain { padding-left: 0 !important; }
-            body.portal-sidebar-collapsed #sidebarExpandBtn { display: inline-flex; }
+            #portalSidebar { width: 15rem; }
+            #portalMain { padding-left: 15rem; }
+            html.portal-sidebar-collapsed #portalSidebar { width: 4.5rem; }
+            html.portal-sidebar-collapsed #portalMain { padding-left: 4.5rem; }
+            html.portal-sidebar-collapsed .sidebar-label,
+            html.portal-sidebar-collapsed .sidebar-brand-text,
+            html.portal-sidebar-collapsed .sidebar-footer-text { display: none; }
+            html.portal-sidebar-collapsed .sidebar-add-label { display: none; }
+            html.portal-sidebar-collapsed .sidebar-nav-link { justify-content: center; padding-left: 0.5rem; padding-right: 0.5rem; }
+            html.portal-sidebar-collapsed .sidebar-add-btn { padding-left: 0.5rem; padding-right: 0.5rem; }
+            html.portal-sidebar-collapsed .sidebar-header { justify-content: center; padding-left: 0.75rem; padding-right: 0.75rem; }
+            html.portal-sidebar-collapsed #sidebarCollapseBtn svg { transform: rotate(180deg); }
         }
     </style>
     @livewireStyles
@@ -32,24 +48,24 @@
 
 <div class="min-h-full flex flex-col lg:flex-row relative">
 
-    <aside id="portalSidebar" class="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200 transition-transform duration-200 z-30">
-        <div class="flex h-16 items-center justify-between px-5 border-b border-gray-200">
-            <span class="inline-flex items-center gap-2 text-lg font-bold tracking-tight">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white text-xs font-bold">RG</span>
-                <span>Revive<span class="text-brand">Guard</span></span>
+    <aside id="portalSidebar" class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 bg-white border-r border-gray-200 z-30 transition-[width] duration-200">
+        <div class="sidebar-header flex h-16 items-center justify-between px-5 border-b border-gray-200 shrink-0">
+            <span class="inline-flex items-center gap-2 text-lg font-bold tracking-tight min-w-0">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-white text-xs font-bold">RG</span>
+                <span class="sidebar-brand-text truncate">Revive<span class="text-brand">Guard</span></span>
             </span>
-            <button type="button" id="sidebarCollapseBtn" class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Collapse sidebar" aria-label="Collapse sidebar">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+            <button type="button" id="sidebarCollapseBtn" class="sidebar-collapse-btn p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+                <svg class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
             </button>
         </div>
 
-        <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+        <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto overflow-x-hidden">
             @php $current = request()->route()->getName(); @endphp
 
-            <a href="{{ route('portal.sites.add') }}"
-               class="flex items-center justify-center gap-2 w-full px-3 py-2.5 mb-4 rounded-card text-sm font-semibold bg-brand hover:bg-brand-dark text-white transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Add site
+            <a href="{{ route('portal.sites.add') }}" title="Add site"
+               class="sidebar-add-btn flex items-center justify-center gap-2 w-full px-3 py-2.5 mb-4 rounded-card text-sm font-semibold bg-brand hover:bg-brand-dark text-white transition-colors">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span class="sidebar-add-label">Add site</span>
             </a>
 
             @php
@@ -63,29 +79,30 @@
             @endphp
 
             @foreach ($nav as [$route, $label, $icon])
-                <a href="{{ route($route) }}"
-                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, $route) ? 'bg-brand-light text-brand' : 'text-gray-600 hover:bg-gray-100' }}">
+                <a href="{{ route($route) }}" title="{{ $label }}"
+                   class="sidebar-nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, $route) ? 'bg-brand-light text-brand' : 'text-gray-600 hover:bg-gray-100' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $icon }}"/></svg>
-                    {{ $label }}
+                    <span class="sidebar-label truncate">{{ $label }}</span>
                 </a>
             @endforeach
 
             <div class="pt-4 mt-4 border-t border-gray-200 space-y-1">
-                <a href="{{ route('portal.billing') }}"
-                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.billing') || str_starts_with($current, 'portal.account') ? 'bg-brand-light text-brand' : 'text-gray-600 hover:bg-gray-100' }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                    Billing
+                <a href="{{ route('portal.billing') }}" title="Billing"
+                   class="sidebar-nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ str_starts_with($current, 'portal.billing') || str_starts_with($current, 'portal.account') ? 'bg-brand-light text-brand' : 'text-gray-600 hover:bg-gray-100' }}">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    <span class="sidebar-label">Billing</span>
                 </a>
                 <form method="POST" action="{{ route('portal.logout') }}">
                     @csrf
-                    <button type="submit" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                        Sign out
+                    <button type="submit" title="Sign out"
+                        class="sidebar-nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span class="sidebar-label">Sign out</span>
                     </button>
                 </form>
             </div>
 
-            <p class="px-3 pt-4 text-[11px] text-gray-400">Operated by WaybackRevive LLC</p>
+            <p class="sidebar-footer-text px-3 pt-4 text-[11px] text-gray-400">Operated by WaybackRevive LLC</p>
         </nav>
     </aside>
 
@@ -110,20 +127,14 @@
         </nav>
     </div>
 
-    <main id="portalMain" class="flex-1 lg:pl-60 transition-all duration-200">
+    <main id="portalMain" class="flex-1 transition-[padding] duration-200">
         <div class="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
-            <button id="sidebarExpandBtn" type="button"
-                class="hidden mb-4 items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 bg-white px-3 py-1.5 rounded-lg shadow-sm"
-                title="Show sidebar">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-                Menu
-            </button>
             @php $client = auth('client')->user(); @endphp
-    @if (\App\Support\StripeConfig::isTestMode())
-        <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-            <strong>Stripe test mode.</strong> Payments are simulated — no real charges.
-        </div>
-    @endif
+            @if (\App\Support\StripeConfig::isTestMode())
+                <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+                    <strong>Stripe test mode.</strong> Payments are simulated — no real charges.
+                </div>
+            @endif
             @if ($client?->workspace_name)
                 <p class="hidden lg:block text-xs text-gray-400 mb-4">{{ $client->workspace_name }}</p>
             @endif
@@ -136,33 +147,30 @@
 <script>
 (function () {
     var STORAGE_KEY = 'rg-sidebar-collapsed';
+    var root = document.documentElement;
 
-    function setSidebarCollapsed(collapsed) {
-        document.body.classList.toggle('portal-sidebar-collapsed', collapsed);
+    function isCollapsed() {
+        return root.classList.contains('portal-sidebar-collapsed');
+    }
+
+    function setCollapsed(collapsed) {
+        root.classList.toggle('portal-sidebar-collapsed', collapsed);
         try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) {}
     }
 
-    try {
-        if (localStorage.getItem(STORAGE_KEY) === '1') {
-            document.body.classList.add('portal-sidebar-collapsed');
-        }
-    } catch (e) {}
+    var toggleBtn = document.getElementById('sidebarCollapseBtn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+            setCollapsed(!isCollapsed());
+        });
+    }
 
-    var collapseBtn = document.getElementById('sidebarCollapseBtn');
-    var expandBtn = document.getElementById('sidebarExpandBtn');
     var mobileBtn = document.getElementById('mobileMenuBtn');
     var mobileNav = document.getElementById('mobileNav');
-
-    if (collapseBtn) {
-        collapseBtn.addEventListener('click', function () { setSidebarCollapsed(true); });
-    }
-    if (expandBtn) {
-        expandBtn.addEventListener('click', function () { setSidebarCollapsed(false); });
-    }
     if (mobileBtn && mobileNav) {
         mobileBtn.addEventListener('click', function () {
-            var open = mobileNav.classList.toggle('hidden');
-            mobileBtn.setAttribute('aria-expanded', open ? 'false' : 'true');
+            var hidden = mobileNav.classList.toggle('hidden');
+            mobileBtn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
         });
     }
 })();

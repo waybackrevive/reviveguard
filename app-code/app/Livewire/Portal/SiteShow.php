@@ -173,6 +173,25 @@ class SiteShow extends Component
         $this->site->refresh();
     }
 
+    public function toggleMonitoringPause(): void
+    {
+        if (! $this->site->hasPaidSubscription()) {
+            return;
+        }
+
+        $paused = ! $this->site->monitoring_paused;
+
+        $this->site->update([
+            'monitoring_paused'    => $paused,
+            'monitoring_paused_at' => $paused ? now() : null,
+        ]);
+
+        $this->site->refresh();
+        session()->flash('success', $paused
+            ? 'Monitoring paused. Uptime checks and down alerts are on hold.'
+            : 'Monitoring resumed. Checks will run on your saved schedule.');
+    }
+
     public function openCredentials(): void
     {
         $existing = $this->site->hosting_credentials ?? [];

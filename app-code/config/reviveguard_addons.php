@@ -8,6 +8,8 @@ return [
         'price'       => 149,
         'price_label' => '$149',
         'billing'     => 'one-time',
+        'requires_site' => true,
+        'notes_label' => 'Describe the issue or any access details we should know.',
     ],
     [
         'slug'        => 'content-edits',
@@ -16,6 +18,10 @@ return [
         'price'       => 65,
         'price_label' => '$65/hr',
         'billing'     => 'hourly',
+        'requires_site' => true,
+        'show_quantity' => true,
+        'quantity_label' => 'Hours (30-min blocks)',
+        'notes_label' => 'What would you like changed?',
     ],
     [
         'slug'        => 'speed-audit',
@@ -24,6 +30,8 @@ return [
         'price'       => 99,
         'price_label' => '$99',
         'billing'     => 'one-time',
+        'requires_site' => true,
+        'notes_label' => 'Any specific pages or performance concerns?',
     ],
     [
         'slug'        => 'ssl-install',
@@ -32,6 +40,8 @@ return [
         'price'       => 49,
         'price_label' => '$49',
         'billing'     => 'one-time',
+        'requires_site' => true,
+        'notes_label' => 'Hosting access notes (if not already on file).',
     ],
     [
         'slug'        => 'backup-storage',
@@ -40,6 +50,10 @@ return [
         'price'       => 9,
         'price_label' => '$9/mo',
         'billing'     => 'monthly',
+        'requires_site' => true,
+        'show_quantity' => true,
+        'quantity_label' => 'Extra 10 GB blocks',
+        'notes_label' => 'Optional notes for our team.',
     ],
     [
         'slug'        => 'emergency-restore',
@@ -48,5 +62,7 @@ return [
         'price'       => 99,
         'price_label' => '$99',
         'billing'     => 'one-time',
+        'requires_site' => true,
+        'notes_label' => 'What happened and what date should we restore to?',
     ],
 ];

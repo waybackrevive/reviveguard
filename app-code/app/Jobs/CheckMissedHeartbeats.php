@@ -21,6 +21,7 @@ class CheckMissedHeartbeats implements ShouldQueue
         $cutoff = now()->subMinutes(self::MISSED_THRESHOLD_MINUTES);
 
         $missedSites = Site::protected()
+            ->monitoringActive()
             ->where('is_active', true)
             ->where('status', '!=', SiteStatus::DOWN->value)
             ->where('status', '!=', SiteStatus::SUSPENDED->value)

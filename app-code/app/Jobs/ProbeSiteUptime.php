@@ -20,6 +20,7 @@ final class ProbeSiteUptime implements ShouldQueue
     public function handle(SiteUptimeService $uptime): void
     {
         Site::protected()
+            ->monitoringActive()
             ->whereNotNull('url')
             ->chunk(30, function ($sites) use ($uptime): void {
                 foreach ($sites as $site) {

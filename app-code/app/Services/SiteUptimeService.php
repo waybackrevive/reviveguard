@@ -16,7 +16,7 @@ class SiteUptimeService
 {
     public function probe(Site $site): void
     {
-        if (! $site->url) {
+        if (! $site->url || $site->isMonitoringPaused()) {
             return;
         }
 

@@ -35,6 +35,8 @@ class Site extends Model
         'uptime_kuma_monitor_id',
         'monitor_interval_minutes',
         'monitor_region',
+        'monitoring_paused',
+        'monitoring_paused_at',
         'last_uptime_probe_at',
         'uptime_30d',
         'uptime_7d',
@@ -65,6 +67,8 @@ class Site extends Model
         'agent_installed_at' => 'datetime',
         'last_seen_at'       => 'datetime',
         'last_uptime_probe_at' => 'datetime',
+        'monitoring_paused_at' => 'datetime',
+        'monitoring_paused'    => 'boolean',
         'ssl_expires_at'     => 'date',
         'domain_expires_at'          => 'date',
         'whoisxml_last_checked_at'    => 'datetime',
@@ -258,5 +262,15 @@ class Site extends Model
     public function scopeProtected($query)
     {
         return $query->whereHas('subscription', fn ($q) => $q->whereIn('stripe_status', ['active', 'trialing']));
+    }
+
+    public function scopeMonitoringActive($query)
+    {
+        return $query->where('monitoring_paused', false);
+    }
+
+    public function isMonitoringPaused(): bool
+    {
+        return (bool) $this->monitoring_paused;
     }
 }
