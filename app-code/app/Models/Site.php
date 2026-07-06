@@ -122,9 +122,14 @@ class Site extends Model
         return $this->hasOne(PluginSnapshot::class)->ofMany(['created_at' => 'max']);
     }
 
+    /**
+     * Latest backup for this site.
+     *
+     * Avoids ofMany()/latestOfMany() — those generate MAX(id) which fails on PostgreSQL UUID columns.
+     */
     public function latestBackup(): HasOne
     {
-        return $this->hasOne(Backup::class)->ofMany(['created_at' => 'max']);
+        return $this->hasOne(Backup::class)->orderByDesc('created_at');
     }
 
     public function pendingCommand(): HasOne

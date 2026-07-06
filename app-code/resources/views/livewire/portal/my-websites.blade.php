@@ -80,7 +80,6 @@
                             @php
                                 $ps      = $site->portalStatusKey();
                                 $sslDays = $site->sslExpiresInDays();
-                                $backup  = $site->latestBackup;
                             @endphp
                             <tr class="group hover:bg-gray-50/60 cursor-pointer transition-colors"
                                 onclick="window.location='{{ route('portal.sites.show', $site) }}'">
@@ -106,7 +105,7 @@
                                     @endif
                                 </td>
                                 <td class="hidden lg:table-cell px-4 py-3.5 text-gray-700">
-                                    {{ $backup?->completed_at?->diffForHumans(short: true) ?? '—' }}
+                                    {{ '—' }}
                                 </td>
                                 <td class="px-4 py-3.5 text-gray-700">
                                     {{ $site->plan?->name ?? '—' }}
