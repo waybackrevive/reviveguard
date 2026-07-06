@@ -67,12 +67,12 @@ class UptimeKumaService
 
     /**
      * Get uptime percentage for a monitor over the given number of days.
-     * Returns 0.0 if Kuma is not configured or the request fails.
+     * Returns null when Kuma is not configured or the request fails.
      */
-    public function getUptimePercent(int $monitorId, int $days = 30): float
+    public function getUptimePercent(int $monitorId, int $days = 30): ?float
     {
         if (empty($this->baseUrl) || empty($this->apiKey)) {
-            return 0.0;
+            return null;
         }
 
         $hours = $days * 24;
@@ -83,18 +83,19 @@ class UptimeKumaService
                 ->get("{$this->baseUrl}/api/v1/monitor/{$monitorId}/uptime/{$hours}");
 
             if (! $response->successful()) {
-                return 0.0;
+                return null;
             }
 
             $data = $response->json();
-            // Kuma returns a ratio 0–1; multiply to get percentage
+
             return round((float) ($data['uptime'] ?? 0) * 100, 2);
         } catch (\Throwable $e) {
             Log::warning('UptimeKuma: getUptimePercent failed', [
                 'error'      => $e->getMessage(),
                 'monitor_id' => $monitorId,
             ]);
-            return 0.0;
+
+            return null;
         }
     }
 

@@ -1,4 +1,33 @@
 <div>
+    @if (session('checkout_welcome'))
+        @php $welcome = session('checkout_welcome'); @endphp
+        <div class="mb-6 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h2 class="text-lg font-semibold text-gray-900">Welcome aboard — you're protected</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        <strong>{{ $welcome['site'] }}</strong> is now on the <strong>{{ $welcome['plan'] }}</strong> plan.
+                        We're activating 24/7 uptime monitoring, SSL &amp; domain expiry alerts, and backup scheduling.
+                    </p>
+                    @if (! ($welcome['connected'] ?? false))
+                        <p class="mt-2 text-sm text-emerald-800">One more step: connect the WordPress plugin so we can manage updates and backups for you.</p>
+                    @endif
+                    @if ($welcome['partial'] ?? false)
+                        <p class="mt-2 text-xs text-amber-700">Your payment is confirmed. Health metrics may take a minute to appear while we finish setup.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @elseif (session('checkout_pending'))
+        <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+            <p class="font-semibold">Payment received</p>
+            <p class="mt-1">Your subscription is being activated. Refresh this page in a moment — if your site doesn't show as protected, contact support and we'll confirm right away.</p>
+        </div>
+    @endif
+
     @if (session('error'))
         <div class="mb-5 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
             <svg class="w-4 h-4 flex-shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -73,7 +102,8 @@
                             <th class="px-4 py-3">Status</th>
                             <th class="hidden md:table-cell px-4 py-3">Uptime</th>
                             <th class="hidden lg:table-cell px-4 py-3">SSL</th>
-                            <th class="hidden lg:table-cell px-4 py-3">Backup</th>
+                            <th class="hidden lg:table-cell px-4 py-3">Domain</th>
+                            <th class="hidden xl:table-cell px-4 py-3">Backup</th>
                             <th class="px-4 py-3">Plan</th>
                             <th class="px-4 py-3 w-28"></th>
                         </tr>
@@ -81,8 +111,10 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach ($sites as $site)
                             @php
-                                $ps      = $site->portalStatusKey();
-                                $sslDays = $site->sslExpiresInDays();
+                                $ps        = $site->portalStatusKey();
+                                $sslDays   = $site->sslExpiresInDays();
+                                $domDays   = $site->domainExpiresInDays();
+                                $syncing   = $site->healthMetricsSyncing();
                             @endphp
                             <tr class="group hover:bg-gray-50/60 cursor-pointer transition-colors"
                                 onclick="window.location='{{ route('portal.sites.show', $site) }}'">
@@ -98,17 +130,40 @@
                                     </span>
                                 </td>
                                 <td class="hidden md:table-cell px-4 py-3.5 text-gray-700">
-                                    {{ $site->uptime_30d !== null ? number_format((float) $site->uptime_30d, 1) . '%' : '—' }}
-                                </td>
-                                <td class="hidden lg:table-cell px-4 py-3.5 {{ $sslDays !== null && $sslDays <= 30 ? 'text-amber-600 font-medium' : 'text-gray-700' }}">
-                                    @if ($sslDays !== null)
-                                        {{ $sslDays < 0 ? 'Expired' : $sslDays . ' days' }}
+                                    @if ($syncing)
+                                        <span class="text-xs text-gray-400 italic">Syncing…</span>
+                                    @elseif ($site->uptime_30d !== null)
+                                        {{ number_format((float) $site->uptime_30d, 1) }}%
                                     @else
                                         —
                                     @endif
                                 </td>
-                                <td class="hidden lg:table-cell px-4 py-3.5 text-gray-700">
-                                    {{ '—' }}
+                                <td class="hidden lg:table-cell px-4 py-3.5 {{ $sslDays !== null && $sslDays <= 30 ? 'text-amber-600 font-medium' : 'text-gray-700' }}">
+                                    @if ($syncing)
+                                        <span class="text-xs text-gray-400 italic">Syncing…</span>
+                                    @elseif ($sslDays !== null)
+                                        {{ $sslDays < 0 ? 'Expired' : $sslDays . 'd' }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td class="hidden lg:table-cell px-4 py-3.5 {{ $domDays !== null && $domDays <= 60 ? 'text-amber-600 font-medium' : 'text-gray-700' }}">
+                                    @if ($syncing)
+                                        <span class="text-xs text-gray-400 italic">Syncing…</span>
+                                    @elseif ($domDays !== null)
+                                        {{ $domDays < 0 ? 'Expired' : $domDays . 'd' }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td class="hidden xl:table-cell px-4 py-3.5 text-gray-700">
+                                    @if ($site->latestBackup?->completed_at)
+                                        {{ $site->latestBackup->completed_at->diffForHumans() }}
+                                    @elseif ($site->hasPaidSubscription())
+                                        <span class="text-xs text-gray-400">Scheduled</span>
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3.5 text-gray-700">
                                     {{ $site->plan?->name ?? '—' }}
@@ -121,7 +176,7 @@
                                                 Pay →
                                             </button>
                                         @endif
-                                        @if ($site->status === \App\Enums\SiteStatus::PENDING)
+                                        @if (! $site->hasPaidSubscription())
                                             <button wire:click="deletePendingSite('{{ $site->id }}')"
                                                 wire:confirm="Remove this site? This cannot be undone."
                                                 class="text-xs font-medium text-gray-400 hover:text-red-600 px-1.5 py-1.5 rounded transition-colors"
@@ -129,7 +184,7 @@
                                                 Remove
                                             </button>
                                         @endif
-                                        @if ($ps !== 'checkout' && $site->status !== \App\Enums\SiteStatus::PENDING)
+                                        @if ($ps !== 'checkout' && $site->hasPaidSubscription())
                                             <span class="text-gray-300 group-hover:text-brand">→</span>
                                         @endif
                                     </div>

@@ -95,7 +95,8 @@ class MyWebsites extends Component
     {
         $client = Auth::guard('client')->user();
 
-        $query = Site::where('client_id', $client->id)->with(['plan', 'subscription']);
+        $query = Site::where('client_id', $client->id)
+            ->with(['plan', 'subscription', 'latestBackup']);
 
         if ($this->search) {
             $query->where(fn ($q) => $q

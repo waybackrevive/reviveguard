@@ -70,3 +70,28 @@ Artisan::command('stripe:validate-prices', function () {
 
     return 0;
 })->purpose('Validate Stripe price IDs for checkout (run on server after .env changes)');
+
+Artisan::command('sites:refresh-health {site?}', function (?string $siteId) {
+    $query = \App\Models\Site::protected()->whereNotNull('url');
+
+    if ($siteId) {
+        $query->where('id', $siteId);
+    }
+
+    $sites = $query->get();
+
+    if ($sites->isEmpty()) {
+        $this->warn('No protected sites with a URL found.');
+
+        return 1;
+    }
+
+    foreach ($sites as $site) {
+        \App\Jobs\RefreshSiteHealthJob::dispatchSync($site->id);
+        $this->line("Refreshed: {$site->displayName()}");
+    }
+
+    $this->info('Health refresh complete.');
+
+    return 0;
+})->purpose('Run SSL, domain, and uptime checks for protected sites');

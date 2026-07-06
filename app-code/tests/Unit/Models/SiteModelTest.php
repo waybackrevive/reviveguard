@@ -44,4 +44,12 @@ class SiteModelTest extends TestCase
         $site = new Site();
         $this->assertContains('agent_token', $site->getHidden());
     }
+
+    public function test_hostname_and_registrable_domain_from_url(): void
+    {
+        $site = new Site(['url' => 'https://www.example.com/path']);
+
+        $this->assertSame('www.example.com', $site->hostname());
+        $this->assertSame('example.com', $site->registrableDomain());
+    }
 }

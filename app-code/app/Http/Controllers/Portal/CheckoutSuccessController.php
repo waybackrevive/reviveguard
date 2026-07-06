@@ -13,7 +13,7 @@ use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
 /**
- * Stripe Checkout return URL — confirms payment and sends the client to their site.
+ * Stripe Checkout return URL — confirms payment and welcomes the client.
  */
 class CheckoutSuccessController extends Controller
 {
@@ -23,10 +23,11 @@ class CheckoutSuccessController extends Controller
 
         if (! $sessionId) {
             return redirect()->route('portal.sites')
-                ->with('error', 'Missing checkout session. If you completed payment, check Sites in a moment.');
+                ->with('error', 'We could not verify your checkout session. Open Billing or contact support if you were charged.');
         }
 
-        $client = $request->user('client');
+        $client  = $request->user('client');
+        $session = null;
 
         try {
             Stripe::setApiKey(StripeConfig::secretKey());
@@ -45,23 +46,44 @@ class CheckoutSuccessController extends Controller
                 'error'      => $e->getMessage(),
             ]);
 
-            return redirect()->route('portal.sites')
-                ->with('error', 'Payment received — we are still confirming it. Refresh Sites in a minute or contact support if this persists.');
+            try {
+                Stripe::setApiKey(StripeConfig::secretKey());
+                $session = Session::retrieve($sessionId);
+            } catch (\Throwable) {
+                $session = null;
+            }
+
+            return $this->redirectAfterPayment($client, $session, partial: true);
         }
 
-        $site = Site::with('plan')->find($session->metadata->site_id ?? null);
+        return $this->redirectAfterPayment($client, $session);
+    }
 
-        if ($site && $site->client_id === $client->id) {
+    private function redirectAfterPayment($client, ?object $session, bool $partial = false): RedirectResponse
+    {
+        $siteId = $session?->metadata?->site_id ?? null;
+        $site   = $siteId ? Site::with(['plan', 'subscription'])->find($siteId) : null;
+
+        if ($site && $site->client_id === $client->id && $site->hasPaidSubscription()) {
             $planName = $site->plan?->name ?? 'your plan';
-            $message  = $site->hasAgentConnected()
-                ? "Payment confirmed! {$site->displayName()} is now on {$planName} and connected."
-                : "Payment confirmed! {$planName} is active — finish connecting the plugin on the Connection tab.";
 
-            return redirect()->route('portal.sites.show', ['site' => $site, 'tab' => $site->hasAgentConnected() ? 'overview' : 'connection'])
-                ->with('success', $message);
+            return redirect()->route('portal.sites.show', [
+                'site' => $site,
+                'tab'  => $site->hasAgentConnected() ? 'overview' : 'connection',
+            ])->with('checkout_welcome', [
+                'site'      => $site->displayName(),
+                'plan'      => $planName,
+                'connected' => $site->hasAgentConnected(),
+                'partial'   => $partial,
+            ]);
+        }
+
+        if ($partial) {
+            return redirect()->route('portal.sites')
+                ->with('checkout_pending', true);
         }
 
         return redirect()->route('portal.sites')
-            ->with('success', 'Payment confirmed! Your site will appear as active shortly.');
+            ->with('success', 'Payment received. Your protection is being activated — refresh in a moment to see your site.');
     }
 }

@@ -22,7 +22,8 @@ final class UpdateUptimeStats implements ShouldQueue
 
     public function handle(UptimeKumaService $kumaService): void
     {
-        Site::whereNotNull('uptime_kuma_monitor_id')
+        Site::protected()
+            ->whereNotNull('uptime_kuma_monitor_id')
             ->where('status', '!=', SiteStatus::SUSPENDED->value)
             ->chunk(50, function ($sites) use ($kumaService): void {
                 foreach ($sites as $site) {
@@ -30,10 +31,19 @@ final class UpdateUptimeStats implements ShouldQueue
                         $uptime30 = $kumaService->getUptimePercent((int) $site->uptime_kuma_monitor_id, 30);
                         $uptime7  = $kumaService->getUptimePercent((int) $site->uptime_kuma_monitor_id, 7);
 
-                        $site->update([
-                            'uptime_30d' => $uptime30,
-                            'uptime_7d'  => $uptime7,
-                        ]);
+                        $updates = [];
+
+                        if ($uptime30 !== null) {
+                            $updates['uptime_30d'] = $uptime30;
+                        }
+
+                        if ($uptime7 !== null) {
+                            $updates['uptime_7d'] = $uptime7;
+                        }
+
+                        if ($updates !== []) {
+                            $site->update($updates);
+                        }
                     } catch (Throwable $e) {
                         Log::warning("UpdateUptimeStats: failed for site {$site->id}", [
                             'error' => $e->getMessage(),

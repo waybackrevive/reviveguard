@@ -1,4 +1,26 @@
 <div>
+    @if (session('checkout_welcome'))
+        @php $welcome = session('checkout_welcome'); @endphp
+        <div class="mb-6 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">You're all set</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        <strong>{{ $welcome['plan'] }}</strong> is active for this site. Uptime, SSL, and domain monitoring are being enabled now
+                        @if ($welcome['connected'] ?? false)
+                            — metrics will populate shortly.
+                        @else
+                            — connect the plugin on the Connection tab to unlock full care.
+                        @endif
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if (session('error'))
         <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
     @endif

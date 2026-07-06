@@ -7,7 +7,7 @@ use App\Enums\SiteStatus;
 use App\Models\Event;
 use App\Models\Site;
 use App\Services\NotificationService;
-use App\Services\WhoisXmlService;
+use App\Services\SslCertificateService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -15,9 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Runs daily — checks SSL certificate expiry for all active sites.
- * Fires alert events at 60/30/7 day thresholds (once per threshold per period).
- * Updates sites.ssl_expires_at, ssl_issuer, ssl_valid columns.
+ * Daily SSL certificate checks for protected (paid) sites.
  */
 final class CheckSslExpiry implements ShouldQueue
 {
@@ -25,18 +23,15 @@ final class CheckSslExpiry implements ShouldQueue
 
     public int $tries = 2;
 
-    private WhoisXmlService $whoisXml;
-
-    public function handle(WhoisXmlService $whoisXml): void
+    public function handle(SslCertificateService $ssl): void
     {
-        $this->whoisXml = $whoisXml;
-
-        Site::where('status', '!=', SiteStatus::SUSPENDED->value)
+        Site::protected()
+            ->where('status', '!=', SiteStatus::SUSPENDED->value)
             ->whereNotNull('url')
-            ->chunk(50, function ($sites): void {
+            ->chunk(50, function ($sites) use ($ssl): void {
                 foreach ($sites as $site) {
                     try {
-                        $this->checkSite($site);
+                        $this->checkSite($site, $ssl);
                     } catch (Throwable $e) {
                         Log::warning("SSL check failed for site {$site->id}: " . $e->getMessage());
                     }
@@ -44,15 +39,15 @@ final class CheckSslExpiry implements ShouldQueue
             });
     }
 
-    private function checkSite(Site $site): void
+    private function checkSite(Site $site, SslCertificateService $ssl): void
     {
-        $host = (string) parse_url($site->url, PHP_URL_HOST);
+        $host = $site->hostname();
 
         if (empty($host)) {
             return;
         }
 
-        $data = $this->whoisXml->ssl($host);
+        $data = $ssl->inspect($host);
 
         if (isset($data['error'])) {
             $site->update(['ssl_valid' => false]);
@@ -60,9 +55,10 @@ final class CheckSslExpiry implements ShouldQueue
                 $site,
                 'ssl_check_failed',
                 EventSeverity::WARNING,
-                "SSL check failed for {$site->domain}",
+                "SSL check failed for {$host}",
                 $data['error']
             );
+
             return;
         }
 
@@ -76,18 +72,16 @@ final class CheckSslExpiry implements ShouldQueue
             'ssl_valid'      => $data['valid'] ?? ($daysLeft > 0),
         ]);
 
-        // Alert at 60, 30, 7 days — only once per threshold crossing
         foreach ([60, 30, 7] as $threshold) {
             if ($daysLeft <= $threshold && $daysLeft > ($threshold - 1)) {
-                $this->dispatchSslAlert($site, $daysLeft, $threshold);
+                $this->dispatchSslAlert($site, $daysLeft, $threshold, $host);
                 break;
             }
         }
     }
 
-    private function dispatchSslAlert(Site $site, int $daysLeft, int $threshold): void
+    private function dispatchSslAlert(Site $site, int $daysLeft, int $threshold, string $host): void
     {
-        // Guard: don't re-fire if we already alerted for this threshold this period
         $alreadySent = Event::where('site_id', $site->id)
             ->where('type', 'ssl_expiry_warning')
             ->whereRaw("metadata->>'threshold' = ?", [(string) $threshold])
@@ -105,19 +99,16 @@ final class CheckSslExpiry implements ShouldQueue
             'ssl_expiry_warning',
             $severity,
             "SSL certificate expires in {$daysLeft} days",
-            "SSL certificate for {$site->domain} expires on {$site->ssl_expires_at}. " .
+            "SSL certificate for {$host} expires on {$site->ssl_expires_at}. " .
             'Renew now to prevent browsers showing a security warning.',
             ['days_left' => $daysLeft, 'threshold' => $threshold]
         );
 
-        // Email alert
         try {
             (new NotificationService())->sendSslExpiryWarning($site, $daysLeft);
         } catch (\Throwable $e) {
             Log::error('CheckSslExpiry: sendSslExpiryWarning failed', ['error' => $e->getMessage()]);
         }
-
-        Log::warning("SSL expiry alert: {$site->domain} expires in {$daysLeft} days (threshold={$threshold})");
     }
 
     /**

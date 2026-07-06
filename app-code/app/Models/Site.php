@@ -213,4 +213,36 @@ class Site extends Model
         }
         return now()->startOfDay()->diffInDays($this->domain_expires_at, false);
     }
+
+    public function hostname(): ?string
+    {
+        $host = parse_url((string) $this->url, PHP_URL_HOST);
+
+        return $host ? strtolower($host) : null;
+    }
+
+    /** Domain used for RDAP / registrar expiry (strips www.). */
+    public function registrableDomain(): ?string
+    {
+        $host = $this->hostname();
+
+        return $host ? preg_replace('/^www\./i', '', $host) : null;
+    }
+
+    /** Paid sites with no health metrics yet (first scan in progress). */
+    public function healthMetricsSyncing(): bool
+    {
+        if (! $this->hasPaidSubscription()) {
+            return false;
+        }
+
+        return $this->uptime_30d === null
+            && $this->ssl_expires_at === null
+            && $this->domain_expires_at === null;
+    }
+
+    public function scopeProtected($query)
+    {
+        return $query->whereHas('subscription', fn ($q) => $q->whereIn('stripe_status', ['active', 'trialing']));
+    }
 }
