@@ -21,7 +21,7 @@ class Addons extends Component
 
         $this->requestedSlug = $slug;
         session()->flash('addon_request', $addon);
-        $this->redirect(route('portal.tickets', ['addon' => $slug]), navigate: true);
+        $this->redirect(route('portal.tickets', ['addon' => $slug]));
     }
 
     public function render(): \Illuminate\View\View

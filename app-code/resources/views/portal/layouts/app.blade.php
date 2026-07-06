@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -27,25 +26,9 @@
             body.portal-sidebar-collapsed #sidebarExpandBtn { display: inline-flex; }
         }
     </style>
-    <script>
-        (function () {
-            try {
-                if (localStorage.getItem('rg-sidebar-collapsed') === '1') {
-                    document.body.classList.add('portal-sidebar-collapsed');
-                }
-            } catch (e) {}
-        })();
-    </script>
     @livewireStyles
 </head>
-<body class="h-full bg-gray-50 text-gray-900 font-sans antialiased" x-data="{ sidebarCollapsed: false }" x-init="
-    try { sidebarCollapsed = localStorage.getItem('rg-sidebar-collapsed') === '1'; } catch (e) {}
-    $watch('sidebarCollapsed', v => {
-        document.body.classList.toggle('portal-sidebar-collapsed', v);
-        try { localStorage.setItem('rg-sidebar-collapsed', v ? '1' : '0'); } catch (e) {}
-    });
-    if (sidebarCollapsed) document.body.classList.add('portal-sidebar-collapsed');
-">
+<body class="h-full bg-gray-50 text-gray-900 font-sans antialiased">
 
 <div class="min-h-full flex flex-col lg:flex-row relative">
 
@@ -55,7 +38,7 @@
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white text-xs font-bold">RG</span>
                 <span>Revive<span class="text-brand">Guard</span></span>
             </span>
-            <button type="button" @click="sidebarCollapsed = true" class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Collapse sidebar" aria-label="Collapse sidebar">
+            <button type="button" id="sidebarCollapseBtn" class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Collapse sidebar" aria-label="Collapse sidebar">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
             </button>
         </div>
@@ -107,17 +90,17 @@
     </aside>
 
     {{-- Mobile nav --}}
-    <div class="lg:hidden w-full" x-data="{ open: false }">
+    <div class="lg:hidden w-full">
         <div class="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-200">
             <span class="inline-flex items-center gap-2 font-bold text-sm">
                 <span class="h-7 w-7 rounded-lg bg-brand text-white text-[10px] flex items-center justify-center font-bold">RG</span>
                 Revive<span class="text-brand">Guard</span>
             </span>
-            <button @click="open = !open" type="button" class="p-2 rounded-lg hover:bg-gray-100" aria-label="Menu">
+            <button type="button" id="mobileMenuBtn" class="p-2 rounded-lg hover:bg-gray-100" aria-label="Menu" aria-expanded="false">
                 <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
         </div>
-        <nav x-show="open" class="bg-white border-b border-gray-200 py-2 z-50 shadow-lg">
+        <nav id="mobileNav" class="hidden bg-white border-b border-gray-200 py-2 z-50 shadow-lg">
             <a href="{{ route('portal.sites') }}" class="block px-5 py-2.5 text-sm">Sites</a>
             <a href="{{ route('portal.alerts') }}" class="block px-5 py-2.5 text-sm">Alerts</a>
             <a href="{{ route('portal.reports') }}" class="block px-5 py-2.5 text-sm">Reports</a>
@@ -129,7 +112,7 @@
 
     <main id="portalMain" class="flex-1 lg:pl-60 transition-all duration-200">
         <div class="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
-            <button id="sidebarExpandBtn" type="button" @click="sidebarCollapsed = false"
+            <button id="sidebarExpandBtn" type="button"
                 class="hidden mb-4 items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 bg-white px-3 py-1.5 rounded-lg shadow-sm"
                 title="Show sidebar">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
@@ -150,5 +133,39 @@
 </div>
 
 @livewireScripts
+<script>
+(function () {
+    var STORAGE_KEY = 'rg-sidebar-collapsed';
+
+    function setSidebarCollapsed(collapsed) {
+        document.body.classList.toggle('portal-sidebar-collapsed', collapsed);
+        try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) {}
+    }
+
+    try {
+        if (localStorage.getItem(STORAGE_KEY) === '1') {
+            document.body.classList.add('portal-sidebar-collapsed');
+        }
+    } catch (e) {}
+
+    var collapseBtn = document.getElementById('sidebarCollapseBtn');
+    var expandBtn = document.getElementById('sidebarExpandBtn');
+    var mobileBtn = document.getElementById('mobileMenuBtn');
+    var mobileNav = document.getElementById('mobileNav');
+
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', function () { setSidebarCollapsed(true); });
+    }
+    if (expandBtn) {
+        expandBtn.addEventListener('click', function () { setSidebarCollapsed(false); });
+    }
+    if (mobileBtn && mobileNav) {
+        mobileBtn.addEventListener('click', function () {
+            var open = mobileNav.classList.toggle('hidden');
+            mobileBtn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        });
+    }
+})();
+</script>
 </body>
 </html>
