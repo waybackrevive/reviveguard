@@ -37,3 +37,36 @@ Schedule::call(fn (EvaluationService $svc) => $svc->sendFollowUps())
     ->dailyAt('10:00')
     ->name('evaluations:send-followups')
     ->withoutOverlapping();
+
+Artisan::command('stripe:validate-prices', function () {
+    $mode  = \App\Support\StripeConfig::modeLabel();
+    $plans = \App\Models\Plan::where('is_active', true)->orderBy('price_monthly')->get();
+
+    $this->info("Stripe {$mode} mode — validating plan price IDs…");
+    $ok = true;
+
+    foreach ($plans as $plan) {
+        $id     = $plan->resolvedStripePriceId();
+        $reason = $plan->checkoutUnavailableReason();
+
+        if ($reason) {
+            $ok = false;
+            $this->error("[{$plan->slug}] {$reason}");
+        } else {
+            $this->line("[{$plan->slug}] OK — {$id}");
+        }
+    }
+
+    if (! $ok) {
+        $this->newLine();
+        $this->warn('Fix .env price IDs (must start with price_, not prod_), then:');
+        $this->line('  php artisan db:seed --class=PlanSeeder');
+        $this->line('  php artisan config:clear && php artisan cache:clear');
+
+        return 1;
+    }
+
+    $this->info('All plan price IDs look valid.');
+
+    return 0;
+})->purpose('Validate Stripe price IDs for checkout (run on server after .env changes)');

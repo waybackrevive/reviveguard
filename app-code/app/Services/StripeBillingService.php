@@ -71,6 +71,10 @@ class StripeBillingService
             throw new \RuntimeException("Stripe price not configured for plan: {$plan->slug} (" . StripeConfig::modeLabel() . ' mode)');
         }
 
+        if ($reason = $plan->checkoutUnavailableReason()) {
+            throw new \RuntimeException($reason);
+        }
+
         $customerId = $this->getOrCreateCustomer($client);
 
         $session = Session::create([

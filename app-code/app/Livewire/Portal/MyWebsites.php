@@ -75,9 +75,8 @@ class MyWebsites extends Component
             return;
         }
 
-        if (! $site->plan->hasStripeCheckout()) {
-            $mode = StripeConfig::isTestMode() ? 'test' : 'live';
-            session()->flash('error', "Stripe {$mode} price is not set for {$site->plan->name}. Add price IDs in .env or Admin → Platform Settings, then run: php artisan db:seed --class=PlanSeeder");
+        if ($reason = $site->plan->checkoutUnavailableReason()) {
+            session()->flash('error', $reason);
             return;
         }
 

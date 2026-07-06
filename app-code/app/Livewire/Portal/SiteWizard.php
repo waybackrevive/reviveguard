@@ -134,9 +134,8 @@ class SiteWizard extends Component
             return;
         }
 
-        if (! $plan->hasStripeCheckout()) {
-            $mode = StripeConfig::isTestMode() ? 'test' : 'live';
-            $this->addError('selectedPlan', "Stripe {$mode} price is not set for {$plan->name}. Your admin must add price IDs in Platform Settings or .env.");
+        if ($reason = $plan->checkoutUnavailableReason()) {
+            $this->addError('selectedPlan', $reason);
             return;
         }
 
@@ -151,8 +150,14 @@ class SiteWizard extends Component
     {
         $plan = Plan::where('slug', $this->selectedPlan)->where('is_active', true)->first();
 
-        if (! $plan || ! $plan->hasStripeCheckout()) {
+        if (! $plan) {
             $this->addError('selectedPlan', 'Checkout is not available for this plan. Please choose another plan or contact support.');
+            $this->step = 3;
+            return;
+        }
+
+        if ($reason = $plan->checkoutUnavailableReason()) {
+            $this->addError('selectedPlan', $reason);
             $this->step = 3;
             return;
         }

@@ -77,9 +77,8 @@ class SiteShow extends Component
             return;
         }
 
-        if (! $plan->hasStripeCheckout()) {
-            $mode = StripeConfig::isTestMode() ? 'test' : 'live';
-            session()->flash('error', "Stripe {$mode} price is not set for the {$plan->name} plan. Add STRIPE" . ($mode === 'test' ? '_TEST' : '') . "_PRICE_" . strtoupper($plan->slug) . "_ID in .env or Admin → Platform Settings.");
+        if ($reason = $plan->checkoutUnavailableReason()) {
+            session()->flash('error', $reason);
             return;
         }
 

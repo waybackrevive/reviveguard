@@ -94,7 +94,30 @@ class Plan extends Model
 
     public function hasStripeCheckout(): bool
     {
-        return ! empty($this->resolvedStripePriceId());
+        return $this->checkoutUnavailableReason() === null;
+    }
+
+    /**
+     * Why checkout cannot start for this plan, or null when ready.
+     */
+    public function checkoutUnavailableReason(): ?string
+    {
+        $id = $this->resolvedStripePriceId();
+
+        if (empty($id)) {
+            $test = \App\Support\StripeConfig::isTestMode();
+            $mode = $test ? 'test' : 'live';
+            $env  = match ($this->slug) {
+                'monitor' => $test ? 'STRIPE_TEST_PRICE_MONITOR_ID' : 'STRIPE_PRICE_MONITOR_ID',
+                'guard'   => $test ? 'STRIPE_TEST_PRICE_GUARD_ID' : 'STRIPE_PRICE_GUARD_ID',
+                'shield'  => $test ? 'STRIPE_TEST_PRICE_SHIELD_ID' : 'STRIPE_PRICE_SHIELD_ID',
+                default   => 'STRIPE_PRICE_*_ID',
+            };
+
+            return "Stripe {$mode} price is not set for the {$this->name} plan. Add {$env} in .env or Admin → Platform Settings, then run: php artisan db:seed --class=PlanSeeder";
+        }
+
+        return \App\Support\StripePriceId::describeProblem($id, "{$this->name} plan");
     }
 
     private function stripePriceFromEnv(bool $test): ?string
