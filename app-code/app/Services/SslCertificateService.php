@@ -15,8 +15,35 @@ class SslCertificateService
      */
     public function inspect(string $host): array
     {
-        $host = $this->stripWww($host);
+        $host = strtolower(trim($host));
+        $bare = preg_replace('/^www\./i', '', $host) ?: $host;
 
+        $candidates = array_values(array_unique(array_filter([
+            $host,
+            $bare,
+            'www.' . $bare,
+        ])));
+
+        $lastError = null;
+
+        foreach ($candidates as $candidate) {
+            $result = $this->probeHost($candidate);
+
+            if (! isset($result['error'])) {
+                return $result;
+            }
+
+            $lastError = $result;
+        }
+
+        return $lastError ?? ['domain' => $host, 'valid' => false, 'error' => 'SSL check failed', 'source' => 'tls'];
+    }
+
+    /**
+     * @return array{domain: string, valid: bool, issuer?: string, subject?: string, expires_at?: string, days_remaining?: int, expired?: bool, expiring_soon?: bool, error?: string, source: string}
+     */
+    private function probeHost(string $host): array
+    {
         try {
             $ctx = stream_context_create(['ssl' => [
                 'capture_peer_cert' => true,
@@ -67,10 +94,5 @@ class SslCertificateService
 
             return ['domain' => $host, 'valid' => false, 'error' => $e->getMessage(), 'source' => 'tls'];
         }
-    }
-
-    private function stripWww(string $host): string
-    {
-        return preg_replace('/^www\./i', '', trim($host)) ?: $host;
     }
 }

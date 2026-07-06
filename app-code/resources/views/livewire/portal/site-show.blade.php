@@ -49,6 +49,13 @@
                         Connect site →
                     </button>
                 @endif
+                @if ($canOpenWpAdmin ?? false)
+                    <button wire:click="openWordPressAdmin"
+                        class="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg shadow-sm">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2z"/></svg>
+                        WP Admin
+                    </button>
+                @endif
                 @if ($site->plan)
                     <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-medium">
                         {{ $site->plan->name }}
@@ -78,6 +85,7 @@
     <div class="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
         @foreach ([
             'overview' => 'Overview',
+            'monitoring' => 'Monitoring',
             'activity' => 'Activity',
             'backups' => 'Backups',
             'reports' => 'Reports',
@@ -147,6 +155,85 @@
                 @endforelse
             </ul>
         </div>
+        @endif
+    @endif
+
+    {{-- Monitoring --}}
+    @if ($tab === 'monitoring')
+        @if (! $site->hasPaidSubscription())
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                Monitoring starts after you complete checkout on the Plan tab.
+            </div>
+        @else
+            <p class="text-sm text-gray-500 mb-4">Checks run every <strong>5 minutes</strong>. SSL and domain expiry are verified daily.</p>
+
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                    <p class="text-lg font-bold {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'text-red-600' : 'text-emerald-700' }}">
+                        {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'Offline' : 'Operational' }}
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">Last agent: {{ $site->last_seen_at?->diffForHumans() ?? '—' }}</p>
+                </div>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Uptime (30d)</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $site->uptime_30d !== null ? number_format((float) $site->uptime_30d, 2) . '%' : '—' }}</p>
+                </div>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">SSL expires</p>
+                    @php $sslM = $site->sslExpiresInDays(); @endphp
+                    <p class="text-lg font-bold {{ $sslM !== null && $sslM <= 30 ? 'text-amber-600' : 'text-gray-900' }}">
+                        {{ $site->ssl_expires_at?->format('M j, Y') ?? '—' }}
+                    </p>
+                    @if ($sslM !== null)
+                        <p class="text-xs text-gray-400 mt-1">{{ $sslM < 0 ? 'Expired' : "in {$sslM} days" }}</p>
+                    @endif
+                </div>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Domain expires</p>
+                    @php $domM = $site->domainExpiresInDays(); @endphp
+                    <p class="text-lg font-bold {{ $domM !== null && $domM <= 60 ? 'text-amber-600' : 'text-gray-900' }}">
+                        {{ $site->domain_expires_at?->format('M j, Y') ?? '—' }}
+                    </p>
+                    @if ($domM !== null)
+                        <p class="text-xs text-gray-400 mt-1">{{ $domM < 0 ? 'Expired' : "in {$domM} days" }}</p>
+                    @endif
+                </div>
+            </div>
+
+            @if ($uptimeProbes->isNotEmpty())
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 mb-6 shadow-sm">
+                    <h2 class="text-sm font-semibold text-gray-900 mb-3">Uptime — last 14 days</h2>
+                    <div class="flex items-end gap-0.5 h-16">
+                        @foreach ($uptimeProbes->take(-96) as $probe)
+                            <div class="flex-1 min-w-[3px] rounded-sm {{ $probe->is_up ? 'bg-emerald-500' : 'bg-red-400' }}"
+                                title="{{ $probe->checked_at->format('M j g:i A') }} — {{ $probe->is_up ? 'Up' : 'Down' }}"></div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h2 class="text-sm font-semibold text-gray-900">Incidents</h2>
+                </div>
+                <ul class="divide-y divide-gray-100">
+                    @forelse ($uptimeIncidents as $event)
+                        <li class="px-5 py-3 text-sm flex items-start gap-3">
+                            <span class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0 {{ str_contains(strtolower($event->title), 'offline') || str_contains(strtolower($event->title), 'down') ? 'bg-red-500' : 'bg-emerald-500' }}"></span>
+                            <div>
+                                <p class="font-medium text-gray-800">{{ $event->title }}</p>
+                                @if ($event->message)
+                                    <p class="text-gray-600 text-xs mt-0.5">{{ $event->message }}</p>
+                                @endif
+                                <p class="text-xs text-gray-400 mt-1">{{ $event->created_at->format('M j, Y g:i A') }}</p>
+                            </div>
+                        </li>
+                    @empty
+                        <li class="px-5 py-10 text-center text-sm text-gray-500">No downtime incidents recorded. We'll alert you immediately if anything changes.</li>
+                    @endforelse
+                </ul>
+            </div>
         @endif
     @endif
 

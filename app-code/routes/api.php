@@ -4,6 +4,7 @@ use App\Http\Controllers\Agent\CommandResultController;
 use App\Http\Controllers\Agent\EventController;
 use App\Http\Controllers\Agent\HeartbeatController;
 use App\Http\Controllers\Agent\PluginListController;
+use App\Http\Controllers\Agent\SsoConsumeController;
 use App\Http\Controllers\Webhook\UptimeKumaController;
 use App\Http\Controllers\Webhook\StripeController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,7 @@ Route::prefix('v1/agent')
         Route::post('command-result',  CommandResultController::class);
         Route::post('plugin-list',     PluginListController::class);
         Route::post('event',           EventController::class);
+        Route::post('sso-consume',     SsoConsumeController::class);
     });
 
 // Uptime Kuma status webhooks — validated by shared secret header

@@ -74,11 +74,11 @@ Artisan::command('stripe:validate-prices', function () {
     return 0;
 })->purpose('Validate Stripe price IDs for checkout (run on server after .env changes)');
 
-Artisan::command('sites:refresh-health {site?}', function (?string $siteId) {
+Artisan::command('sites:refresh-health {site?}', function (?string $site) {
     $query = \App\Models\Site::protected()->whereNotNull('url');
 
-    if ($siteId) {
-        $query->where('id', $siteId);
+    if ($site) {
+        $query->where('id', $site);
     }
 
     $sites = $query->get();

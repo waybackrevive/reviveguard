@@ -4,7 +4,9 @@ namespace App\Livewire\Portal;
 
 use App\Models\Plan;
 use App\Models\Site;
+use App\Models\SiteUptimeProbe;
 use App\Services\StripeBillingService;
+use App\Services\WordPressSsoService;
 use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
@@ -51,7 +53,7 @@ class SiteShow extends Component
 
     public function setTab(string $tab): void
     {
-        $allowed = ['overview', 'activity', 'backups', 'reports', 'connection', 'plan'];
+        $allowed = ['overview', 'monitoring', 'activity', 'backups', 'reports', 'connection', 'plan'];
         $this->tab = in_array($tab, $allowed, true) ? $tab : 'overview';
     }
 
@@ -123,6 +125,25 @@ class SiteShow extends Component
         $this->redirect(route('portal.sites'), navigate: true);
     }
 
+    public function openWordPressAdmin(WordPressSsoService $sso)
+    {
+        $client = Auth::guard('client')->user();
+
+        if ($this->site->client_id !== $client->id) {
+            abort(404);
+        }
+
+        try {
+            $url = $sso->createLoginUrl($this->site, $client->id);
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+
+            return;
+        }
+
+        return redirect()->away($url);
+    }
+
     public function openCredentials(): void
     {
         $existing = $this->site->hosting_credentials ?? [];
@@ -171,14 +192,33 @@ class SiteShow extends Component
             'reports' => fn ($q) => $q->latest()->limit(20),
         ]);
 
+        $uptimeIncidents = collect();
+        $uptimeProbes    = collect();
+
+        if ($this->tab === 'monitoring' && $this->site->hasPaidSubscription()) {
+            $uptimeIncidents = $this->site->events()
+                ->whereIn('type', ['uptime_kuma_alert', 'heartbeat_missed', 'site_recovered'])
+                ->latest()
+                ->limit(20)
+                ->get();
+
+            $uptimeProbes = SiteUptimeProbe::where('site_id', $this->site->id)
+                ->where('checked_at', '>=', now()->subDays(14))
+                ->orderBy('checked_at')
+                ->get();
+        }
+
         return view('livewire.portal.site-show', [
-            'site'         => $this->site,
-            'recentEvents' => $this->site->events,
-            'backups'      => $this->site->backups,
-            'reports'      => $this->site->reports,
-            'latestBackup' => $this->site->latestBackup,
-            'plans'        => Plan::where('is_active', true)->orderBy('price_monthly')->get(),
-            'stripeTestMode' => StripeConfig::isTestMode(),
+            'site'            => $this->site,
+            'recentEvents'    => $this->site->events,
+            'backups'         => $this->site->backups,
+            'reports'         => $this->site->reports,
+            'latestBackup'    => $this->site->latestBackup,
+            'plans'           => Plan::where('is_active', true)->orderBy('price_monthly')->get(),
+            'stripeTestMode'  => StripeConfig::isTestMode(),
+            'canOpenWpAdmin'  => app(WordPressSsoService::class)->canLogin($this->site),
+            'uptimeIncidents' => $uptimeIncidents,
+            'uptimeProbes'    => $uptimeProbes,
         ])->layout('portal.layouts.app');
     }
 }

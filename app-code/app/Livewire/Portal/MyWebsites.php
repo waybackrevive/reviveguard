@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\StripeBillingService;
+use App\Services\WordPressSsoService;
 use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -89,6 +90,29 @@ class MyWebsites extends Component
         }
 
         return redirect()->away($checkoutUrl);
+    }
+
+    public function openWordPressAdmin(string $siteId, WordPressSsoService $sso)
+    {
+        $client = Auth::guard('client')->user();
+
+        $site = Site::where('id', $siteId)->where('client_id', $client->id)->first();
+
+        if (! $site) {
+            session()->flash('error', 'Site not found.');
+
+            return;
+        }
+
+        try {
+            $url = $sso->createLoginUrl($site, $client->id);
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+
+            return;
+        }
+
+        return redirect()->away($url);
     }
 
     public function render(): \Illuminate\View\View

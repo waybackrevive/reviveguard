@@ -169,6 +169,12 @@
                                 </td>
                                 <td class="px-4 py-3.5 text-right" onclick="event.stopPropagation()">
                                     <div class="flex items-center justify-end gap-2">
+                                        @if (app(\App\Services\WordPressSsoService::class)->canLogin($site))
+                                            <button wire:click="openWordPressAdmin('{{ $site->id }}')"
+                                                class="text-xs font-semibold text-gray-700 bg-white border border-gray-300 hover:border-gray-400 px-2.5 py-1.5 rounded-lg shadow-sm">
+                                                WP Admin
+                                            </button>
+                                        @endif
                                         @if ($ps === 'checkout')
                                             <button wire:click="resumeCheckout('{{ $site->id }}')" wire:loading.attr="disabled"
                                                 class="text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 px-2.5 py-1.5 rounded-lg transition-colors">
