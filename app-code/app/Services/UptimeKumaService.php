@@ -21,8 +21,12 @@ class UptimeKumaService
         $this->apiKey  = PlatformSetting::get('uptime_kuma_api_key', config('services.uptime_kuma.api_key', '')) ?? '';
     }
 
+    public function isConfigured(): bool
+    {
+        return $this->baseUrl !== '' && $this->apiKey !== '';
+    }
+
     /**
-     * Create an HTTP monitor for the given site URL.
      * Returns the monitor ID on success, null on failure (non-fatal).
      */
     public function createMonitor(string $siteName, string $siteUrl): ?int

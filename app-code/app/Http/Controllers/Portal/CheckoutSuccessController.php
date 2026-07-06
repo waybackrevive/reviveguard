@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Site;
+use App\Services\SiteHealthService;
 use App\Services\StripeBillingService;
 use App\Support\StripeConfig;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,7 @@ use Stripe\Stripe;
  */
 class CheckoutSuccessController extends Controller
 {
-    public function __invoke(Request $request, StripeBillingService $billing): RedirectResponse
+    public function __invoke(Request $request, StripeBillingService $billing, SiteHealthService $health): RedirectResponse
     {
         $sessionId = $request->query('session_id');
 
@@ -65,6 +66,13 @@ class CheckoutSuccessController extends Controller
         $site   = $siteId ? Site::with(['plan', 'subscription'])->find($siteId) : null;
 
         if ($site && $site->client_id === $client->id && $site->hasPaidSubscription()) {
+            try {
+                $health->refresh($site);
+                $site->refresh();
+            } catch (\Throwable $e) {
+                Log::warning('CheckoutSuccess: health refresh failed', ['error' => $e->getMessage()]);
+            }
+
             $planName = $site->plan?->name ?? 'your plan';
 
             return redirect()->route('portal.sites.show', [

@@ -17,6 +17,9 @@ Artisan::command('inspire', function () {
 // Phase 1C — Heartbeat monitoring (every 5 min)
 Schedule::job(new CheckMissedHeartbeats)->everyFiveMinutes();
 
+// HTTP uptime probes (built-in — no Uptime Kuma required)
+Schedule::job(new \App\Jobs\ProbeSiteUptime)->everyFiveMinutes();
+
 // Phase 1E — Monitoring jobs
 Schedule::job(new CheckSslExpiry)->dailyAt('06:00');
 Schedule::job(new CheckDomainExpiry)->dailyAt('07:00');
@@ -95,3 +98,35 @@ Artisan::command('sites:refresh-health {site?}', function (?string $siteId) {
 
     return 0;
 })->purpose('Run SSL, domain, and uptime checks for protected sites');
+
+Artisan::command('monitoring:status', function () {
+    $kuma = app(\App\Services\UptimeKumaService::class);
+
+    $this->info('── Monitoring stack ──');
+    $this->line('Built-in HTTP probes: active (every 5 min via scheduler)');
+    $this->line('SSL checks: native TLS (daily + on-demand)');
+    $this->line('Domain expiry: WHOIS socket → RDAP → optional WhoisXML');
+
+    if ($kuma->isConfigured()) {
+        $this->line('Uptime Kuma: configured at ' . config('services.uptime_kuma.url'));
+        $this->warn('Note: Uptime Kuma monitor auto-create may require manual setup in Kuma UI. Built-in probes are the default.');
+    } else {
+        $this->line('Uptime Kuma: not configured (optional — see deploy/uptime-kuma/docker-compose.yml)');
+    }
+
+    $sites = \App\Models\Site::protected()->with('subscription')->get();
+    $this->newLine();
+    $this->info("Protected sites: {$sites->count()}");
+
+    foreach ($sites as $site) {
+        $this->line(sprintf(
+            '  %s — uptime: %s | SSL: %s | domain: %s',
+            $site->displayName(),
+            $site->uptime_30d !== null ? $site->uptime_30d . '%' : 'pending',
+            $site->ssl_expires_at?->format('Y-m-d') ?? 'pending',
+            $site->domain_expires_at?->format('Y-m-d') ?? 'pending',
+        ));
+    }
+
+    return 0;
+})->purpose('Show monitoring configuration and per-site health data');

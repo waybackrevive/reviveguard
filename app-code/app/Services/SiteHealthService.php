@@ -15,6 +15,7 @@ class SiteHealthService
         private readonly SslCertificateService $ssl,
         private readonly DomainLookupService $domains,
         private readonly UptimeKumaService $uptimeKuma,
+        private readonly SiteUptimeService $siteUptime,
     ) {}
 
     public function refresh(Site $site): void
@@ -41,6 +42,11 @@ class SiteHealthService
         $data = $this->ssl->inspect($host);
 
         if (isset($data['error']) || ! isset($data['expires_at'])) {
+            Log::info('SiteHealthService: SSL inspect failed', [
+                'site_id' => $site->id,
+                'host'    => $host,
+                'error'   => $data['error'] ?? 'no expiry',
+            ]);
             $site->update(['ssl_valid' => false]);
 
             return;
@@ -59,10 +65,11 @@ class SiteHealthService
         $data   = $this->domains->lookup($domain);
 
         if (isset($data['error']) || ! isset($data['expires_at'])) {
-            Log::info('SiteHealthService: domain lookup skipped', [
+            Log::info('SiteHealthService: domain lookup failed', [
                 'site_id' => $site->id,
                 'domain'  => $domain,
                 'error'   => $data['error'] ?? 'no expiry',
+                'source'  => $data['source'] ?? null,
             ]);
 
             return;
@@ -81,34 +88,38 @@ class SiteHealthService
             return;
         }
 
-        if (! $site->uptime_kuma_monitor_id) {
-            $monitorId = $this->uptimeKuma->createMonitor($site->displayName(), $site->url);
+        if ($this->uptimeKuma->isConfigured()) {
+            if (! $site->uptime_kuma_monitor_id) {
+                $monitorId = $this->uptimeKuma->createMonitor($site->displayName(), $site->url);
 
-            if ($monitorId) {
-                $site->update(['uptime_kuma_monitor_id' => $monitorId]);
-                $site->refresh();
+                if ($monitorId) {
+                    $site->update(['uptime_kuma_monitor_id' => $monitorId]);
+                    $site->refresh();
+                }
+            }
+
+            if ($site->uptime_kuma_monitor_id) {
+                $uptime30 = $this->uptimeKuma->getUptimePercent((int) $site->uptime_kuma_monitor_id, 30);
+                $uptime7  = $this->uptimeKuma->getUptimePercent((int) $site->uptime_kuma_monitor_id, 7);
+
+                $updates = [];
+
+                if ($uptime30 !== null) {
+                    $updates['uptime_30d'] = $uptime30;
+                }
+
+                if ($uptime7 !== null) {
+                    $updates['uptime_7d'] = $uptime7;
+                }
+
+                if ($updates !== []) {
+                    $site->update($updates);
+
+                    return;
+                }
             }
         }
 
-        if (! $site->uptime_kuma_monitor_id) {
-            return;
-        }
-
-        $uptime30 = $this->uptimeKuma->getUptimePercent((int) $site->uptime_kuma_monitor_id, 30);
-        $uptime7  = $this->uptimeKuma->getUptimePercent((int) $site->uptime_kuma_monitor_id, 7);
-
-        $updates = [];
-
-        if ($uptime30 !== null) {
-            $updates['uptime_30d'] = $uptime30;
-        }
-
-        if ($uptime7 !== null) {
-            $updates['uptime_7d'] = $uptime7;
-        }
-
-        if ($updates !== []) {
-            $site->update($updates);
-        }
+        $this->siteUptime->probe($site);
     }
 }

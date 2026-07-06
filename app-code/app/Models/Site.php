@@ -229,16 +229,26 @@ class Site extends Model
         return $host ? preg_replace('/^www\./i', '', $host) : null;
     }
 
-    /** Paid sites with no health metrics yet (first scan in progress). */
-    public function healthMetricsSyncing(): bool
+    /** Paid site — metric not populated yet (first scan running). */
+    public function metricSyncing(string $metric): bool
     {
         if (! $this->hasPaidSubscription()) {
             return false;
         }
 
-        return $this->uptime_30d === null
-            && $this->ssl_expires_at === null
-            && $this->domain_expires_at === null;
+        return match ($metric) {
+            'uptime' => $this->uptime_30d === null,
+            'ssl'    => $this->ssl_expires_at === null,
+            'domain' => $this->domain_expires_at === null,
+            default  => false,
+        };
+    }
+
+    public function healthMetricsSyncing(): bool
+    {
+        return $this->metricSyncing('uptime')
+            || $this->metricSyncing('ssl')
+            || $this->metricSyncing('domain');
     }
 
     public function scopeProtected($query)

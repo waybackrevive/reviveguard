@@ -5,11 +5,12 @@ namespace App\Services;
 use App\Models\PlatformSetting;
 
 /**
- * Domain expiry lookups — RDAP first (free, scalable), WhoisXML optional fallback.
+ * Domain expiry — WHOIS socket (authoritative) → RDAP → optional WhoisXML.
  */
 class DomainLookupService
 {
     public function __construct(
+        private readonly WhoisSocketService $whoisSocket,
         private readonly RdapDomainService $rdap,
         private readonly WhoisXmlService $whoisXml,
     ) {}
@@ -19,22 +20,28 @@ class DomainLookupService
      */
     public function lookup(string $domain): array
     {
-        $result = $this->rdap->lookup($domain);
+        $whois = $this->whoisSocket->lookup($domain);
 
-        if (! isset($result['error']) && isset($result['expires_at'])) {
-            return $result;
+        if (! isset($whois['error']) && isset($whois['expires_at'])) {
+            return $whois;
+        }
+
+        $rdap = $this->rdap->lookup($domain);
+
+        if (! isset($rdap['error']) && isset($rdap['expires_at'])) {
+            return $rdap;
         }
 
         $apiKey = PlatformSetting::get('whoisxml_api_key', config('services.whoisxml.key', '')) ?? '';
 
         if ($apiKey !== '') {
-            $fallback = $this->whoisXml->whois($domain);
+            $api = $this->whoisXml->whois($domain);
 
-            if (! isset($fallback['error']) && isset($fallback['expires_at'])) {
-                return $fallback;
+            if (! isset($api['error']) && isset($api['expires_at'])) {
+                return $api;
             }
         }
 
-        return $result;
+        return $whois['error'] ? $whois : $rdap;
     }
 }

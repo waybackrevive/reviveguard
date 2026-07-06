@@ -114,7 +114,6 @@
                                 $ps        = $site->portalStatusKey();
                                 $sslDays   = $site->sslExpiresInDays();
                                 $domDays   = $site->domainExpiresInDays();
-                                $syncing   = $site->healthMetricsSyncing();
                             @endphp
                             <tr class="group hover:bg-gray-50/60 cursor-pointer transition-colors"
                                 onclick="window.location='{{ route('portal.sites.show', $site) }}'">
@@ -130,7 +129,7 @@
                                     </span>
                                 </td>
                                 <td class="hidden md:table-cell px-4 py-3.5 text-gray-700">
-                                    @if ($syncing)
+                                    @if ($site->metricSyncing('uptime'))
                                         <span class="text-xs text-gray-400 italic">Syncing…</span>
                                     @elseif ($site->uptime_30d !== null)
                                         {{ number_format((float) $site->uptime_30d, 1) }}%
@@ -139,7 +138,7 @@
                                     @endif
                                 </td>
                                 <td class="hidden lg:table-cell px-4 py-3.5 {{ $sslDays !== null && $sslDays <= 30 ? 'text-amber-600 font-medium' : 'text-gray-700' }}">
-                                    @if ($syncing)
+                                    @if ($site->metricSyncing('ssl'))
                                         <span class="text-xs text-gray-400 italic">Syncing…</span>
                                     @elseif ($sslDays !== null)
                                         {{ $sslDays < 0 ? 'Expired' : $sslDays . 'd' }}
@@ -148,7 +147,7 @@
                                     @endif
                                 </td>
                                 <td class="hidden lg:table-cell px-4 py-3.5 {{ $domDays !== null && $domDays <= 60 ? 'text-amber-600 font-medium' : 'text-gray-700' }}">
-                                    @if ($syncing)
+                                    @if ($site->metricSyncing('domain'))
                                         <span class="text-xs text-gray-400 italic">Syncing…</span>
                                     @elseif ($domDays !== null)
                                         {{ $domDays < 0 ? 'Expired' : $domDays . 'd' }}

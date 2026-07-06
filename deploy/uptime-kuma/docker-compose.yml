@@ -1,0 +1,30 @@
+# Optional Uptime Kuma — self-hosted on the same VPS as ReviveGuard.
+# Built-in HTTP probes work without this; Kuma adds a separate dashboard + webhook alerts.
+#
+# Install (once on server):
+#   sudo mkdir -p /opt/reviveguard-uptime-kuma
+#   sudo cp docker-compose.yml /opt/reviveguard-uptime-kuma/
+#   cd /opt/reviveguard-uptime-kuma && sudo docker compose up -d
+#
+# Then open http://YOUR_SERVER_IP:3001 (or SSH tunnel), create admin user,
+# Settings → API Keys (optional), Notifications → Webhook → https://app.reviveguard.com/api/v1/webhooks/uptime-kuma
+#
+# Reference: https://uptimekuma.org/download/
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    container_name: reviveguard-uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 30s
+      retries: 3
+      start_period: 15s
+      timeout: 5s
