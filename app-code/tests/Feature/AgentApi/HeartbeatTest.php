@@ -130,4 +130,22 @@ class HeartbeatTest extends TestCase
         $this->assertEquals(CommandStatus::SENT, $command->status);
         $this->assertNotNull($command->sent_at);
     }
+
+    public function test_heartbeat_accepts_wordpress_plugin_payload(): void
+    {
+        $response = $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/heartbeat', [
+                'wp_version'    => '7.0',
+                'php_version'   => '8.1.34',
+                'theme_name'    => 'Nasimiyu Designs 1.0',
+                'plugin_count'  => 28,
+                'disk_usage_mb' => 412.55,
+                'debug_mode'    => false,
+                'site_url'      => 'https://www.nasimiyudesigns.com',
+                'agent_version' => '1.0.0',
+            ]);
+
+        $response->assertOk()->assertJson(['status' => 'ok']);
+        $this->assertNotNull($this->site->fresh()->last_seen_at);
+    }
 }
