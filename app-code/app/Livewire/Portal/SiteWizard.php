@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\StripeBillingService;
+use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -25,17 +26,30 @@ class SiteWizard extends Component
     public string $selectedPlan   = 'guard';
     public bool   $showComparison = false;
 
+    /** @var array<int, array<string, mixed>> */
     public array $plans = [];
 
     public function mount(): void
     {
+        $this->loadPlans();
+    }
+
+    private function loadPlans(): void
+    {
         $this->plans = Plan::where('is_active', true)
             ->orderBy('price_monthly')
-            ->get(['id', 'name', 'slug', 'price_monthly', 'stripe_price_id', 'stripe_test_price_id'])
-            ->map(fn (Plan $p) => array_merge($p->toArray(), [
-                'resolved_stripe_price_id' => $p->resolvedStripePriceId(),
-            ]))
-            ->toArray();
+            ->get()
+            ->map(fn (Plan $p) => [
+                'id'                       => $p->id,
+                'name'                     => $p->name,
+                'slug'                     => $p->slug,
+                'price_monthly'            => (float) $p->price_monthly,
+                'summary'                  => $p->portalSummary(),
+                'recommended'              => $p->isRecommended(),
+                'checkout_ready'           => $p->hasStripeCheckout(),
+            ])
+            ->values()
+            ->all();
     }
 
     /** Step 1 → create pending site and show connection guide */
@@ -70,19 +84,21 @@ class SiteWizard extends Component
             'is_active'         => true,
         ]);
 
-        $this->siteId           = $site->id;
-        $this->connectionToken  = $rawToken;
-        $this->step             = 2;
+        $this->siteId          = $site->id;
+        $this->connectionToken = $rawToken;
+        $this->step            = 2;
     }
 
     public function goToPlan(): void
     {
+        $this->loadPlans();
         $this->step = 3;
     }
 
     public function selectPlan(string $slug): void
     {
         $this->selectedPlan = $slug;
+        $this->resetErrorBag('selectedPlan');
     }
 
     public function toggleComparison(): void
@@ -92,15 +108,26 @@ class SiteWizard extends Component
 
     public function goToCheckout(): void
     {
-        $plan = collect($this->plans)->firstWhere('slug', $this->selectedPlan);
+        $plan = Plan::where('slug', $this->selectedPlan)->where('is_active', true)->first();
 
-        if (! $plan || empty($plan['resolved_stripe_price_id'])) {
-            $this->addError('selectedPlan', 'Checkout is not configured for this plan. Please contact support.');
+        if (! $plan) {
+            $this->addError('selectedPlan', 'Please choose a plan.');
+            return;
+        }
+
+        if (empty(StripeConfig::secretKey())) {
+            $this->addError('selectedPlan', 'Payment is not configured yet (Stripe secret key missing on server).');
+            return;
+        }
+
+        if (! $plan->hasStripeCheckout()) {
+            $mode = StripeConfig::isTestMode() ? 'test' : 'live';
+            $this->addError('selectedPlan', "Stripe {$mode} price is not set for {$plan->name}. Your admin must add price IDs in Platform Settings or .env.");
             return;
         }
 
         if ($this->siteId) {
-            Site::where('id', $this->siteId)->update(['plan_id' => $plan['id']]);
+            Site::where('id', $this->siteId)->update(['plan_id' => $plan->id]);
         }
 
         $this->step = 4;
@@ -110,8 +137,9 @@ class SiteWizard extends Component
     {
         $plan = Plan::where('slug', $this->selectedPlan)->where('is_active', true)->first();
 
-        if (! $plan || empty($plan->resolvedStripePriceId())) {
-            $this->addError('selectedPlan', 'Checkout is not configured. Please contact support.');
+        if (! $plan || ! $plan->hasStripeCheckout()) {
+            $this->addError('selectedPlan', 'Checkout is not available for this plan. Please choose another plan or contact support.');
+            $this->step = 3;
             return;
         }
 
@@ -129,7 +157,7 @@ class SiteWizard extends Component
         try {
             $checkoutUrl = $billing->createCheckoutSession($client, $site, $plan);
         } catch (\Throwable $e) {
-            $this->addError('selectedPlan', 'Unable to start checkout. Please contact support.');
+            $this->addError('selectedPlan', 'Unable to start checkout: ' . $e->getMessage());
             report($e);
             return;
         }
@@ -139,12 +167,15 @@ class SiteWizard extends Component
 
     public function goBackTo(int $targetStep): void
     {
+        if ($targetStep === 3) {
+            $this->loadPlans();
+        }
         $this->step = max(1, min(4, $targetStep));
     }
 
     public function cancel(): void
     {
-        $this->redirect(route('portal.sites'), navigate: true);
+        $this->redirect(route('portal.sites'), navigate: false);
     }
 
     public function getSelectedPlanData(): ?array
@@ -157,7 +188,7 @@ class SiteWizard extends Component
         return view('livewire.portal.site-wizard', [
             'selectedPlanData' => $this->getSelectedPlanData(),
             'domain'           => parse_url($this->siteUrl, PHP_URL_HOST) ?: $this->siteUrl,
-            'stripeTestMode'   => \App\Support\StripeConfig::isTestMode(),
+            'stripeTestMode'   => StripeConfig::isTestMode(),
         ]);
     }
 }

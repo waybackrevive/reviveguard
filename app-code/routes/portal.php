@@ -42,6 +42,7 @@ Route::middleware(['portal.auth', 'portal.timeout', 'portal.onboarded'])->group(
 
     Route::get('/sites', \App\Livewire\Portal\MyWebsites::class)->name('portal.sites');
     Route::get('/sites/add', \App\Livewire\Portal\AddSite::class)->name('portal.sites.add');
+    Route::get('/plugin/download', \App\Http\Controllers\Portal\PluginDownloadController::class)->name('portal.plugin.download');
     Route::get('/sites/{site}', \App\Livewire\Portal\SiteShow::class)->name('portal.sites.show');
 
     Route::get('/alerts', \App\Livewire\Portal\Events::class)->name('portal.alerts');

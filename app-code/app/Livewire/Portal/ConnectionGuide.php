@@ -16,7 +16,7 @@ class ConnectionGuide extends Component
     {
         $site = $this->siteId ? \App\Models\Site::find($this->siteId) : null;
         $apiUrl = rtrim(config('services.reviveguard.api_url', config('app.url')), '/');
-        $pluginUrl = config('services.reviveguard.plugin_download_url');
+        $pluginUrl = config('services.reviveguard.plugin_download_url') ?: route('portal.plugin.download');
 
         return view('livewire.portal.connection-guide', [
             'site'            => $site,

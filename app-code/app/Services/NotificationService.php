@@ -8,6 +8,7 @@ use App\Models\PlatformSetting;
 use App\Models\Report;
 use App\Models\Site;
 use App\Models\Ticket;
+use App\Support\PortalUrl;
 use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Log;
 
@@ -48,7 +49,7 @@ class NotificationService
                 'clientName'    => explode(' ', $client->name)[0],
                 'siteUrl'       => $siteUrl,
                 'detectedAt'    => now()->format('g:i A') . ' UTC on ' . now()->format('F j, Y'),
-                'dashboardUrl'  => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'dashboardUrl'  => PortalUrl::to('portal/dashboard'),
             ],
             type: 'site_down',
             siteId: $site->id,
@@ -74,7 +75,7 @@ class NotificationService
                 'siteUrl'          => $siteUrl,
                 'downtimeDuration' => $downtimeDuration ?? 'a short period',
                 'recoveredAt'      => now()->format('g:i A') . ' UTC',
-                'dashboardUrl'     => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'dashboardUrl'     => PortalUrl::to('portal/dashboard'),
             ],
             type: 'site_recovered',
             siteId: $site->id,
@@ -103,7 +104,7 @@ class NotificationService
                 'siteUrl'      => $siteUrl,
                 'daysLeft'     => $daysLeft,
                 'expiresOn'    => $expiresOn,
-                'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'dashboardUrl' => PortalUrl::to('portal/dashboard'),
             ],
             type: 'ssl_expiry_warning',
             siteId: $site->id,
@@ -130,7 +131,7 @@ class NotificationService
                 'domain'       => $domain,
                 'daysLeft'     => $daysLeft,
                 'expiresOn'    => $expiresOn,
-                'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'dashboardUrl' => PortalUrl::to('portal/dashboard'),
             ],
             type: 'domain_expiry_warning',
             siteId: $site->id,
@@ -159,7 +160,7 @@ class NotificationService
                 'siteUrl'      => $siteUrl,
                 'failedAt'     => $backup->started_at?->format('F j, Y \a\t g:i A') . ' UTC',
                 'errorMessage' => 'Our team has been notified and will investigate.',
-                'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'dashboardUrl' => PortalUrl::to('portal/dashboard'),
             ],
             type: 'backup_failed',
             siteId: $site->id,
@@ -195,7 +196,7 @@ class NotificationService
                     'siteUrl'      => $siteUrl,
                     'period'       => $period,
                     'uptime30d'    => $site?->uptime_30d,
-                    'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/reports',
+                    'dashboardUrl' => PortalUrl::to('portal/reports'),
                 ])->render(),
                 'attachments' => [[
                     'filename' => $pdfName,
@@ -242,7 +243,7 @@ class NotificationService
                 'coreUpdated' => $coreUpdated,
                 'plugins'     => $summary['plugins'] ?? [],
                 'errors'      => $summary['errors'] ?? [],
-                'dashboardUrl'=> rtrim(config('app.url'), '/') . '/portal/events',
+                'dashboardUrl'=> PortalUrl::to('portal/events'),
             ],
             type: 'update_complete',
             siteId: $site->id,
@@ -287,7 +288,7 @@ class NotificationService
                 'clientName'   => explode(' ', $client->name)[0],
                 'planName'     => $plan?->name ?? 'ReviveGuard',
                 'validUntil'   => $subscription?->nextBillingDate()?->format('F j, Y') ?? null,
-                'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/dashboard',
+                'dashboardUrl' => PortalUrl::to('portal/dashboard'),
             ],
             type: 'plan_updated',
             clientId: $client->id,
@@ -311,7 +312,7 @@ class NotificationService
                 'clientName'   => explode(' ', $client->name)[0],
                 'ticketSubject'=> $ticket->subject,
                 'adminReply'   => $ticket->admin_reply,
-                'dashboardUrl' => rtrim(config('app.url'), '/') . '/portal/tickets',
+                'dashboardUrl' => PortalUrl::to('portal/tickets'),
             ],
             type: 'ticket_replied',
             siteId: null,

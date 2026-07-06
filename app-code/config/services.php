@@ -59,6 +59,7 @@ return [
     'reviveguard' => [
         'plugin_download_url' => env('REVIVEGUARD_PLUGIN_DOWNLOAD_URL', ''),
         'api_url'             => env('REVIVEGUARD_API_URL', 'https://app.reviveguard.com'),
+        'plugin_path'         => env('REVIVEGUARD_PLUGIN_PATH', dirname(base_path()) . '/wp-plugin/reviveguard-agent'),
     ],
 
     'backblaze' => [

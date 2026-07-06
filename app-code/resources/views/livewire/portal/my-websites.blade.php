@@ -5,6 +5,9 @@
             {{ session('error') }}
         </div>
     @endif
+    @if (session('success'))
+        <div class="mb-5 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+    @endif
 
     <div class="flex flex-wrap items-start justify-between gap-4 mb-2">
         <div>
@@ -111,14 +114,25 @@
                                     {{ $site->plan?->name ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3.5 text-right" onclick="event.stopPropagation()">
-                                    @if ($ps === 'checkout')
-                                        <button wire:click="resumeCheckout('{{ $site->id }}')" wire:loading.attr="disabled"
-                                            class="text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 px-2.5 py-1.5 rounded-lg transition-colors">
-                                            Pay →
-                                        </button>
-                                    @else
-                                        <span class="text-gray-300 group-hover:text-brand">→</span>
-                                    @endif
+                                    <div class="flex items-center justify-end gap-2">
+                                        @if ($ps === 'checkout')
+                                            <button wire:click="resumeCheckout('{{ $site->id }}')" wire:loading.attr="disabled"
+                                                class="text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 px-2.5 py-1.5 rounded-lg transition-colors">
+                                                Pay →
+                                            </button>
+                                        @endif
+                                        @if ($site->status === \App\Enums\SiteStatus::PENDING)
+                                            <button wire:click="deletePendingSite('{{ $site->id }}')"
+                                                wire:confirm="Remove this site? This cannot be undone."
+                                                class="text-xs font-medium text-gray-400 hover:text-red-600 px-1.5 py-1.5 rounded transition-colors"
+                                                title="Remove site">
+                                                Remove
+                                            </button>
+                                        @endif
+                                        @if ($ps !== 'checkout' && $site->status !== \App\Enums\SiteStatus::PENDING)
+                                            <span class="text-gray-300 group-hover:text-brand">→</span>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

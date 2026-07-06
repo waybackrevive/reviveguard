@@ -2,6 +2,9 @@
     @if (session('error'))
         <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
     @endif
+    @if (session('success'))
+        <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+    @endif
 
     <div class="mb-5">
         <a href="{{ route('portal.sites') }}" class="text-sm text-gray-500 hover:text-brand inline-flex items-center gap-1 mb-3">← All sites</a>
@@ -15,6 +18,15 @@
             </div>
             @php $ps = $site->portalStatusKey(); @endphp
             <div class="flex items-center gap-2">
+                @if ($ps === 'checkout')
+                    <button wire:click="setTab('plan')" class="text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg">
+                        Complete checkout →
+                    </button>
+                @elseif ($ps === 'setup')
+                    <button wire:click="setTab('connection')" class="text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-3 py-1.5 rounded-lg">
+                        Connect site →
+                    </button>
+                @endif
                 @if ($site->plan)
                     <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-medium">
                         {{ $site->plan->name }}
@@ -27,6 +39,18 @@
             </div>
         </div>
     </div>
+
+    @if ($ps === 'checkout')
+        <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <strong>Next:</strong> Choose your plan (if you haven't), then pay to activate protection. You can connect the plugin before or after payment.
+            <button wire:click="setTab('plan')" class="ml-2 font-semibold text-amber-800 underline hover:no-underline">Go to Plan →</button>
+        </div>
+    @elseif ($ps === 'setup')
+        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <strong>Next:</strong> Download the plugin and paste your connection code.
+            <button wire:click="setTab('connection')" class="ml-2 font-semibold text-emerald-800 underline hover:no-underline">Connection steps →</button>
+        </div>
+    @endif
 
     {{-- Sub-nav tabs --}}
     <div class="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
@@ -225,36 +249,50 @@
 
     {{-- Plan --}}
     @if ($tab === 'plan')
-        <div class="bg-white rounded-[10px] border border-gray-200 p-6 shadow-sm max-w-lg">
-            @if ($site->plan)
-                <h2 class="text-lg font-semibold text-gray-900">{{ $site->plan->name }}</h2>
-                <p class="text-2xl font-bold text-gray-900 mt-2">${{ number_format($site->plan->price_monthly, 0) }}<span class="text-sm font-normal text-gray-500">/month per site</span></p>
+        <div class="max-w-2xl">
+            @if ($site->status === \App\Enums\SiteStatus::PENDING)
+                <p class="text-sm text-gray-600 mb-4">Pick a plan for this site. You'll pay on the next screen{{ $stripeTestMode ? ' (Stripe test mode — use test card 4242 4242 4242 4242)' : '' }}.</p>
 
-                @if ($site->subscription)
-                    <p class="text-sm text-gray-500 mt-4">
-                        Status: <strong>{{ $site->subscription->billingStatusLabel() }}</strong>
-                        @if ($site->subscription->nextBillingDate())
-                            · Next billing {{ $site->subscription->nextBillingDate()->format('M j, Y') }}
-                        @endif
-                    </p>
-                @endif
-
-                @if ($ps === 'checkout')
-                    <div class="mt-6 pt-6 border-t border-gray-100">
-                        <p class="text-sm text-amber-800 mb-3">Complete payment to activate protection for this site.</p>
-                        <button wire:click="resumeCheckout" wire:loading.attr="disabled"
-                            class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
-                            Complete payment →
+                <div class="grid gap-3 sm:grid-cols-3 mb-6">
+                    @foreach ($plans as $plan)
+                        <button type="button" wire:click="selectPlan('{{ $plan->slug }}')"
+                            class="text-left p-4 rounded-[10px] border-2 transition-colors
+                                {{ $selectedPlanSlug === $plan->slug ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-emerald-300 bg-white' }}">
+                            <p class="font-semibold text-gray-900">{{ $plan->name }}</p>
+                            <p class="text-xl font-bold text-gray-900 mt-1">${{ number_format($plan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
                         </button>
-                    </div>
-                @else
+                    @endforeach
+                </div>
+
+                <button wire:click="resumeCheckout" wire:loading.attr="disabled"
+                    class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
+                    Continue to payment →
+                </button>
+
+                <div class="mt-8 pt-6 border-t border-gray-200">
+                    <button wire:click="removeSite" wire:confirm="Remove this site? This cannot be undone."
+                        class="text-sm text-gray-500 hover:text-red-600">
+                        Remove this site
+                    </button>
+                </div>
+            @elseif ($site->plan)
+                <div class="bg-white rounded-[10px] border border-gray-200 p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold text-gray-900">{{ $site->plan->name }}</h2>
+                    <p class="text-2xl font-bold text-gray-900 mt-2">${{ number_format($site->plan->price_monthly, 0) }}<span class="text-sm font-normal text-gray-500">/month per site</span></p>
+
+                    @if ($site->subscription)
+                        <p class="text-sm text-gray-500 mt-4">
+                            Status: <strong>{{ $site->subscription->billingStatusLabel() }}</strong>
+                            @if ($site->subscription->nextBillingDate())
+                                · Next billing {{ $site->subscription->nextBillingDate()->format('M j, Y') }}
+                            @endif
+                        </p>
+                    @endif
+
                     <p class="text-xs text-gray-400 mt-6">Change plan or payment method in <a href="{{ route('portal.billing') }}" class="text-brand hover:underline">Billing</a>.</p>
-                @endif
+                </div>
             @else
-                <p class="text-sm text-gray-500">No plan selected yet.</p>
-                @if ($ps === 'checkout')
-                    <button wire:click="resumeCheckout" class="mt-4 bg-brand text-white text-sm font-semibold px-4 py-2.5 rounded-lg">Choose plan & pay →</button>
-                @endif
+                <p class="text-sm text-gray-500">No plan on file. <a href="{{ route('portal.tickets') }}" class="text-brand hover:underline">Contact support</a>.</p>
             @endif
         </div>
     @endif

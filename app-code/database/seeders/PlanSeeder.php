@@ -72,7 +72,7 @@ class PlanSeeder extends Seeder
         ];
 
         foreach ($plans as $plan) {
-            Plan::firstOrCreate(
+            Plan::updateOrCreate(
                 ['slug' => $plan['slug'], 'tenant_id' => $tenantId],
                 array_merge($plan, ['tenant_id' => $tenantId, 'is_active' => true])
             );

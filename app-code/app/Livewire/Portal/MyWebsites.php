@@ -6,6 +6,7 @@ use App\Enums\SiteStatus;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\StripeBillingService;
+use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -41,6 +42,8 @@ class MyWebsites extends Component
             ->where('client_id', $client->id)
             ->where('status', SiteStatus::PENDING)
             ->delete();
+
+        session()->flash('success', 'Site removed.');
     }
 
     /**
@@ -61,8 +64,14 @@ class MyWebsites extends Component
             return;
         }
 
-        if (empty($site->plan->resolvedStripePriceId())) {
-            session()->flash('error', 'Cannot resume checkout: plan not configured. Please contact support.');
+        if (empty(StripeConfig::secretKey())) {
+            session()->flash('error', 'Payment system is not configured yet. Stripe secret key is missing on the server.');
+            return;
+        }
+
+        if (! $site->plan->hasStripeCheckout()) {
+            $mode = StripeConfig::isTestMode() ? 'test' : 'live';
+            session()->flash('error', "Stripe {$mode} price is not set for {$site->plan->name}. Add price IDs in .env or Admin → Platform Settings, then run: php artisan db:seed --class=PlanSeeder");
             return;
         }
 

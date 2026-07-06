@@ -60,7 +60,7 @@
         <p class="url-fallback">{{ $acceptUrl }}</p>
     </div>
     <div class="footer">
-        &copy; {{ date('Y') }} ReviveGuard &mdash; <a href="https://reviveguard.com">reviveguard.com</a><br>
+        &copy; {{ date('Y') }} ReviveGuard &mdash; <a href="https://app.reviveguard.com">app.reviveguard.com</a><br>
         You received this email because an admin issued you an exclusive invite. Not expecting this?
         You can safely ignore it &mdash; the link will expire automatically.
     </div>

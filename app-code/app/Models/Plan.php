@@ -63,13 +63,55 @@ class Plan extends Model
         return $this->features['support_tickets_per_month'] ?? 0;
     }
 
+    public function portalSummary(): string
+    {
+        return match ($this->slug) {
+            'monitor' => 'Uptime & SSL monitoring, monthly backups, email alerts',
+            'guard'   => 'Daily backups, WP updates handled for you — best for most sites',
+            'shield'  => 'Priority support, extended backup retention, full hands-off care',
+            default   => '',
+        };
+    }
+
+    public function isRecommended(): bool
+    {
+        return $this->slug === 'guard';
+    }
+
     /** Stripe Price ID for the active mode (live or test). */
     public function resolvedStripePriceId(): ?string
     {
-        if (\App\Support\StripeConfig::isTestMode()) {
-            return $this->stripe_test_price_id ?: $this->stripe_price_id;
+        $test = \App\Support\StripeConfig::isTestMode();
+
+        $fromDb = $test ? $this->stripe_test_price_id : $this->stripe_price_id;
+
+        if (! empty($fromDb)) {
+            return $fromDb;
         }
 
-        return $this->stripe_price_id;
+        return $this->stripePriceFromEnv($test);
+    }
+
+    public function hasStripeCheckout(): bool
+    {
+        return ! empty($this->resolvedStripePriceId());
+    }
+
+    private function stripePriceFromEnv(bool $test): ?string
+    {
+        $envKey = match ($this->slug) {
+            'monitor' => $test ? 'STRIPE_TEST_PRICE_MONITOR_ID' : 'STRIPE_PRICE_MONITOR_ID',
+            'guard'   => $test ? 'STRIPE_TEST_PRICE_GUARD_ID' : 'STRIPE_PRICE_GUARD_ID',
+            'shield'  => $test ? 'STRIPE_TEST_PRICE_SHIELD_ID' : 'STRIPE_PRICE_SHIELD_ID',
+            default   => null,
+        };
+
+        if (! $envKey) {
+            return null;
+        }
+
+        $value = env($envKey);
+
+        return $value !== null && $value !== '' ? $value : null;
     }
 }

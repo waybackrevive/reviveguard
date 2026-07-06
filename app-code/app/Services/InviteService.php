@@ -7,6 +7,7 @@ use App\Models\ClientInvite;
 use App\Models\PlatformSetting;
 use App\Models\SiteEvaluation;
 use App\Models\User;
+use App\Support\PortalUrl;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +31,7 @@ class InviteService
     public function __construct()
     {
         $this->from   = PlatformSetting::get('resend_from', config('services.resend.from', 'team@reviveguard.com')) ?? 'team@reviveguard.com';
-        $this->appUrl = rtrim(config('app.url'), '/');
+        $this->appUrl = PortalUrl::base();
     }
 
     // ── Create invite ─────────────────────────────────────────────────────────

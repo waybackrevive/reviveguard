@@ -65,18 +65,49 @@
     {{-- Step 3: Plan --}}
     @if ($step === 3)
         <h3 class="text-lg font-semibold text-gray-900 mb-1">Choose your coverage</h3>
-        <p class="text-sm text-gray-500 mb-5">Per site, per month. Our team handles everything.</p>
+        <p class="text-sm text-gray-500 mb-2">Per site, per month — our team handles monitoring, updates, and backups.</p>
+        <p class="text-xs text-gray-400 mb-5">Not sure? <strong class="text-gray-600">Guard</strong> is our most popular plan for business sites.</p>
 
         <div class="grid gap-3 sm:grid-cols-3 mb-4">
             @foreach ($plans as $plan)
                 <button type="button" wire:click="selectPlan('{{ $plan['slug'] }}')"
-                    class="text-left p-4 rounded-[10px] border-2 transition-colors
-                        {{ $selectedPlan === $plan['slug'] ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-emerald-300' }}">
+                    class="relative text-left p-4 rounded-[10px] border-2 transition-colors
+                        {{ $selectedPlan === $plan['slug'] ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-emerald-300 bg-white' }}">
+                    @if ($plan['recommended'])
+                        <span class="absolute -top-2.5 left-3 text-[10px] font-bold uppercase tracking-wide bg-brand text-white px-2 py-0.5 rounded">Popular</span>
+                    @endif
                     <p class="font-semibold text-gray-900">{{ $plan['name'] }}</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">${{ number_format($plan['price_monthly'], 0) }}<span class="text-sm font-normal text-gray-500">/mo</span></p>
+                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">{{ $plan['summary'] }}</p>
                 </button>
             @endforeach
         </div>
+
+        <button type="button" wire:click="toggleComparison" class="text-xs font-medium text-brand hover:underline mb-4">
+            {{ $showComparison ? 'Hide' : 'Compare' }} plan details
+        </button>
+
+        @if ($showComparison)
+            <div class="mb-4 overflow-x-auto rounded-[10px] border border-gray-200 text-xs">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50 text-gray-500">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Feature</th>
+                            <th class="px-3 py-2 text-center">Monitor</th>
+                            <th class="px-3 py-2 text-center">Guard</th>
+                            <th class="px-3 py-2 text-center">Shield</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-gray-700">
+                        <tr><td class="px-3 py-2">Uptime & SSL monitoring</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
+                        <tr><td class="px-3 py-2">Backups</td><td class="text-center">Monthly</td><td class="text-center">Daily</td><td class="text-center">Daily</td></tr>
+                        <tr><td class="px-3 py-2">WP updates managed</td><td class="text-center">—</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
+                        <tr><td class="px-3 py-2">Support tickets</td><td class="text-center">—</td><td class="text-center">1/mo</td><td class="text-center">Unlimited</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
         @error('selectedPlan') <p class="text-red-600 text-xs mb-3">{{ $message }}</p> @enderror
 
         <div class="flex gap-3">

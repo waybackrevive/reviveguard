@@ -3,8 +3,10 @@
 namespace App\Livewire\Portal;
 
 use App\Enums\SiteStatus;
+use App\Models\Plan;
 use App\Models\Site;
 use App\Services\StripeBillingService;
+use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -30,6 +32,8 @@ class SiteShow extends Component
     public string $credNotes = '';
     public bool $credentialsSaved = false;
 
+    public string $selectedPlanSlug = 'guard';
+
     public function mount(Site $site): void
     {
         $client = Auth::guard('client')->user();
@@ -39,6 +43,7 @@ class SiteShow extends Component
         }
 
         $this->site = $site->load(['plan', 'subscription']);
+        $this->selectedPlanSlug = $this->site->plan?->slug ?? 'guard';
 
         if (! request()->has('tab') && in_array($this->site->portalStatusKey(), ['setup', 'checkout'], true)) {
             $this->tab = $this->site->portalStatusKey() === 'checkout' ? 'plan' : 'connection';
@@ -55,19 +60,68 @@ class SiteShow extends Component
     {
         $client = Auth::guard('client')->user();
 
-        if ($this->site->client_id !== $client->id || $this->site->status !== SiteStatus::PENDING || ! $this->site->plan) {
+        if ($this->site->client_id !== $client->id || $this->site->status !== SiteStatus::PENDING) {
             return;
         }
 
+        $plan = $this->site->plan ?? Plan::where('slug', $this->selectedPlanSlug)->where('is_active', true)->first();
+
+        if (! $plan) {
+            session()->flash('error', 'Please choose a plan first.');
+            $this->tab = 'plan';
+            return;
+        }
+
+        if (empty(StripeConfig::secretKey())) {
+            session()->flash('error', 'Payment system is not configured yet. Stripe secret key is missing on the server.');
+            return;
+        }
+
+        if (! $plan->hasStripeCheckout()) {
+            $mode = StripeConfig::isTestMode() ? 'test' : 'live';
+            session()->flash('error', "Stripe {$mode} price is not set for the {$plan->name} plan. Add STRIPE" . ($mode === 'test' ? '_TEST' : '') . "_PRICE_" . strtoupper($plan->slug) . "_ID in .env or Admin → Platform Settings.");
+            return;
+        }
+
+        $this->site->update(['plan_id' => $plan->id]);
+        $this->site->load('plan');
+
         try {
-            $url = $billing->createCheckoutSession($client, $this->site, $this->site->plan);
+            $url = $billing->createCheckoutSession($client, $this->site, $plan);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Unable to start checkout. Please contact support.');
+            session()->flash('error', 'Unable to start checkout: ' . $e->getMessage());
             report($e);
             return;
         }
 
         $this->redirect($url, navigate: false);
+    }
+
+    public function selectPlan(string $slug): void
+    {
+        $this->selectedPlanSlug = $slug;
+
+        if ($this->site->status === SiteStatus::PENDING) {
+            $plan = Plan::where('slug', $slug)->where('is_active', true)->first();
+            if ($plan) {
+                $this->site->update(['plan_id' => $plan->id]);
+                $this->site->load('plan');
+            }
+        }
+    }
+
+    public function removeSite(): void
+    {
+        $client = Auth::guard('client')->user();
+
+        if ($this->site->client_id !== $client->id || $this->site->status !== SiteStatus::PENDING) {
+            session()->flash('error', 'Only unpaid sites waiting for checkout can be removed.');
+            return;
+        }
+
+        $this->site->delete();
+        session()->flash('success', 'Site removed.');
+        $this->redirect(route('portal.sites'), navigate: true);
     }
 
     public function openCredentials(): void
@@ -124,6 +178,8 @@ class SiteShow extends Component
             'backups'      => $this->site->backups,
             'reports'      => $this->site->reports,
             'latestBackup' => $this->site->latestBackup,
+            'plans'        => Plan::where('is_active', true)->orderBy('price_monthly')->get(),
+            'stripeTestMode' => StripeConfig::isTestMode(),
         ])->layout('portal.layouts.app');
     }
 }
