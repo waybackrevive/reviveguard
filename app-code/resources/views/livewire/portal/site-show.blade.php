@@ -463,8 +463,16 @@
                         <button type="button" wire:click="selectPlan('{{ $plan->slug }}')"
                             class="text-left p-4 rounded-[10px] border-2 transition-colors
                                 {{ $selectedPlanSlug === $plan->slug ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-emerald-300 bg-white' }}">
+                            @if ($plan->isRecommended())
+                                <span class="text-[10px] font-bold uppercase text-emerald-700">Popular</span>
+                            @endif
                             <p class="font-semibold text-gray-900">{{ $plan->name }}</p>
                             <p class="text-xl font-bold text-gray-900 mt-1">${{ number_format($plan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
+                            <ul class="mt-3 space-y-1">
+                                @foreach (\App\Support\PlanCatalog::bullets($plan) as $bullet)
+                                    <li class="text-xs text-gray-600 leading-snug">{{ $bullet }}</li>
+                                @endforeach
+                            </ul>
                         </button>
                     @endforeach
                 </div>
@@ -481,20 +489,61 @@
                     </button>
                 </div>
             @elseif ($site->plan)
-                <div class="bg-white rounded-[10px] border border-gray-200 p-6 shadow-sm">
-                    <h2 class="text-lg font-semibold text-gray-900">{{ $site->plan->name }}</h2>
-                    <p class="text-2xl font-bold text-gray-900 mt-2">${{ number_format($site->plan->price_monthly, 0) }}<span class="text-sm font-normal text-gray-500">/month per site</span></p>
+                <div class="space-y-6 max-w-3xl">
+                    <div class="bg-white rounded-[10px] border-2 border-brand p-6 shadow-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-brand mb-1">Your current plan</p>
+                        <h2 class="text-lg font-semibold text-gray-900">{{ $site->plan->name }}</h2>
+                        <p class="text-2xl font-bold text-gray-900 mt-2">${{ number_format($site->plan->price_monthly, 0) }}<span class="text-sm font-normal text-gray-500">/month</span></p>
 
-                    @if ($site->subscription)
-                        <p class="text-sm text-gray-500 mt-4">
-                            Status: <strong>{{ $site->subscription->billingStatusLabel() }}</strong>
-                            @if ($site->subscription->nextBillingDate())
-                                · Next billing {{ $site->subscription->nextBillingDate()->format('M j, Y') }}
-                            @endif
-                        </p>
+                        <ul class="mt-4 space-y-2">
+                            @foreach (\App\Support\PlanCatalog::bullets($site->plan) as $bullet)
+                                <li class="flex items-start gap-2 text-sm text-gray-700">
+                                    <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>{{ $bullet }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+
+                        @if ($site->subscription)
+                            <p class="text-sm text-gray-500 mt-4 pt-4 border-t border-gray-100">
+                                Status: <strong>{{ $site->subscription->billingStatusLabel() }}</strong>
+                                @if ($site->subscription->nextBillingDate())
+                                    · Next billing {{ $site->subscription->nextBillingDate()->format('M j, Y') }}
+                                @endif
+                            </p>
+                        @endif
+                    </div>
+
+                    @if ($site->plan->slug !== 'shield')
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Upgrade this site</h3>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                @foreach ($plans as $upgradePlan)
+                                    @if (\App\Support\PlanCatalog::isUpgrade($site->plan, $upgradePlan))
+                                        <div class="bg-white rounded-[10px] border border-gray-200 p-4">
+                                            <p class="font-semibold text-gray-900">{{ $upgradePlan->name }}</p>
+                                            <p class="text-lg font-bold text-gray-900 mt-0.5">${{ number_format($upgradePlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
+                                            <ul class="mt-3 space-y-1.5">
+                                                @foreach (\App\Support\PlanCatalog::bullets($upgradePlan) as $bullet)
+                                                    <li class="text-xs text-gray-600 flex gap-1.5">
+                                                        <span class="text-emerald-500">+</span> {{ $bullet }}
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                            <a href="{{ route('portal.billing', ['tab' => 'plan']) }}"
+                                                class="mt-4 inline-block text-sm font-semibold text-brand hover:underline">
+                                                Upgrade in billing →
+                                            </a>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
                     @endif
 
-                    <p class="text-xs text-gray-400 mt-6">Change plan or payment method in <a href="{{ route('portal.billing') }}" class="text-brand hover:underline">Billing</a>.</p>
+                    <p class="text-xs text-gray-400">
+                        Compare all plans in <a href="{{ route('portal.billing', ['tab' => 'plan']) }}" class="text-brand hover:underline">Account → Plan</a>.
+                    </p>
                 </div>
             @else
                 <p class="text-sm text-gray-500">No plan on file. <a href="{{ route('portal.tickets') }}" class="text-brand hover:underline">Contact support</a>.</p>

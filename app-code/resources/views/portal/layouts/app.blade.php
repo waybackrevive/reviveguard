@@ -30,16 +30,18 @@
         @media (min-width: 1024px) {
             #portalSidebar { width: 15rem; }
             #portalMain { padding-left: 15rem; }
-            html.portal-sidebar-collapsed #portalSidebar { width: 4.5rem; }
-            html.portal-sidebar-collapsed #portalMain { padding-left: 4.5rem; }
+            html.portal-sidebar-collapsed #portalSidebar { width: 5.75rem; }
+            html.portal-sidebar-collapsed #portalMain { padding-left: 5.75rem; }
             html.portal-sidebar-collapsed .sidebar-label,
             html.portal-sidebar-collapsed .sidebar-brand-text,
             html.portal-sidebar-collapsed .sidebar-footer-text { display: none; }
             html.portal-sidebar-collapsed .sidebar-add-label { display: none; }
-            html.portal-sidebar-collapsed .sidebar-nav-link { justify-content: center; padding-left: 0.5rem; padding-right: 0.5rem; }
-            html.portal-sidebar-collapsed .sidebar-add-btn { padding-left: 0.5rem; padding-right: 0.5rem; }
-            html.portal-sidebar-collapsed .sidebar-header { justify-content: center; padding-left: 0.75rem; padding-right: 0.75rem; }
+            html.portal-sidebar-collapsed .sidebar-nav-link { justify-content: center; padding: 0.625rem; }
+            html.portal-sidebar-collapsed .sidebar-add-btn { justify-content: center; padding: 0.625rem; }
+            html.portal-sidebar-collapsed .sidebar-header { justify-content: center; padding-left: 0.875rem; padding-right: 0.875rem; }
             html.portal-sidebar-collapsed #sidebarCollapseBtn svg { transform: rotate(180deg); }
+            html.portal-sidebar-collapsed .sidebar-nav-link svg,
+            html.portal-sidebar-collapsed .sidebar-add-btn svg { width: 1.375rem; height: 1.375rem; }
         }
     </style>
     @livewireStyles
@@ -70,7 +72,7 @@
 
             @php
                 $nav = [
-                    ['portal.sites', 'Sites', 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z'],
+                    ['portal.sites', 'Home', 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'],
                     ['portal.alerts', 'Alerts', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'],
                     ['portal.reports', 'Reports', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
                     ['portal.addons', 'Add-ons', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
@@ -118,7 +120,7 @@
             </button>
         </div>
         <nav id="mobileNav" class="hidden bg-white border-b border-gray-200 py-2 z-50 shadow-lg">
-            <a href="{{ route('portal.sites') }}" class="block px-5 py-2.5 text-sm">Sites</a>
+            <a href="{{ route('portal.sites') }}" class="block px-5 py-2.5 text-sm">Home</a>
             <a href="{{ route('portal.alerts') }}" class="block px-5 py-2.5 text-sm">Alerts</a>
             <a href="{{ route('portal.reports') }}" class="block px-5 py-2.5 text-sm">Reports</a>
             <a href="{{ route('portal.addons') }}" class="block px-5 py-2.5 text-sm">Add-ons</a>

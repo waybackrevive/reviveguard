@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Portal;
 
+use App\Models\Plan;
+use App\Models\Site;
 use App\Services\StripeBillingService;
+use App\Support\PlanCatalog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -29,6 +32,10 @@ class Account extends Component
         $this->name  = $client->name ?? '';
         $this->email = $client->email ?? '';
         $this->phone = $client->phone ?? '';
+
+        if (in_array(request()->query('tab'), ['profile', 'plan', 'billing'], true)) {
+            $this->activeTab = request()->query('tab');
+        }
     }
 
     public function saveProfile(): void
@@ -91,6 +98,21 @@ class Account extends Component
         return redirect()->away($url);
     }
 
+    public function goToSitePlan(string $siteId)
+    {
+        $client = Auth::guard('client')->user();
+
+        $site = Site::where('id', $siteId)->where('client_id', $client->id)->first();
+
+        if (! $site) {
+            session()->flash('error', 'Site not found.');
+
+            return;
+        }
+
+        return redirect()->route('portal.sites.show', ['site' => $site, 'tab' => 'plan']);
+    }
+
     public function render(): \Illuminate\View\View
     {
         $client = Auth::guard('client')->user();
@@ -102,12 +124,19 @@ class Account extends Component
             ->orderByDesc('created_at')
             ->get();
 
+        $plans          = PlanCatalog::all();
+        $comparisonRows = PlanCatalog::comparisonRows();
+        $sites          = Site::where('client_id', $client->id)->with('plan')->orderBy('name')->get();
+
         return view('livewire.portal.account', [
             'client'            => $client,
             'sub'               => $sub,
             'plan'              => $plan,
             'invoices'          => $invoices,
             'siteSubscriptions' => $siteSubscriptions,
+            'plans'             => $plans,
+            'comparisonRows'    => $comparisonRows,
+            'sites'             => $sites,
         ])->layout('portal.layouts.app');
     }
 }
