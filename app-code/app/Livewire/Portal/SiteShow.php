@@ -9,6 +9,7 @@ use App\Services\ClientActivityService;
 use App\Services\InvoiceService;
 use App\Services\StripeBillingService;
 use App\Services\WordPressSsoService;
+use App\Support\ClientTimezone;
 use App\Support\MonitorSettings;
 use App\Support\PlanCatalog;
 use App\Support\SiteUptimeChart;
@@ -392,10 +393,18 @@ class SiteShow extends Component
         $uptimeDayGroups  = [];
         $lastProbe        = null;
         $periodUptimePct  = null;
+        $monitoringSummary = [];
+        $recentChecks     = [];
         $allowedIntervals = MonitorSettings::allowedIntervals($this->site);
         $allowedRegions   = MonitorSettings::allowedRegions($this->site);
 
+        $clientTimezoneLabel = '';
+        $portalClient = Auth::guard('client')->user();
+
         if ($this->tab === 'monitoring' && $this->site->hasPaidSubscription()) {
+            $client    = Auth::guard('client')->user();
+            $timezone  = ClientTimezone::resolve($client);
+
             $uptimeIncidents = $this->site->events()
                 ->whereIn('type', ['uptime_kuma_alert', 'uptime_probe'])
                 ->latest()
@@ -409,8 +418,11 @@ class SiteShow extends Component
 
             $lastProbe = $uptimeProbes->sortByDesc('checked_at')->first();
 
-            $uptimeDayGroups = SiteUptimeChart::daysWithCheckBars($this->site->id, 7);
+            $uptimeDayGroups = SiteUptimeChart::daysWithCheckBars($this->site->id, 7, $timezone);
             $periodUptimePct = SiteUptimeChart::periodUptimePercent($uptimeProbes);
+            $monitoringSummary = SiteUptimeChart::monitoringSummary($uptimeProbes);
+            $recentChecks = SiteUptimeChart::recentChecks($uptimeProbes, 12, $timezone);
+            $clientTimezoneLabel = ClientTimezone::label($client);
         }
 
         $plans = Plan::where('is_active', true)->orderBy('price_monthly')->get();
@@ -443,11 +455,15 @@ class SiteShow extends Component
             'canOpenWpAdmin'   => app(WordPressSsoService::class)->canLogin($this->site),
             'uptimeIncidents'  => $uptimeIncidents,
             'uptimeProbes'     => $uptimeProbes,
-            'uptimeDayGroups'  => $uptimeDayGroups,
-            'lastProbe'        => $lastProbe,
+            'uptimeDayGroups'   => $uptimeDayGroups,
+            'lastProbe'         => $lastProbe,
+            'monitoringSummary' => $monitoringSummary,
+            'recentChecks'      => $recentChecks,
             'periodUptimePct'  => $periodUptimePct,
             'allowedIntervals' => $allowedIntervals,
             'allowedRegions'   => $allowedRegions,
+            'clientTimezoneLabel' => $clientTimezoneLabel,
+            'portalClient'        => $portalClient,
         ])->layout('portal.layouts.app');
     }
 }

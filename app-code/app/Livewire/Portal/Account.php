@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Services\ClientActivityService;
 use App\Services\InvoiceService;
 use App\Services\StripeBillingService;
+use App\Support\ClientTimezone;
 use App\Support\PlanCatalog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +19,7 @@ class Account extends Component
     public string $name     = '';
     public string $email    = '';
     public string $phone    = '';
+    public string $timezone = '';
 
     public string $currentPassword = '';
     public string $newPassword     = '';
@@ -37,7 +39,8 @@ class Account extends Component
         $client      = Auth::guard('client')->user();
         $this->name  = $client->name ?? '';
         $this->email = $client->email ?? '';
-        $this->phone = $client->phone ?? '';
+        $this->phone     = $client->phone ?? '';
+        $this->timezone  = $client->timezone ?: ClientTimezone::DEFAULT;
 
         if (in_array(request()->query('tab'), ['profile', 'plan', 'billing'], true)) {
             $this->activeTab = request()->query('tab');
@@ -64,12 +67,14 @@ class Account extends Component
                 Rule::unique('clients', 'email')->ignore($client->id),
             ],
             'phone' => ['nullable', 'string', 'max:50'],
+            'timezone' => ['required', 'string', Rule::in(array_keys(ClientTimezone::options()))],
         ]);
 
         $client->update([
             'name'  => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'],
+            'timezone' => $validated['timezone'],
         ]);
 
         $this->profileSaved = true;

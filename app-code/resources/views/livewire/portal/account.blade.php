@@ -50,6 +50,18 @@
                     @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Display timezone</label>
+                    <select wire:model="timezone"
+                            class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 @error('timezone') border-red-400 @enderror">
+                        @foreach (\App\Support\ClientTimezone::options() as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('timezone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    <p class="mt-1.5 text-xs text-gray-500 max-w-md">Uptime checks, incidents, and alerts show in this timezone. Billing dates stay as calendar dates. Server stores all times in UTC.</p>
+                </div>
+
                 <button type="submit"
                         class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors"
                         wire:loading.attr="disabled" wire:loading.class="opacity-60">
