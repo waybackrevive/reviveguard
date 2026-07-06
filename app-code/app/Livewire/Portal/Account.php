@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Livewire\Concerns\DispatchesPortalToast;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\ClientActivityService;
@@ -16,6 +17,8 @@ use Livewire\Component;
 
 class Account extends Component
 {
+    use DispatchesPortalToast;
+
     public string $name     = '';
     public string $email    = '';
     public string $phone    = '';
@@ -24,9 +27,6 @@ class Account extends Component
     public string $currentPassword = '';
     public string $newPassword     = '';
     public string $confirmPassword = '';
-
-    public bool $profileSaved  = false;
-    public bool $passwordSaved = false;
 
     public string $activeTab = 'profile'; // 'profile' | 'plan' | 'billing'
 
@@ -77,7 +77,7 @@ class Account extends Component
             'timezone' => $validated['timezone'],
         ]);
 
-        $this->profileSaved = true;
+        $this->toastSuccess('Profile updated.');
     }
 
     public function changePassword(): void
@@ -100,7 +100,7 @@ class Account extends Component
         ]);
 
         $this->reset('currentPassword', 'newPassword', 'confirmPassword');
-        $this->passwordSaved = true;
+        $this->toastSuccess('Password updated.');
     }
 
     public function openBillingPortal(StripeBillingService $billing)
@@ -124,7 +124,7 @@ class Account extends Component
         $site = Site::where('id', $siteId)->where('client_id', $client->id)->first();
 
         if (! $site) {
-            session()->flash('error', 'Site not found.');
+            $this->toastError('Site not found.');
 
             return;
         }
@@ -168,7 +168,7 @@ class Account extends Component
             ->first();
 
         if (! $site) {
-            $this->addError('planChange', 'Site not found.');
+            $this->toastError('Site not found.');
 
             return;
         }
@@ -176,13 +176,13 @@ class Account extends Component
         $newPlan = Plan::where('slug', $planSlug)->where('is_active', true)->first();
 
         if (! $newPlan) {
-            $this->addError('planChange', 'Plan not found.');
+            $this->toastError('Plan not found.');
 
             return;
         }
 
         if (! PlanCatalog::canChangePlan($site->plan, $newPlan)) {
-            $this->addError('planChange', 'Please select a different plan.');
+            $this->toastError('Please select a different plan.');
 
             return;
         }
@@ -194,7 +194,7 @@ class Account extends Component
         try {
             $result = $billing->changeSitePlan($client, $site, $newPlan);
         } catch (\Throwable $e) {
-            $this->addError('planChange', $e->getMessage());
+            $this->toastError($e->getMessage());
             report($e);
 
             return;
@@ -220,7 +220,7 @@ class Account extends Component
             );
         }
 
-        session()->flash('success', $result->successMessage($newPlan->name));
+        $this->toastSuccess($result->successMessage($newPlan->name));
         $this->activeTab = $isUpgrade ? 'plan' : 'billing';
     }
 

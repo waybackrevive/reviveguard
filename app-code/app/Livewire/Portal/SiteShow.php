@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Livewire\Concerns\DispatchesPortalToast;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\SiteUptimeProbe;
@@ -20,6 +21,8 @@ use Livewire\Component;
 
 class SiteShow extends Component
 {
+    use DispatchesPortalToast;
+
     public Site $site;
 
     #[Url(as: 'tab')]
@@ -37,7 +40,6 @@ class SiteShow extends Component
     public string $credFtpUser = '';
     public string $credFtpPassword = '';
     public string $credNotes = '';
-    public bool $credentialsSaved = false;
 
     public string $selectedPlanSlug = 'guard';
 
@@ -47,8 +49,6 @@ class SiteShow extends Component
     public int $monitorInterval = 5;
 
     public string $monitorRegion = 'us-east';
-
-    public bool $monitorSettingsSaved = false;
 
     public function mount(Site $site): void
     {
@@ -93,25 +93,25 @@ class SiteShow extends Component
         $client = Auth::guard('client')->user();
 
         if ($this->site->client_id !== $client->id || $this->site->hasPaidSubscription()) {
-            session()->flash('error', 'This site already has an active subscription.');
+            $this->toastError('This site already has an active subscription.');
             return;
         }
 
         $plan = $this->site->plan ?? Plan::where('slug', $this->selectedPlanSlug)->where('is_active', true)->first();
 
         if (! $plan) {
-            session()->flash('error', 'Please choose a plan first.');
+            $this->toastError('Please choose a plan first.');
             $this->tab = 'plan';
             return;
         }
 
         if (empty(StripeConfig::secretKey())) {
-            session()->flash('error', 'Payment system is not configured yet. Stripe secret key is missing on the server.');
+            $this->toastError('Payment system is not configured yet. Stripe secret key is missing on the server.');
             return;
         }
 
         if ($reason = $plan->checkoutUnavailableReason()) {
-            session()->flash('error', $reason);
+            $this->toastError($reason);
             return;
         }
 
@@ -121,7 +121,7 @@ class SiteShow extends Component
         try {
             $url = $billing->createCheckoutSession($client, $this->site, $plan);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Unable to start checkout: ' . $e->getMessage());
+            $this->toastError('Unable to start checkout: ' . $e->getMessage());
             report($e);
             return;
         }
@@ -147,7 +147,7 @@ class SiteShow extends Component
         $client = Auth::guard('client')->user();
 
         if ($this->site->client_id !== $client->id || $this->site->hasPaidSubscription()) {
-            session()->flash('error', 'Only unpaid sites waiting for checkout can be removed.');
+            $this->toastError('Only unpaid sites waiting for checkout can be removed.');
             return;
         }
 
@@ -167,7 +167,7 @@ class SiteShow extends Component
         try {
             $url = $sso->createLoginUrl($this->site, $client->id);
         } catch (\Throwable $e) {
-            session()->flash('error', $e->getMessage());
+            $this->toastError($e->getMessage());
 
             return;
         }
@@ -192,8 +192,9 @@ class SiteShow extends Component
 
         $this->monitorInterval = $interval;
         $this->monitorRegion   = $region;
-        $this->monitorSettingsSaved = true;
         $this->site->refresh();
+
+        $this->toastSuccess('Monitoring settings saved.');
 
         $activity->log(
             $client,
@@ -231,7 +232,7 @@ class SiteShow extends Component
             $this->site,
         );
 
-        session()->flash('success', $paused
+        $this->toastSuccess($paused
             ? 'Monitoring paused. Uptime checks and down alerts are on hold.'
             : 'Monitoring resumed. Checks will run on your saved schedule.');
     }
@@ -269,7 +270,7 @@ class SiteShow extends Component
         $newPlan = Plan::where('slug', $planSlug)->where('is_active', true)->first();
 
         if (! $newPlan || ! PlanCatalog::canChangePlan($this->site->plan, $newPlan)) {
-            session()->flash('error', 'Please select a different plan.');
+            $this->toastError('Please select a different plan.');
 
             return;
         }
@@ -281,7 +282,7 @@ class SiteShow extends Component
         try {
             $result = $billing->changeSitePlan($client, $this->site, $newPlan);
         } catch (\Throwable $e) {
-            session()->flash('error', $e->getMessage());
+            $this->toastError($e->getMessage());
             report($e);
 
             return;
@@ -309,7 +310,7 @@ class SiteShow extends Component
             );
         }
 
-        session()->flash('success', $result->successMessage($newPlan->name));
+        $this->toastSuccess($result->successMessage($newPlan->name));
     }
 
     /** @deprecated Use changePlan() */
@@ -332,7 +333,6 @@ class SiteShow extends Component
         $this->credFtpUser         = $existing['ftp_user'] ?? '';
         $this->credFtpPassword     = $existing['ftp_password'] ?? '';
         $this->credNotes           = $existing['notes'] ?? '';
-        $this->credentialsSaved    = false;
         $this->showCredentialsModal = true;
     }
 
@@ -364,7 +364,7 @@ class SiteShow extends Component
             $this->site,
         );
 
-        $this->credentialsSaved = true;
+        $this->toastSuccess('Hosting credentials saved.');
         $this->showCredentialsModal = false;
     }
 

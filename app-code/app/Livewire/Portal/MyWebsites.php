@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Livewire\Concerns\DispatchesPortalToast;
 use App\Enums\SiteStatus;
 use App\Models\Plan;
 use App\Models\Site;
@@ -17,6 +18,8 @@ use Livewire\Component;
  */
 class MyWebsites extends Component
 {
+    use DispatchesPortalToast;
+
     public string $search       = '';
     public string $filterStatus = '';
 
@@ -46,7 +49,7 @@ class MyWebsites extends Component
             ->filter(fn (Site $site) => ! $site->hasPaidSubscription())
             ->each->delete();
 
-        session()->flash('success', 'Site removed.');
+        $this->toastSuccess('Site removed.');
     }
 
     /**
@@ -62,29 +65,29 @@ class MyWebsites extends Component
             ->first();
 
         if (! $site || $site->hasPaidSubscription()) {
-            session()->flash('error', 'Cannot resume checkout: site not found or already subscribed.');
+            $this->toastError('Cannot resume checkout: site not found or already subscribed.');
             return;
         }
 
         if (! $site->plan) {
-            session()->flash('error', 'Please choose a plan first.');
+            $this->toastError('Please choose a plan first.');
             return;
         }
 
         if (empty(StripeConfig::secretKey())) {
-            session()->flash('error', 'Payment system is not configured yet. Stripe secret key is missing on the server.');
+            $this->toastError('Payment system is not configured yet. Stripe secret key is missing on the server.');
             return;
         }
 
         if ($reason = $site->plan->checkoutUnavailableReason()) {
-            session()->flash('error', $reason);
+            $this->toastError($reason);
             return;
         }
 
         try {
             $checkoutUrl = $billing->createCheckoutSession($client, $site, $site->plan);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Unable to start checkout. Please contact support.');
+            $this->toastError('Unable to start checkout. Please contact support.');
             report($e);
             return;
         }
@@ -99,7 +102,7 @@ class MyWebsites extends Component
         $site = Site::where('id', $siteId)->where('client_id', $client->id)->first();
 
         if (! $site) {
-            session()->flash('error', 'Site not found.');
+            $this->toastError('Site not found.');
 
             return;
         }
@@ -107,7 +110,7 @@ class MyWebsites extends Component
         try {
             $url = $sso->createLoginUrl($site, $client->id);
         } catch (\Throwable $e) {
-            session()->flash('error', $e->getMessage());
+            $this->toastError($e->getMessage());
 
             return;
         }

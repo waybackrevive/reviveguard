@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Livewire\Concerns\DispatchesPortalToast;
 use App\Models\Site;
 use App\Models\Ticket;
 use App\Services\ClientActivityService;
@@ -14,13 +15,13 @@ use Livewire\Component;
 
 class Tickets extends Component
 {
+    use DispatchesPortalToast;
+
     public string  $subject = '';
     public string  $message = '';
     public ?string $siteId  = null;
 
     public ?Ticket $selectedTicket = null;
-
-    public bool $submitted = false;
 
     protected function rules(): array
     {
@@ -67,19 +68,19 @@ class Tickets extends Component
         $client = Auth::guard('client')->user();
 
         if (!$client) {
-            session()->flash('ticket_error', 'Your session expired. Please sign in again.');
+            $this->toastError('Your session expired. Please sign in again.');
             return;
         }
 
         if (!Schema::hasTable('tickets')) {
-            session()->flash('ticket_error', 'Support tickets are not available yet. Please contact your administrator.');
+            $this->toastError('Support tickets are not available yet. Please contact your administrator.');
             return;
         }
 
         $plan = $client->bestSupportPlan();
 
         if (! SupportTier::canSubmitTicket($plan)) {
-            session()->flash('ticket_error', 'Email support is not available on your current plan.');
+            $this->toastError('Email support is not available on your current plan.');
             return;
         }
 
@@ -92,12 +93,12 @@ class Tickets extends Component
                 'client_id' => $client->id,
                 'error' => $e->getMessage(),
             ]);
-            session()->flash('ticket_error', 'Support is temporarily unavailable. Please try again shortly.');
+            $this->toastError('Support is temporarily unavailable. Please try again shortly.');
             return;
         }
 
         if (SupportTier::ticketLimitReached($plan, $usedThisMonth)) {
-            session()->flash('ticket_error', 'You have reached your support ticket limit for this month.');
+            $this->toastError('You have reached your support ticket limit for this month.');
             return;
         }
 
@@ -122,7 +123,7 @@ class Tickets extends Component
                 'client_id' => $client->id,
                 'error' => $e->getMessage(),
             ]);
-            session()->flash('ticket_error', 'Could not submit ticket right now. Please try again shortly.');
+            $this->toastError('Could not submit ticket right now. Please try again shortly.');
             return;
         }
 
@@ -136,12 +137,7 @@ class Tickets extends Component
         );
 
         $this->reset('subject', 'message');
-        $this->submitted = true;
-    }
-
-    public function dismissSuccess(): void
-    {
-        $this->submitted = false;
+        $this->toastSuccess('Ticket submitted. ' . SupportTier::forPlan($plan)['reply_sla'] . '.');
     }
 
     public function showTicket(string $id): void

@@ -22,12 +22,6 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="text-base font-semibold text-gray-900 mb-4">Your Details</h2>
 
-            @if ($profileSaved)
-                <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                    Changes saved.
-                </div>
-            @endif
-
             <form wire:submit.prevent="saveProfile" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -73,12 +67,6 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="text-base font-semibold text-gray-900 mb-4">Change Password</h2>
 
-            @if ($passwordSaved)
-                <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                    Password updated successfully.
-                </div>
-            @endif
-
             <form wire:submit.prevent="changePassword" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Current password</label>
@@ -113,13 +101,6 @@
     {{-- ── Plan tab ─────────────────────────────────────────────────────── --}}
     @if ($activeTab === 'plan')
     <div class="space-y-6">
-        @if (session('success'))
-            <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
-        @endif
-        @error('planChange')
-            <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ $message }}</div>
-        @enderror
-
         <div class="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700">
             <p class="font-semibold text-gray-900">Done-for-you protection by the WaybackRevive team</p>
             <p class="mt-1 text-gray-600">Same experts who restored 500+ websites — we watch, backup, and fix so you don't have to. Upgrade or downgrade anytime from here. Upgrades charge your card today (prorated); downgrades credit your next bill.</p>

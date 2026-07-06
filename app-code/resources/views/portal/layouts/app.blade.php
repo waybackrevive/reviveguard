@@ -146,6 +146,8 @@
     </main>
 </div>
 
+@livewire('portal.toast-stack')
+
 @livewireScripts
 <script>
 (function () {

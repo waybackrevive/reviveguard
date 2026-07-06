@@ -21,13 +21,6 @@
         </div>
     @endif
 
-    @if (session('error'))
-        <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
-    @endif
-    @if (session('success'))
-        <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
-    @endif
-
     <div class="mb-5">
         <a href="{{ route('portal.sites') }}" class="text-sm text-gray-500 hover:text-brand inline-flex items-center gap-1 mb-3">← All sites</a>
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -207,9 +200,6 @@
                 <button wire:click="saveMonitorSettings" class="text-sm font-semibold text-brand hover:underline">
                     Save
                 </button>
-                @if ($monitorSettingsSaved)
-                    <span class="text-xs text-emerald-700">Saved</span>
-                @endif
                 <span class="text-xs text-gray-400 hidden sm:inline">{{ \App\Support\MonitorSettings::planIntervalHint($site) }} SSL &amp; domain checked daily.</span>
                 @if (! $site->monitoring_paused)
                     <button wire:click="toggleMonitoringPause" wire:confirm="Pause uptime monitoring and down alerts for this site?"
@@ -276,17 +266,25 @@
                         </span>
                     @endif
                 </div>
-                <div class="flex items-end gap-2 overflow-x-auto pb-2 px-1 min-h-[5rem]">
+                <div class="rounded-lg bg-gray-50 border border-gray-100 px-2 pt-3 pb-2">
+                <div class="flex items-end gap-1.5 h-28 w-full">
                     @foreach ($uptimeDailyBars as $day)
-                        <div class="flex flex-col items-center gap-1 shrink-0 min-w-[2.25rem]">
-                            <div
-                                class="w-3 rounded-sm {{ $day['color'] }} {{ $day['has_data'] ? '' : 'opacity-40' }}"
-                                style="height: {{ $day['bar_height'] }}px"
-                                title="{{ $day['has_data'] ? number_format((float) $day['pct'], 1) . '% uptime' : 'No data' }}"
-                            ></div>
-                            <span class="text-[9px] text-gray-500 leading-none">{{ $day['label'] }}</span>
+                        <div class="flex-1 flex flex-col justify-end h-full min-w-0">
+                            <div class="flex-1 flex items-end w-full min-h-[2rem]">
+                                @if ($day['has_data'])
+                                    <div
+                                        class="w-full rounded-t-sm {{ $day['color'] }}"
+                                        style="height: {{ max(18, min(100, (int) round((float) ($day['pct'] ?? 0)))) }}%"
+                                        title="{{ number_format((float) $day['pct'], 1) }}% uptime"
+                                    ></div>
+                                @else
+                                    <div class="w-full h-1 rounded-full bg-gray-200" title="No checks this day"></div>
+                                @endif
+                            </div>
+                            <span class="text-[10px] text-gray-500 mt-2 text-center truncate w-full">{{ $day['label'] }}</span>
                         </div>
                     @endforeach
+                </div>
                 </div>
                 @if ($uptimeProbes->isEmpty())
                     <p class="text-xs text-gray-500 mt-4 text-center">Collecting uptime data — chart fills in after the first checks.</p>
@@ -426,9 +424,6 @@
                         {{ $site->hosting_credentials ? 'Update' : 'Add' }} details
                     </button>
                 </div>
-                @if ($credentialsSaved)
-                    <p class="mt-3 text-sm text-emerald-700">Details saved securely.</p>
-                @endif
             </div>
 
         @if ($showCredentialsModal)
@@ -509,13 +504,6 @@
                 </div>
             @elseif ($site->plan)
                 <div class="space-y-6 max-w-3xl">
-                    @if (session('success'))
-                        <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
-                    @endif
-                    @if (session('error'))
-                        <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
-                    @endif
-
                     <div class="bg-white rounded-[10px] border-2 border-brand p-6 shadow-sm">
                         <p class="text-xs font-semibold uppercase tracking-wide text-brand mb-1">Your current plan</p>
                         <h2 class="text-lg font-semibold text-gray-900">{{ $site->plan->name }}</h2>

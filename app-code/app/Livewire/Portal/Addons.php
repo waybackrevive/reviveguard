@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Portal;
 
+use App\Livewire\Concerns\DispatchesPortalToast;
 use App\Models\AddonOrder;
 use App\Models\Site;
 use App\Services\ClientActivityService;
@@ -13,6 +14,8 @@ use Livewire\Component;
 
 class Addons extends Component
 {
+    use DispatchesPortalToast;
+
     public bool $showOrderModal = false;
 
     public ?string $selectedAddonSlug = null;
@@ -28,7 +31,7 @@ class Addons extends Component
         $addon = $this->findAddon($slug);
 
         if (! $addon) {
-            session()->flash('error', 'Add-on not found.');
+            $this->toastError('Add-on not found.');
 
             return;
         }
@@ -51,7 +54,7 @@ class Addons extends Component
         $addon = $this->selectedAddonSlug ? $this->findAddon($this->selectedAddonSlug) : null;
 
         if (! $addon) {
-            session()->flash('error', 'Add-on not found.');
+            $this->toastError('Add-on not found.');
 
             return;
         }
@@ -70,7 +73,7 @@ class Addons extends Component
         $this->validate($rules);
 
         if (! Schema::hasTable('addon_orders')) {
-            session()->flash('error', 'Orders are not available yet. Please contact support.');
+            $this->toastError( 'Orders are not available yet. Please contact support.');
 
             return;
         }
@@ -83,14 +86,14 @@ class Addons extends Component
                 ->first();
 
             if (! $site) {
-                session()->flash('error', 'Please select a valid site.');
+                $this->toastError( 'Please select a valid site.');
 
                 return;
             }
         }
 
         if (empty(StripeConfig::secretKey())) {
-            session()->flash('error', 'Payment system is not configured yet. Please contact support.');
+            $this->toastError( 'Payment system is not configured yet. Please contact support.');
 
             return;
         }
@@ -98,7 +101,7 @@ class Addons extends Component
         $amountCents = $this->calculateAmountCents($addon, $this->orderQuantity);
 
         if ($amountCents < 50) {
-            session()->flash('error', 'Invalid order amount.');
+            $this->toastError( 'Invalid order amount.');
 
             return;
         }
@@ -130,7 +133,7 @@ class Addons extends Component
         try {
             $url = $billing->createAddonCheckoutSession($client, $order);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Unable to start payment: ' . $e->getMessage());
+            $this->toastError( 'Unable to start payment: ' . $e->getMessage());
             report($e);
 
             return;
@@ -148,7 +151,7 @@ class Addons extends Component
             ->first();
 
         if (! $order || ! $order->isAwaitingPayment()) {
-            session()->flash('error', 'This order cannot be paid right now.');
+            $this->toastError( 'This order cannot be paid right now.');
 
             return;
         }
@@ -156,7 +159,7 @@ class Addons extends Component
         try {
             $url = $billing->createAddonCheckoutSession($client, $order);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Unable to start payment: ' . $e->getMessage());
+            $this->toastError( 'Unable to start payment: ' . $e->getMessage());
             report($e);
 
             return;

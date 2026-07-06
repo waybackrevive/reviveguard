@@ -1,11 +1,4 @@
 <div>
-    @if (session('success'))
-        <div class="mb-5 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
-    @endif
-    @if (session('error'))
-        <div class="mb-5 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
-    @endif
-
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Add-ons</h1>
         <p class="text-sm text-gray-500 mt-1">Order extra services — submit details, pay securely, and track progress here.</p>

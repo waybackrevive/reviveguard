@@ -30,19 +30,6 @@
         @endif
     </div>
 
-    @if ($submitted)
-        <div class="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex items-start justify-between gap-4">
-            <p class="text-sm text-green-700">Ticket submitted. {{ $supportTier['reply_sla'] }}.</p>
-            <button wire:click="dismissSuccess" class="text-green-500 hover:text-green-700 text-xs">Dismiss</button>
-        </div>
-    @endif
-
-    @if (session('ticket_error'))
-        <div class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-            <p class="text-sm text-red-700">{{ session('ticket_error') }}</p>
-        </div>
-    @endif
-
     @if ($supportTier['email'])
         <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
             <h2 class="text-base font-semibold text-gray-900 mb-4">Need help with your website?</h2>
