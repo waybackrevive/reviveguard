@@ -104,13 +104,13 @@
         @if (session('success'))
             <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
         @endif
-        @error('upgrade')
+        @error('planChange')
             <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ $message }}</div>
         @enderror
 
         <div class="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700">
             <p class="font-semibold text-gray-900">Done-for-you protection by the WaybackRevive team</p>
-            <p class="mt-1 text-gray-600">Same experts who restored 500+ websites — we watch, backup, and fix so you don't have to. Upgrade anytime; your card on file is charged only the prorated difference.</p>
+            <p class="mt-1 text-gray-600">Same experts who restored 500+ websites — we watch, backup, and fix so you don't have to. Upgrade or downgrade anytime from here. Upgrades charge your card today (prorated); downgrades credit your next bill.</p>
         </div>
 
         {{-- Active subscriptions --}}
@@ -186,7 +186,7 @@
             @endif
 
             <p class="mt-5 pt-5 border-t border-gray-100 text-xs text-gray-400">
-                <strong>Manage billing</strong> is for payment method &amp; receipts only. To change plan, use the upgrade buttons below — one click, instant activation.
+                <strong>Manage billing</strong> is for payment method &amp; receipts only. To change plan, use the buttons below — upgrades charge your card today (prorated); downgrades credit your next bill.
             </p>
         </div>
 
@@ -272,14 +272,19 @@
             </div>
         </div>
 
-        {{-- Upgrade prompts per site --}}
+        {{-- Plan change prompts per site --}}
         @foreach ($sites as $site)
-            @if ($site->hasPaidSubscription() && $site->plan && $site->plan->slug !== 'shield')
+            @if ($site->hasPaidSubscription() && $site->plan)
+                @php
+                    $hasUpgrade = $plans->contains(fn ($p) => \App\Support\PlanCatalog::isUpgrade($site->plan, $p));
+                    $hasDowngrade = $plans->contains(fn ($p) => \App\Support\PlanCatalog::isDowngrade($site->plan, $p));
+                @endphp
+                @if ($hasUpgrade)
                 <div class="bg-white border border-violet-200 rounded-2xl p-5 shadow-sm">
                     <p class="text-sm font-semibold text-gray-900">Upgrade {{ $site->displayName() }}</p>
                     <p class="text-sm text-gray-500 mt-0.5 mb-4">
                         On <strong>{{ $site->plan->name }}</strong> (${{ number_format($site->plan->price_monthly, 0) }}/mo).
-                        Pick a higher plan — charged prorated today, features activate immediately.
+                        Your card on file is charged the prorated difference today. Receipt appears under Billing &amp; Invoices.
                     </p>
                     <div class="grid gap-3 sm:grid-cols-2">
                         @foreach ($plans as $upgradePlan)
@@ -295,8 +300,8 @@
                                         @endforeach
                                     </ul>
                                     <button type="button"
-                                        wire:click="upgradeSitePlan('{{ $site->id }}', '{{ $upgradePlan->slug }}')"
-                                        wire:confirm="{{ \App\Support\PlanCatalog::upgradeConfirmMessage($site->plan, $upgradePlan) }}"
+                                        wire:click="changeSitePlan('{{ $site->id }}', '{{ $upgradePlan->slug }}')"
+                                        wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $upgradePlan) }}"
                                         wire:loading.attr="disabled"
                                         class="mt-4 w-full text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-lg">
                                         Upgrade to {{ $upgradePlan->name }}
@@ -306,6 +311,35 @@
                         @endforeach
                     </div>
                 </div>
+                @endif
+
+                @if ($hasDowngrade)
+                <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                    <p class="text-sm font-semibold text-gray-900">Switch to a lower plan — {{ $site->displayName() }}</p>
+                    <p class="text-sm text-gray-500 mt-0.5 mb-4">
+                        On <strong>{{ $site->plan->name }}</strong>. Changes apply immediately. Unused time is credited toward your next bill — no charge today.
+                    </p>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @foreach ($plans as $lowerPlan)
+                            @if (\App\Support\PlanCatalog::isDowngrade($site->plan, $lowerPlan))
+                                <div class="border border-gray-200 rounded-xl p-4">
+                                    <div class="flex items-baseline justify-between gap-2">
+                                        <p class="font-bold text-gray-900">{{ $lowerPlan->name }}</p>
+                                        <p class="text-lg font-bold text-gray-700">${{ number_format($lowerPlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
+                                    </div>
+                                    <button type="button"
+                                        wire:click="changeSitePlan('{{ $site->id }}', '{{ $lowerPlan->slug }}')"
+                                        wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $lowerPlan) }}"
+                                        wire:loading.attr="disabled"
+                                        class="mt-4 w-full text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2.5 rounded-lg">
+                                        Switch to {{ $lowerPlan->name }}
+                                    </button>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             @endif
         @endforeach
     </div>
@@ -314,6 +348,15 @@
     {{-- ── Billing & Invoices tab ───────────────────────────────────────── --}}
     @if ($activeTab === 'billing')
     <div class="space-y-6">
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+            <p class="font-semibold">How billing works</p>
+            <ul class="mt-2 space-y-1 list-disc list-inside text-amber-800">
+                <li><strong>Upgrades</strong> — your card on file is charged the prorated difference today. A receipt appears below.</li>
+                <li><strong>Downgrades</strong> — plan changes immediately; unused time is credited on your next bill.</li>
+                <li><strong>Monthly renewals</strong> — charged automatically on your billing date.</li>
+            </ul>
+        </div>
+
         @if ($client->stripeCustomerId())
             <div class="bg-white rounded-2xl border border-gray-200 p-6">
                 <h2 class="text-base font-semibold text-gray-900 mb-2">Payment &amp; subscriptions</h2>
@@ -337,6 +380,7 @@
                     <thead>
                         <tr class="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
                             <th class="pb-2 pr-4">Invoice #</th>
+                            <th class="pb-2 pr-4">Description</th>
                             <th class="pb-2 pr-4">Period</th>
                             <th class="pb-2 pr-4">Amount</th>
                             <th class="pb-2 pr-4">Status</th>
@@ -347,6 +391,7 @@
                         @foreach ($invoices as $invoice)
                             <tr>
                                 <td class="py-3 pr-4 font-mono text-gray-800 text-xs">{{ $invoice->invoice_number }}</td>
+                                <td class="py-3 pr-4 text-gray-600 text-xs max-w-[12rem]">{{ $invoice->summaryDescription() }}</td>
                                 <td class="py-3 pr-4 text-gray-600">
                                     {{ $invoice->period_start->format('M j') }} – {{ $invoice->period_end->format('M j, Y') }}
                                 </td>

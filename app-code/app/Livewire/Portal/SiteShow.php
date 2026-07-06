@@ -217,7 +217,7 @@ class SiteShow extends Component
             : 'Monitoring resumed. Checks will run on your saved schedule.');
     }
 
-    public function upgradePlan(string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
+    public function changePlan(string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
     {
         if (! $this->site->hasPaidSubscription()) {
             return;
@@ -226,16 +226,17 @@ class SiteShow extends Component
         $client  = Auth::guard('client')->user();
         $newPlan = Plan::where('slug', $planSlug)->where('is_active', true)->first();
 
-        if (! $newPlan || ! PlanCatalog::isUpgrade($this->site->plan, $newPlan)) {
-            session()->flash('error', 'Please select a higher plan to upgrade.');
+        if (! $newPlan || ! PlanCatalog::canChangePlan($this->site->plan, $newPlan)) {
+            session()->flash('error', 'Please select a different plan.');
 
             return;
         }
 
-        $fromSlug = $this->site->plan?->slug;
+        $fromSlug  = $this->site->plan?->slug;
+        $isUpgrade = PlanCatalog::isUpgrade($this->site->plan, $newPlan);
 
         try {
-            $billing->upgradeSitePlan($client, $this->site, $newPlan);
+            $result = $billing->changeSitePlan($client, $this->site, $newPlan);
         } catch (\Throwable $e) {
             session()->flash('error', $e->getMessage());
             report($e);
@@ -247,14 +248,20 @@ class SiteShow extends Component
 
         $activity->log(
             $client,
-            'plan_upgraded',
-            "Plan upgraded to {$newPlan->name}",
-            'New features are active on this site.',
+            $isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
+            $isUpgrade ? "Plan upgraded to {$newPlan->name}" : "Plan changed to {$newPlan->name}",
+            'Changes are active on this site.',
             $this->site,
             ['from' => $fromSlug, 'to' => $newPlan->slug],
         );
 
-        session()->flash('success', "Upgraded to {$newPlan->name}. New features are active now.");
+        session()->flash('success', $result->successMessage($newPlan->name));
+    }
+
+    /** @deprecated Use changePlan() */
+    public function upgradePlan(string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
+    {
+        $this->changePlan($planSlug, $billing, $activity);
     }
 
     public function openCredentials(): void

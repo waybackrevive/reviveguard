@@ -533,10 +533,10 @@
                         @endif
                     </div>
 
-                    @if ($site->plan->slug !== 'shield')
+                    @if ($plans->contains(fn ($p) => \App\Support\PlanCatalog::isUpgrade($site->plan, $p)))
                         <div>
                             <h3 class="text-base font-semibold text-gray-900 mb-1">Upgrade this site</h3>
-                            <p class="text-sm text-gray-500 mb-4">One click — prorated charge today, new features active immediately. No Stripe portal needed.</p>
+                            <p class="text-sm text-gray-500 mb-4">Your card on file is charged the prorated difference today. Receipt appears under Account → Billing.</p>
                             <div class="grid gap-4 sm:grid-cols-2">
                                 @foreach ($plans as $upgradePlan)
                                     @if (\App\Support\PlanCatalog::isUpgrade($site->plan, $upgradePlan))
@@ -553,11 +553,35 @@
                                                 @endforeach
                                             </ul>
                                             <button type="button"
-                                                wire:click="upgradePlan('{{ $upgradePlan->slug }}')"
-                                                wire:confirm="{{ \App\Support\PlanCatalog::upgradeConfirmMessage($site->plan, $upgradePlan) }}"
+                                                wire:click="changePlan('{{ $upgradePlan->slug }}')"
+                                                wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $upgradePlan) }}"
                                                 wire:loading.attr="disabled"
                                                 class="mt-5 w-full text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-lg">
                                                 Upgrade to {{ $upgradePlan->name }}
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($plans->contains(fn ($p) => \App\Support\PlanCatalog::isDowngrade($site->plan, $p)))
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900 mb-1">Switch to a lower plan</h3>
+                            <p class="text-sm text-gray-500 mb-4">Changes apply immediately. Unused time is credited toward your next bill — no charge today.</p>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                @foreach ($plans as $lowerPlan)
+                                    @if (\App\Support\PlanCatalog::isDowngrade($site->plan, $lowerPlan))
+                                        <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                                            <p class="font-bold text-gray-900">{{ $lowerPlan->name }}</p>
+                                            <p class="text-xl font-bold text-gray-700 mt-0.5">${{ number_format($lowerPlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
+                                            <button type="button"
+                                                wire:click="changePlan('{{ $lowerPlan->slug }}')"
+                                                wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $lowerPlan) }}"
+                                                wire:loading.attr="disabled"
+                                                class="mt-5 w-full text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2.5 rounded-lg">
+                                                Switch to {{ $lowerPlan->name }}
                                             </button>
                                         </div>
                                     @endif

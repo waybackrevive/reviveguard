@@ -94,6 +94,31 @@ class Invoice extends Model
         return '$' . number_format($this->total_cents / 100, 2);
     }
 
+    /** Short label for invoice list (from Stripe line items). */
+    public function summaryDescription(): string
+    {
+        $items = $this->line_items ?? [];
+
+        if ($items === []) {
+            return 'ReviveGuard subscription';
+        }
+
+        $descriptions = array_values(array_filter(array_map(
+            fn (array $item) => $item['description'] ?? null,
+            $items,
+        )));
+
+        if ($descriptions === []) {
+            return 'ReviveGuard subscription';
+        }
+
+        if (count($descriptions) === 1) {
+            return $descriptions[0];
+        }
+
+        return $descriptions[0] . ' · ' . $descriptions[1];
+    }
+
     // ── Relationships ─────────────────────────────────────────────────────────
 
     public function tenant(): BelongsTo

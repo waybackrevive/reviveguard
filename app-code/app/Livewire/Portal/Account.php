@@ -37,6 +37,14 @@ class Account extends Component
         if (in_array(request()->query('tab'), ['profile', 'plan', 'billing'], true)) {
             $this->activeTab = request()->query('tab');
         }
+
+        if ($this->activeTab === 'billing' && $client->stripeCustomerId()) {
+            try {
+                app(StripeBillingService::class)->syncClientInvoicesFromStripe($client);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
     }
 
     public function saveProfile(): void
@@ -114,7 +122,7 @@ class Account extends Component
         return redirect()->route('portal.sites.show', ['site' => $site, 'tab' => 'plan']);
     }
 
-    public function upgradeSitePlan(string $siteId, string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
+    public function changeSitePlan(string $siteId, string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
     {
         $client = Auth::guard('client')->user();
 
@@ -124,7 +132,7 @@ class Account extends Component
             ->first();
 
         if (! $site) {
-            $this->addError('upgrade', 'Site not found.');
+            $this->addError('planChange', 'Site not found.');
 
             return;
         }
@@ -132,17 +140,24 @@ class Account extends Component
         $newPlan = Plan::where('slug', $planSlug)->where('is_active', true)->first();
 
         if (! $newPlan) {
-            $this->addError('upgrade', 'Plan not found.');
+            $this->addError('planChange', 'Plan not found.');
 
             return;
         }
 
-        $fromSlug = $site->plan?->slug;
+        if (! PlanCatalog::canChangePlan($site->plan, $newPlan)) {
+            $this->addError('planChange', 'Please select a different plan.');
+
+            return;
+        }
+
+        $fromSlug   = $site->plan?->slug;
+        $isUpgrade  = PlanCatalog::isUpgrade($site->plan, $newPlan);
 
         try {
-            $billing->upgradeSitePlan($client, $site, $newPlan);
+            $result = $billing->changeSitePlan($client, $site, $newPlan);
         } catch (\Throwable $e) {
-            $this->addError('upgrade', $e->getMessage());
+            $this->addError('planChange', $e->getMessage());
             report($e);
 
             return;
@@ -150,15 +165,21 @@ class Account extends Component
 
         $activity->log(
             $client,
-            'plan_upgraded',
-            "Plan upgraded to {$newPlan->name}",
-            $site->displayName() . ' — new features are active now.',
+            $isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
+            $isUpgrade ? "Plan upgraded to {$newPlan->name}" : "Plan changed to {$newPlan->name}",
+            $site->displayName() . ' — changes are active now.',
             $site->fresh(),
             ['from' => $fromSlug, 'to' => $newPlan->slug],
         );
 
-        session()->flash('success', "Upgraded to {$newPlan->name}. Your new features are active — no extra steps needed.");
-        $this->activeTab = 'plan';
+        session()->flash('success', $result->successMessage($newPlan->name));
+        $this->activeTab = $isUpgrade ? 'plan' : 'billing';
+    }
+
+    /** @deprecated Use changeSitePlan() */
+    public function upgradeSitePlan(string $siteId, string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
+    {
+        $this->changeSitePlan($siteId, $planSlug, $billing, $activity);
     }
 
     public function render(): \Illuminate\View\View

@@ -37,6 +37,24 @@ final class PlanCatalog
         return self::rank($to->slug) > self::rank($from->slug);
     }
 
+    public static function isDowngrade(?Plan $from, Plan $to): bool
+    {
+        if (! $from) {
+            return false;
+        }
+
+        return self::rank($to->slug) < self::rank($from->slug);
+    }
+
+    public static function canChangePlan(?Plan $from, Plan $to): bool
+    {
+        if (! $from || $from->id === $to->id) {
+            return false;
+        }
+
+        return self::isUpgrade($from, $to) || self::isDowngrade($from, $to);
+    }
+
     public static function bestFor(Plan $plan): string
     {
         return match ($plan->slug) {
@@ -205,7 +223,23 @@ final class PlanCatalog
         $price = number_format((float) $to->price_monthly, 0);
 
         return "Upgrade from {$from->name} to {$to->name} (\${$price}/mo)?\n\n"
-            . "Your card on file is charged the prorated difference today. New features activate immediately.\n\n"
-            . "Manage payment method anytime under Billing.";
+            . "Your card on file will be charged the prorated difference today. New features activate immediately.\n\n"
+            . "A receipt will appear under Billing & Invoices.";
+    }
+
+    public static function downgradeConfirmMessage(Plan $from, Plan $to): string
+    {
+        $price = number_format((float) $to->price_monthly, 0);
+
+        return "Switch from {$from->name} to {$to->name} (\${$price}/mo)?\n\n"
+            . "Your plan changes immediately. Unused time on {$from->name} is credited toward your next bill — no charge today.\n\n"
+            . "Some features (e.g. faster checks or phone support) may stop right away.";
+    }
+
+    public static function planChangeConfirmMessage(Plan $from, Plan $to): string
+    {
+        return self::isDowngrade($from, $to)
+            ? self::downgradeConfirmMessage($from, $to)
+            : self::upgradeConfirmMessage($from, $to);
     }
 }

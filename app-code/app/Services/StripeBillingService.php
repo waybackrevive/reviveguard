@@ -6,10 +6,12 @@ use App\Enums\SiteStatus;
 use App\Jobs\OnboardClientJob;
 use App\Models\AddonOrder;
 use App\Models\Client;
+use App\Models\Invoice;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Subscription;
 use App\Support\MonitorSettings;
+use App\Support\PlanChangeResult;
 use App\Support\PlanCatalog;
 use App\Support\PlanStripePriceSync;
 use App\Support\StripeConfig;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Checkout\Session;
 use Stripe\Customer;
+use Stripe\Invoice as StripeInvoice;
 use Stripe\Stripe;
 use Stripe\Subscription as StripeSubscription;
 
@@ -116,8 +119,18 @@ class StripeBillingService
 
     /**
      * Upgrade an active per-site subscription to a higher plan (Stripe proration).
+     *
+     * @deprecated Use changeSitePlan() — kept for callers that only need the Subscription.
      */
     public function upgradeSitePlan(Client $client, Site $site, Plan $newPlan): Subscription
+    {
+        return $this->changeSitePlan($client, $site, $newPlan)->subscription;
+    }
+
+    /**
+     * Change plan (upgrade or downgrade) on an active per-site Stripe subscription.
+     */
+    public function changeSitePlan(Client $client, Site $site, Plan $newPlan): PlanChangeResult
     {
         PlanStripePriceSync::syncFromConfig();
         $newPlan->refresh();
@@ -138,10 +151,11 @@ class StripeBillingService
 
         $currentPlan = $site->plan;
 
-        if (! PlanCatalog::isUpgrade($currentPlan, $newPlan)) {
-            throw new \RuntimeException('Please select a higher plan to upgrade.');
+        if (! PlanCatalog::canChangePlan($currentPlan, $newPlan)) {
+            throw new \RuntimeException('Please select a different plan.');
         }
 
+        $isUpgrade = PlanCatalog::isUpgrade($currentPlan, $newPlan);
         $newPriceId = $newPlan->resolvedStripePriceId();
 
         if (empty($newPriceId)) {
@@ -179,7 +193,73 @@ class StripeBillingService
             ),
         ]);
 
-        return $subscription->fresh(['plan', 'site']);
+        $subscription = $subscription->fresh(['plan', 'site']);
+
+        $chargedCents = null;
+        $stripeInvoiceId = null;
+
+        try {
+            $this->syncClientInvoicesFromStripe($client, 6);
+            $latest = StripeInvoice::all([
+                'subscription' => $subscription->stripe_subscription_id,
+                'limit'        => 1,
+            ]);
+            $stripeInvoice = $latest->data[0] ?? null;
+
+            if ($stripeInvoice && ($stripeInvoice->status ?? '') === 'paid') {
+                $this->invoiceService->importStripeInvoice($stripeInvoice);
+                $stripeInvoiceId = $stripeInvoice->id;
+                $paid = (int) ($stripeInvoice->amount_paid ?? 0);
+                $chargedCents = $paid > 0 ? $paid : null;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('StripeBillingService: invoice sync after plan change failed', [
+                'client_id' => $client->id,
+                'site_id'   => $site->id,
+                'error'     => $e->getMessage(),
+            ]);
+        }
+
+        $nextBilling = $subscription->nextBillingDate();
+
+        return new PlanChangeResult(
+            subscription: $subscription,
+            isUpgrade: $isUpgrade,
+            chargedCents: $chargedCents,
+            nextBillingAt: $nextBilling,
+            stripeInvoiceId: $stripeInvoiceId,
+        );
+    }
+
+    /**
+     * Import recent paid Stripe invoices into the local invoices table.
+     */
+    public function syncClientInvoicesFromStripe(Client $client, int $limit = 12): int
+    {
+        $customerId = $client->stripeCustomerId();
+
+        if (! $customerId) {
+            return 0;
+        }
+
+        $synced = 0;
+        $invoices = StripeInvoice::all(['customer' => $customerId, 'limit' => $limit]);
+
+        foreach ($invoices->data as $stripeInvoice) {
+            if (($stripeInvoice->status ?? '') !== 'paid') {
+                continue;
+            }
+
+            if (Invoice::where('stripe_invoice_id', $stripeInvoice->id)->exists()) {
+                continue;
+            }
+
+            if ($this->invoiceService->importStripeInvoice($stripeInvoice)) {
+                $synced++;
+            }
+        }
+
+        return $synced;
     }
 
     public function createBillingPortalSession(Client $client): string
@@ -486,6 +566,10 @@ class StripeBillingService
     private function periodEnd(object $stripeSub): ?Carbon
     {
         $end = $stripeSub->current_period_end ?? null;
+
+        if (! $end && ! empty($stripeSub->items->data[0]->current_period_end)) {
+            $end = $stripeSub->items->data[0]->current_period_end;
+        }
 
         return $end ? Carbon::createFromTimestamp((int) $end) : null;
     }

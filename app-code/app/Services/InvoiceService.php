@@ -109,6 +109,33 @@ class InvoiceService
     }
 
     /**
+     * Import a Stripe invoice if we do not already have it locally.
+     */
+    public function importStripeInvoice(object $stripeInvoice): ?Invoice
+    {
+        if (empty($stripeInvoice->id)) {
+            return null;
+        }
+
+        $existing = Invoice::where('stripe_invoice_id', $stripeInvoice->id)->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        try {
+            return $this->createFromStripeInvoice($stripeInvoice);
+        } catch (\Throwable $e) {
+            Log::warning('InvoiceService: importStripeInvoice failed', [
+                'stripe_invoice_id' => $stripeInvoice->id,
+                'error'             => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * @deprecated Legacy Whop integration — retained for historical records only.
      */
     public function createFromWhopCharge(array $chargeData): Invoice

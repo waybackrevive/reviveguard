@@ -62,6 +62,40 @@ class PlanCatalogTest extends TestCase
     }
 
     /** @test */
+    public function is_downgrade_detects_lower_tier(): void
+    {
+        $monitor = new Plan(['slug' => 'monitor']);
+        $guard   = new Plan(['slug' => 'guard']);
+        $shield  = new Plan(['slug' => 'shield']);
+
+        $this->assertTrue(PlanCatalog::isDowngrade($shield, $guard));
+        $this->assertTrue(PlanCatalog::isDowngrade($guard, $monitor));
+        $this->assertFalse(PlanCatalog::isDowngrade($monitor, $guard));
+    }
+
+    /** @test */
+    public function can_change_plan_requires_different_tier(): void
+    {
+        $monitor = tap(new Plan(['slug' => 'monitor']), fn (Plan $p) => $p->id = '11111111-1111-1111-1111-111111111111');
+        $guard   = tap(new Plan(['slug' => 'guard']), fn (Plan $p) => $p->id = '22222222-2222-2222-2222-222222222222');
+
+        $this->assertTrue(PlanCatalog::canChangePlan($monitor, $guard));
+        $this->assertFalse(PlanCatalog::canChangePlan($monitor, $monitor));
+    }
+
+    /** @test */
+    public function downgrade_confirm_message_mentions_credit(): void
+    {
+        $shield = new Plan(['slug' => 'shield', 'name' => 'Shield', 'price_monthly' => 179]);
+        $guard  = new Plan(['slug' => 'guard', 'name' => 'Guard', 'price_monthly' => 99]);
+
+        $msg = PlanCatalog::downgradeConfirmMessage($shield, $guard);
+
+        $this->assertStringContainsString('credit', strtolower($msg));
+        $this->assertStringContainsString('Guard', $msg);
+    }
+
+    /** @test */
     public function upgrade_confirm_message_includes_plan_names(): void
     {
         $monitor = new Plan(['slug' => 'monitor', 'name' => 'Monitor', 'price_monthly' => 49]);
