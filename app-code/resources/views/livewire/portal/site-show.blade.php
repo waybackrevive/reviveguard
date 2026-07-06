@@ -173,265 +173,148 @@
                 Monitoring starts after you complete checkout on the Plan tab.
             </div>
         @else
-            @php
-                $isOnline = $lastProbe && $lastProbe->is_up && $site->status !== \App\Enums\SiteStatus::DOWN;
-                $intervalLabel = \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes);
-                $regionLabel = \App\Support\MonitorSettings::regionLabel((string) $site->monitor_region);
-                $sslM = $site->sslExpiresInDays();
-                $domM = $site->domainExpiresInDays();
-                $uptime7d = $monitoringSummary['uptime_7d'] ?? null;
-                $hasIncidents = $uptimeIncidents->isNotEmpty();
-                $sslOk = $sslM !== null && $sslM >= 30;
-                $domOk = $domM !== null && $domM >= 30;
-                $allClear = $isOnline && ! $site->monitoring_paused && ($uptime7d === null || $uptime7d >= 99) && ($sslM === null || $sslM >= 0) && ($domM === null || $domM >= 0);
-            @endphp
-
             @if ($site->monitoring_paused)
-                <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="text-lg font-semibold text-amber-950">Monitoring is paused</p>
-                        <p class="text-sm text-amber-900 mt-1">We are not watching this site right now. Turn monitoring back on to get alerts if something goes wrong.</p>
+                <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="text-sm text-amber-900">
+                        <strong>Monitoring paused.</strong> Uptime alerts are off
+                        @if ($site->monitoring_paused_at)
+                            since {{ \App\Support\ClientTimezone::formatWithAbbr($portalClient, $site->monitoring_paused_at, 'M j, Y') }}.
+                        @endif
                     </div>
-                    <button wire:click="toggleMonitoringPause" class="text-sm font-semibold text-amber-900 bg-white border border-amber-300 px-4 py-2.5 rounded-lg hover:bg-amber-100 shrink-0">
-                        Resume monitoring
+                    <button wire:click="toggleMonitoringPause" class="text-sm font-semibold text-amber-900 bg-white border border-amber-300 px-4 py-2 rounded-lg hover:bg-amber-100">
+                        Resume
                     </button>
                 </div>
             @endif
 
-            {{-- Hero — peace of mind first --}}
-            <div class="mb-6 rounded-2xl border overflow-hidden {{ $site->monitoring_paused ? 'border-gray-200 bg-gray-50' : ($isOnline ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white' : 'border-red-200 bg-gradient-to-br from-red-50 via-white to-white') }}">
-                <div class="px-6 py-8 sm:px-8 sm:py-10 text-center sm:text-left">
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-6">
-                        <div class="mx-auto sm:mx-0 flex h-16 w-16 shrink-0 items-center justify-center rounded-full {{ $site->monitoring_paused ? 'bg-gray-200' : ($isOnline ? 'bg-emerald-100' : 'bg-red-100') }}">
-                            @if ($site->monitoring_paused)
-                                <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            @elseif ($isOnline)
-                                <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                            @else
-                                <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            @endif
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            @if ($site->monitoring_paused)
-                                <h2 class="text-2xl font-bold text-gray-900">Your site is not being watched</h2>
-                                <p class="text-gray-600 mt-2 max-w-xl mx-auto sm:mx-0">Resume monitoring when you are ready — we will pick up where we left off.</p>
-                            @elseif ($isOnline)
-                                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Your site is online — we&apos;re watching it</h2>
-                                <p class="text-gray-600 mt-2 text-base max-w-xl mx-auto sm:mx-0 leading-relaxed">
-                                    ReviveGuard checks <strong class="font-semibold text-gray-800">{{ $site->displayName() }}</strong> every {{ $intervalLabel }}.
-                                    If anything goes wrong, we will alert you right away — you do not need to keep checking.
-                                </p>
-                                @if ($lastProbe)
-                                    <p class="text-sm text-emerald-700 mt-3 font-medium">
-                                        Last confirmed online {{ $lastProbe->checked_at->diffForHumans() }}
-                                    </p>
-                                @endif
-                            @elseif ($lastProbe && ! $lastProbe->is_up)
-                                <h2 class="text-2xl font-bold text-red-900">We could not reach your site</h2>
-                                <p class="text-red-800/90 mt-2 max-w-xl">Our team has been notified. Check your email for details, or open a support ticket if you need help.</p>
-                                @if ($lastProbe)
-                                    <p class="text-sm text-red-700/80 mt-3">Detected {{ $lastProbe->checked_at->diffForHumans() }}</p>
-                                @endif
-                            @else
-                                <h2 class="text-2xl font-bold text-gray-900">Setting up your monitoring</h2>
-                                <p class="text-gray-600 mt-2">Your first check will run within {{ $intervalLabel }}. This page will update automatically.</p>
-                            @endif
-                        </div>
-                    </div>
+            <div class="mb-5 rounded-xl border border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                <div class="flex items-center gap-2 text-gray-700">
+                    <span class="font-medium text-gray-900">Monitor</span>
+                    <select wire:model="monitorInterval" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white">
+                        @foreach ($allowedIntervals as $mins)
+                            <option value="{{ $mins }}">{{ \App\Support\MonitorSettings::intervalLabel($mins) }}</option>
+                        @endforeach
+                    </select>
                 </div>
-            </div>
-
-            {{-- Three things business owners care about --}}
-            <div class="grid gap-4 sm:grid-cols-3 mb-6">
-                <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-full {{ $isOnline && ! $site->monitoring_paused ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500' }}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
-                        </span>
-                        <p class="text-sm font-semibold text-gray-900">Website</p>
-                    </div>
-                    <p class="text-lg font-bold {{ $isOnline && ! $site->monitoring_paused ? 'text-emerald-700' : ($site->monitoring_paused ? 'text-gray-500' : 'text-red-600') }}">
-                        @if ($site->monitoring_paused)
-                            Paused
-                        @elseif ($isOnline)
-                            Online &amp; reachable
-                        @else
-                            Needs attention
-                        @endif
-                    </p>
-                    <p class="text-xs text-gray-500 mt-2">
-                        @if ($uptime7d !== null)
-                            Up {{ number_format($uptime7d, 1) }}% this week
-                        @else
-                            Building your first week of history
-                        @endif
-                    </p>
+                <div class="flex items-center gap-2 text-gray-700">
+                    <span class="font-medium text-gray-900">Region</span>
+                    <select wire:model="monitorRegion" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white">
+                        @foreach ($allowedRegions as $region)
+                            <option value="{{ $region }}">{{ \App\Support\MonitorSettings::regionLabel($region) }}</option>
+                        @endforeach
+                    </select>
                 </div>
-
-                <div class="bg-white rounded-2xl border {{ $sslM !== null && $sslM < 30 ? ($sslM < 0 ? 'border-red-200' : 'border-amber-200') : 'border-gray-200' }} p-5 shadow-sm">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-full {{ $sslOk ? 'bg-emerald-100 text-emerald-600' : ($sslM === null ? 'bg-gray-100 text-gray-400' : 'bg-amber-100 text-amber-700') }}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        </span>
-                        <p class="text-sm font-semibold text-gray-900">Secure connection</p>
-                    </div>
-                    <p class="text-lg font-bold {{ $sslM === null ? 'text-gray-400' : ($sslM < 0 ? 'text-red-600' : ($sslM < 30 ? 'text-amber-600' : 'text-emerald-700')) }}">
-                        @if ($sslM === null)
-                            Checking…
-                        @elseif ($sslM < 0)
-                            Certificate expired
-                        @elseif ($sslM < 30)
-                            Renew soon
-                        @else
-                            Protected
-                        @endif
-                    </p>
-                    <p class="text-xs text-gray-500 mt-2">
-                        @if ($site->ssl_expires_at)
-                            Valid until {{ $site->ssl_expires_at->format('M j, Y') }}
-                        @else
-                            We check this daily for you
-                        @endif
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-2xl border {{ $domM !== null && $domM < 30 ? ($domM < 0 ? 'border-red-200' : 'border-amber-200') : 'border-gray-200' }} p-5 shadow-sm">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-full {{ $domOk ? 'bg-emerald-100 text-emerald-600' : ($domM === null ? 'bg-gray-100 text-gray-400' : 'bg-amber-100 text-amber-700') }}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </span>
-                        <p class="text-sm font-semibold text-gray-900">Domain name</p>
-                    </div>
-                    <p class="text-lg font-bold {{ $domM === null ? 'text-gray-400' : ($domM < 0 ? 'text-red-600' : ($domM < 30 ? 'text-amber-600' : 'text-emerald-700')) }}">
-                        @if ($domM === null)
-                            Checking…
-                        @elseif ($domM < 0)
-                            Registration expired
-                        @elseif ($domM < 30)
-                            Renew soon
-                        @else
-                            Active
-                        @endif
-                    </p>
-                    <p class="text-xs text-gray-500 mt-2">
-                        @if ($site->domain_expires_at)
-                            Renews {{ $site->domain_expires_at->format('M j, Y') }}
-                        @else
-                            We check this daily for you
-                        @endif
-                    </p>
-                </div>
-            </div>
-
-            {{-- Week at a glance — simple, not technical --}}
-            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-6 p-5 sm:p-6">
-                <h2 class="text-base font-semibold text-gray-900">Your week at a glance</h2>
-                <p class="text-sm text-gray-500 mt-1">Green means your site was up that day. We will email you if anything changes.</p>
-
-                <div class="mt-5 grid grid-cols-7 gap-2 sm:gap-3">
-                    @foreach ($uptimeDayGroups as $day)
-                        @php
-                            $dayStatus = ! $day['has_data'] ? 'none' : (($day['pct'] ?? 0) >= 99 ? 'good' : (($day['pct'] ?? 0) >= 90 ? 'warn' : 'bad'));
-                        @endphp
-                        <div class="text-center">
-                            <div class="mx-auto h-12 sm:h-14 w-full max-w-[3rem] rounded-xl flex items-center justify-center
-                                {{ $dayStatus === 'good' ? 'bg-emerald-100' : ($dayStatus === 'warn' ? 'bg-amber-100' : ($dayStatus === 'bad' ? 'bg-red-100' : 'bg-gray-100')) }}">
-                                @if ($dayStatus === 'good')
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                @elseif ($dayStatus === 'bad')
-                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                @elseif ($dayStatus === 'warn')
-                                    <span class="text-amber-600 font-bold text-sm">!</span>
-                                @else
-                                    <span class="text-gray-300 text-lg">·</span>
-                                @endif
-                            </div>
-                            <p class="text-[11px] sm:text-xs text-gray-500 mt-2 font-medium">{{ $day['label'] }}</p>
-                        </div>
-                    @endforeach
-                </div>
-
-                @if ($allClear && ! $hasIncidents)
-                    <p class="mt-5 text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-center">
-                        Everything looks good. No issues to worry about right now.
-                    </p>
+                <button wire:click="saveMonitorSettings" class="text-sm font-semibold text-brand hover:underline">
+                    Save
+                </button>
+                @if ($monitorSettingsSaved)
+                    <span class="text-xs text-emerald-700">Saved</span>
+                @endif
+                <span class="text-xs text-gray-400 hidden sm:inline">{{ \App\Support\MonitorSettings::planIntervalHint($site) }} SSL &amp; domain checked daily.</span>
+                @if (! $site->monitoring_paused)
+                    <button wire:click="toggleMonitoringPause" wire:confirm="Pause uptime monitoring and down alerts for this site?"
+                        class="text-xs text-gray-500 hover:text-amber-700 sm:ml-auto">
+                        Pause monitoring
+                    </button>
+                @endif
+                @if ($clientTimezoneLabel)
+                    <p class="text-xs text-gray-400 w-full">Times in {{ $clientTimezoneLabel }} · <a href="{{ route('portal.billing') }}?tab=profile" class="text-brand hover:underline">change</a></p>
                 @endif
             </div>
 
-            {{-- Issues — only prominent when something happened --}}
-            @if ($hasIncidents)
-                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm mb-6 overflow-hidden">
-                    <div class="px-5 py-4 border-b border-gray-100">
-                        <h2 class="text-base font-semibold text-gray-900">Recent issues</h2>
-                        <p class="text-sm text-gray-500 mt-0.5">What happened and when — we handled the monitoring, you stay informed.</p>
-                    </div>
-                    <ul class="divide-y divide-gray-100">
-                        @foreach ($uptimeIncidents->take(5) as $event)
-                            @php $isDown = str_contains(strtolower($event->title), 'offline') || str_contains(strtolower($event->title), 'down'); @endphp
-                            <li class="px-5 py-4 text-sm flex items-start gap-3">
-                                <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full {{ $isDown ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600' }}">
-                                    @if ($isDown)
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
-                                    @else
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    @endif
-                                </span>
-                                <div>
-                                    <p class="font-medium text-gray-900">{{ $isDown ? 'Site was unreachable' : 'Site came back online' }}</p>
-                                    <p class="text-xs text-gray-500 mt-1">{{ $event->created_at->diffForHumans() }} · {{ \App\Support\ClientTimezone::formatWithAbbr($portalClient, $event->created_at, 'M j, g:i A') }}</p>
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Currently up for</p>
+                    <p class="text-lg font-bold {{ ($lastProbe && ! $lastProbe->is_up) || $site->status === \App\Enums\SiteStatus::DOWN ? 'text-red-600' : 'text-emerald-700' }}">
+                        @if ($site->monitoring_paused)
+                            Paused
+                        @elseif ($lastProbe && ! $lastProbe->is_up)
+                            Down
+                        @elseif ($lastProbe && $lastProbe->is_up)
+                            {{ $lastProbe->checked_at->diffForHumans() }}
+                        @else
+                            Awaiting first check
+                        @endif
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">Every {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} · Agent {{ $site->last_seen_at?->diffForHumans() ?? '—' }}</p>
                 </div>
-            @else
-                <div class="mb-6 rounded-2xl border border-gray-100 bg-gray-50/80 px-5 py-4 text-center">
-                    <p class="text-sm text-gray-600">No outages recorded. Your visitors have been able to reach your site.</p>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Uptime (30d)</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $site->uptime_30d !== null ? number_format((float) $site->uptime_30d, 2) . '%' : '—' }}</p>
                 </div>
-            @endif
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">SSL expires</p>
+                    @php $sslM = $site->sslExpiresInDays(); @endphp
+                    <p class="text-lg font-bold {{ $sslM !== null && $sslM <= 30 ? 'text-amber-600' : 'text-gray-900' }}">
+                        {{ $site->ssl_expires_at?->format('M j, Y') ?? ($site->metricSyncing('ssl') ? 'Syncing…' : '—') }}
+                    </p>
+                    @if ($sslM !== null)
+                        <p class="text-xs text-gray-400 mt-1">{{ $sslM < 0 ? 'Expired' : "in {$sslM} days" }}</p>
+                    @endif
+                </div>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Domain expires</p>
+                    @php $domM = $site->domainExpiresInDays(); @endphp
+                    <p class="text-lg font-bold {{ $domM !== null && $domM <= 60 ? 'text-amber-600' : 'text-gray-900' }}">
+                        {{ $site->domain_expires_at?->format('M j, Y') ?? ($site->metricSyncing('domain') ? 'Syncing…' : '—') }}
+                    </p>
+                    @if ($domM !== null)
+                        <p class="text-xs text-gray-400 mt-1">{{ $domM < 0 ? 'Expired' : "in {$domM} days" }}</p>
+                    @endif
+                </div>
+            </div>
 
-            {{-- Preferences — tucked away, not the main story --}}
-            <details class="group bg-white rounded-2xl border border-gray-200 shadow-sm mb-2">
-                <summary class="px-5 py-4 cursor-pointer list-none flex items-center justify-between gap-3 text-sm font-semibold text-gray-700 hover:text-gray-900 select-none">
-                    <span>Monitoring preferences</span>
-                    <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-5 pb-5 pt-0 border-t border-gray-100">
-                    <p class="text-xs text-gray-500 mt-4 mb-4">Optional — defaults work well for most businesses. Times shown in {{ $clientTimezoneLabel ?: 'your timezone' }} · <a href="{{ route('portal.billing') }}?tab=profile" class="text-brand hover:underline">change</a></p>
-                    <div class="flex flex-wrap items-end gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1.5">How often we check</label>
-                            <select wire:model="monitorInterval" class="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white min-w-[8rem] focus:ring-2 focus:ring-brand/20 focus:border-brand">
-                                @foreach ($allowedIntervals as $mins)
-                                    <option value="{{ $mins }}">{{ \App\Support\MonitorSettings::intervalLabel($mins) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Check from region</label>
-                            <select wire:model="monitorRegion" class="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white min-w-[8rem] focus:ring-2 focus:ring-brand/20 focus:border-brand">
-                                @foreach ($allowedRegions as $region)
-                                    <option value="{{ $region }}">{{ \App\Support\MonitorSettings::regionLabel($region) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <button type="button" wire:click="saveMonitorSettings"
-                            class="text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2 rounded-lg transition-colors"
-                            wire:loading.attr="disabled">
-                            Save
-                        </button>
-                        @if ($monitorSettingsSaved)
-                            <span class="text-sm text-emerald-600 font-medium">Saved</span>
-                        @endif
-                        @if (! $site->monitoring_paused)
-                            <button type="button" wire:click="toggleMonitoringPause" wire:confirm="Pause monitoring? You will not receive down alerts until you resume."
-                                class="text-sm text-gray-500 hover:text-amber-700 ml-auto">
-                                Pause monitoring
-                            </button>
-                        @endif
+            <div class="bg-white rounded-[10px] border border-gray-200 p-5 mb-6 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-900">Uptime rate — last 14 days</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Daily checks at your {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} schedule</p>
                     </div>
+                    @if ($periodUptimePct !== null)
+                        <span class="inline-flex items-center text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                            {{ number_format($periodUptimePct, 2) }}%
+                        </span>
+                    @endif
                 </div>
-            </details>
+                <div class="flex items-end gap-2 overflow-x-auto pb-2 px-1 min-h-[5rem]">
+                    @foreach ($uptimeDailyBars as $day)
+                        <div class="flex flex-col items-center gap-1 shrink-0 min-w-[2.25rem]">
+                            <div
+                                class="w-3 rounded-sm {{ $day['color'] }} {{ $day['has_data'] ? '' : 'opacity-40' }}"
+                                style="height: {{ $day['bar_height'] }}px"
+                                title="{{ $day['has_data'] ? number_format((float) $day['pct'], 1) . '% uptime' : 'No data' }}"
+                            ></div>
+                            <span class="text-[9px] text-gray-500 leading-none">{{ $day['label'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                @if ($uptimeProbes->isEmpty())
+                    <p class="text-xs text-gray-500 mt-4 text-center">Collecting uptime data — chart fills in after the first checks.</p>
+                @endif
+            </div>
+
+            <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h2 class="text-sm font-semibold text-gray-900">Incident timeline</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Downtime detected by our uptime monitors — not plugin heartbeats.</p>
+                </div>
+                <ul class="divide-y divide-gray-100">
+                    @forelse ($uptimeIncidents as $event)
+                        <li class="px-5 py-3 text-sm flex items-start gap-3">
+                            <span class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0 {{ str_contains(strtolower($event->title), 'offline') || str_contains(strtolower($event->title), 'down') ? 'bg-red-500' : 'bg-emerald-500' }}"></span>
+                            <div>
+                                <p class="font-medium text-gray-800">{{ $event->title }}</p>
+                                @if ($event->message)
+                                    <p class="text-gray-600 text-xs mt-0.5">{{ $event->message }}</p>
+                                @endif
+                                <p class="text-xs text-gray-400 mt-1">{{ \App\Support\ClientTimezone::formatWithAbbr($portalClient, $event->created_at, 'M j, Y g:i A') }}</p>
+                            </div>
+                        </li>
+                    @empty
+                        <li class="px-5 py-10 text-center text-sm text-gray-500">No downtime incidents recorded. We'll alert you immediately if anything changes.</li>
+                    @endforelse
+                </ul>
+            </div>
         @endif
     @endif
 

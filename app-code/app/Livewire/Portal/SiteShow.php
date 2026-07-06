@@ -390,11 +390,10 @@ class SiteShow extends Component
 
         $uptimeIncidents  = collect();
         $uptimeProbes     = collect();
-        $uptimeDayGroups  = [];
+        $uptimeDailyBars  = [];
+        $uptimeDailyBars  = [];
         $lastProbe        = null;
         $periodUptimePct  = null;
-        $monitoringSummary = [];
-        $recentChecks     = [];
         $allowedIntervals = MonitorSettings::allowedIntervals($this->site);
         $allowedRegions   = MonitorSettings::allowedRegions($this->site);
 
@@ -418,10 +417,8 @@ class SiteShow extends Component
 
             $lastProbe = $uptimeProbes->sortByDesc('checked_at')->first();
 
-            $uptimeDayGroups = SiteUptimeChart::daysWithCheckBars($this->site->id, 7, $timezone);
+            $uptimeDailyBars = SiteUptimeChart::dailyBars($this->site->id, 14, $timezone);
             $periodUptimePct = SiteUptimeChart::periodUptimePercent($uptimeProbes);
-            $monitoringSummary = SiteUptimeChart::monitoringSummary($uptimeProbes);
-            $recentChecks = SiteUptimeChart::recentChecks($uptimeProbes, 12, $timezone);
             $clientTimezoneLabel = ClientTimezone::label($client);
         }
 
@@ -455,10 +452,8 @@ class SiteShow extends Component
             'canOpenWpAdmin'   => app(WordPressSsoService::class)->canLogin($this->site),
             'uptimeIncidents'  => $uptimeIncidents,
             'uptimeProbes'     => $uptimeProbes,
-            'uptimeDayGroups'   => $uptimeDayGroups,
-            'lastProbe'         => $lastProbe,
-            'monitoringSummary' => $monitoringSummary,
-            'recentChecks'      => $recentChecks,
+            'uptimeDailyBars'  => $uptimeDailyBars,
+            'lastProbe'        => $lastProbe,
             'periodUptimePct'  => $periodUptimePct,
             'allowedIntervals' => $allowedIntervals,
             'allowedRegions'   => $allowedRegions,

@@ -90,9 +90,9 @@ final class SiteUptimeChart
      *
      * @return list<array{date: string, label: string, pct: ?float, bar_height: int, color: string, has_data: bool}>
      */
-    public static function dailyBars(string $siteId, int $days = 14): array
+    public static function dailyBars(string $siteId, int $days = 14, ?string $timezone = null): array
     {
-        $groups = self::daysWithCheckBars($siteId, $days);
+        $groups = self::daysWithCheckBars($siteId, $days, $timezone);
 
         return array_map(function (array $day) {
             $pct = $day['pct'];
