@@ -9,6 +9,8 @@ use App\Models\Client;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Subscription;
+use App\Support\MonitorSettings;
+use App\Support\PlanCatalog;
 use App\Support\StripeConfig;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -105,6 +107,81 @@ class StripeBillingService
         ]);
 
         return $session->url;
+    }
+
+    /**
+     * Upgrade an active per-site subscription to a higher plan (Stripe proration).
+     */
+    public function upgradeSitePlan(Client $client, Site $site, Plan $newPlan): Subscription
+    {
+        if ($site->client_id !== $client->id) {
+            throw new \RuntimeException('Site not found.');
+        }
+
+        $subscription = $site->subscription;
+
+        if (! $subscription || ! $subscription->isActive()) {
+            throw new \RuntimeException('No active subscription found for this site.');
+        }
+
+        if (empty($subscription->stripe_subscription_id)) {
+            throw new \RuntimeException('Plan changes for this subscription must be done by support. Please open a ticket.');
+        }
+
+        $currentPlan = $site->plan;
+
+        if (! PlanCatalog::isUpgrade($currentPlan, $newPlan)) {
+            throw new \RuntimeException('Please select a higher plan to upgrade.');
+        }
+
+        $newPriceId = $newPlan->resolvedStripePriceId();
+
+        if (empty($newPriceId)) {
+            throw new \RuntimeException($newPlan->checkoutUnavailableReason() ?? 'This plan is not available for checkout yet.');
+        }
+
+        $stripeSub = StripeSubscription::retrieve($subscription->stripe_subscription_id);
+        $itemId    = $stripeSub->items->data[0]->id ?? null;
+
+        if (! $itemId) {
+            throw new \RuntimeException('Could not read your subscription from Stripe. Please contact support.');
+        }
+
+        $metadata = array_merge(
+            (array) ($stripeSub->metadata ?? []),
+            [
+                'client_id' => $client->id,
+                'site_id'   => $site->id,
+                'plan_id'   => $newPlan->id,
+                'tenant_id' => $this->tenantId,
+            ],
+        );
+
+        $updated = StripeSubscription::update($subscription->stripe_subscription_id, [
+            'items' => [
+                ['id' => $itemId, 'price' => $newPriceId],
+            ],
+            'proration_behavior' => 'create_prorations',
+            'metadata'           => $metadata,
+        ]);
+
+        $this->applyStripeSubscriptionState($subscription, $updated, $newPlan);
+
+        $defaults = MonitorSettings::defaultsForPlan($newPlan);
+
+        $site->update([
+            'plan_id'                  => $newPlan->id,
+            'monitor_interval_minutes' => MonitorSettings::normalizeInterval(
+                $site->fresh(['plan']),
+                (int) ($site->monitor_interval_minutes ?? $defaults['monitor_interval_minutes']),
+            ),
+            'monitor_region' => MonitorSettings::normalizeRegion(
+                $site,
+                (string) ($site->monitor_region ?? $defaults['monitor_region']),
+            ),
+        ]);
+
+        return $subscription->fresh(['plan', 'site']);
     }
 
     public function createBillingPortalSession(Client $client): string
@@ -309,7 +386,7 @@ class StripeBillingService
         $plan   = $planId ? Plan::find($planId) : null;
 
         if (! $plan && ! empty($stripeSub->items->data[0]->price->id)) {
-            $plan = Plan::where('stripe_price_id', $stripeSub->items->data[0]->price->id)->first();
+            $plan = $this->resolvePlanFromStripePrice($stripeSub->items->data[0]->price->id);
         }
 
         $subscription = Subscription::where('stripe_subscription_id', $stripeSub->id)->first();
@@ -351,7 +428,7 @@ class StripeBillingService
     private function applyStripeSubscriptionState(Subscription $subscription, object $stripeSub, ?Plan $plan = null): void
     {
         $plan ??= ! empty($stripeSub->items->data[0]->price->id)
-            ? Plan::where('stripe_price_id', $stripeSub->items->data[0]->price->id)->first()
+            ? $this->resolvePlanFromStripePrice($stripeSub->items->data[0]->price->id)
             : null;
 
         $subscription->update([
@@ -379,6 +456,13 @@ class StripeBillingService
                 Site::where('id', $subscription->site_id)->update(['status' => SiteStatus::SUSPENDED]);
             }
         }
+    }
+
+    private function resolvePlanFromStripePrice(string $priceId): ?Plan
+    {
+        return Plan::where('stripe_price_id', $priceId)
+            ->orWhere('stripe_test_price_id', $priceId)
+            ->first();
     }
 
     private function deactivateClientIfNoActiveSubscriptions(string $clientId, string $exceptId): void

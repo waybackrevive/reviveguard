@@ -490,19 +490,38 @@
                 </div>
             @elseif ($site->plan)
                 <div class="space-y-6 max-w-3xl">
+                    @if (session('success'))
+                        <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+                    @endif
+                    @if (session('error'))
+                        <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
+                    @endif
+
                     <div class="bg-white rounded-[10px] border-2 border-brand p-6 shadow-sm">
                         <p class="text-xs font-semibold uppercase tracking-wide text-brand mb-1">Your current plan</p>
                         <h2 class="text-lg font-semibold text-gray-900">{{ $site->plan->name }}</h2>
                         <p class="text-2xl font-bold text-gray-900 mt-2">${{ number_format($site->plan->price_monthly, 0) }}<span class="text-sm font-normal text-gray-500">/month</span></p>
+                        <p class="text-sm text-gray-500 mt-2">{{ \App\Support\PlanCatalog::tagline($site->plan) }}</p>
 
-                        <ul class="mt-4 space-y-2">
-                            @foreach (\App\Support\PlanCatalog::bullets($site->plan) as $bullet)
+                        <ul class="mt-4 space-y-3">
+                            @foreach (\App\Support\PlanCatalog::included($site->plan) as $feature)
                                 <li class="flex items-start gap-2 text-sm text-gray-700">
                                     <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span>{{ $bullet }}</span>
+                                    <span><strong>{{ $feature['name'] }}</strong>@if ($feature['desc'])<span class="text-gray-500"> — {{ $feature['desc'] }}</span>@endif</span>
                                 </li>
                             @endforeach
                         </ul>
+
+                        @if (\App\Support\PlanCatalog::notIncluded($site->plan))
+                            <div class="mt-5 pt-4 border-t border-gray-100">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Not included on this plan</p>
+                                <ul class="space-y-2">
+                                    @foreach (\App\Support\PlanCatalog::notIncluded($site->plan) as $item)
+                                        <li class="text-sm text-gray-500">– <strong class="font-medium text-gray-600">{{ $item['name'] }}</strong>@if ($item['desc']) — {{ $item['desc'] }}@endif</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
 
                         @if ($site->subscription)
                             <p class="text-sm text-gray-500 mt-4 pt-4 border-t border-gray-100">
@@ -516,24 +535,30 @@
 
                     @if ($site->plan->slug !== 'shield')
                         <div>
-                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Upgrade this site</h3>
-                            <div class="grid gap-3 sm:grid-cols-2">
+                            <h3 class="text-base font-semibold text-gray-900 mb-1">Upgrade this site</h3>
+                            <p class="text-sm text-gray-500 mb-4">One click — prorated charge today, new features active immediately. No Stripe portal needed.</p>
+                            <div class="grid gap-4 sm:grid-cols-2">
                                 @foreach ($plans as $upgradePlan)
                                     @if (\App\Support\PlanCatalog::isUpgrade($site->plan, $upgradePlan))
-                                        <div class="bg-white rounded-[10px] border border-gray-200 p-4">
-                                            <p class="font-semibold text-gray-900">{{ $upgradePlan->name }}</p>
-                                            <p class="text-lg font-bold text-gray-900 mt-0.5">${{ number_format($upgradePlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
-                                            <ul class="mt-3 space-y-1.5">
-                                                @foreach (\App\Support\PlanCatalog::bullets($upgradePlan) as $bullet)
-                                                    <li class="text-xs text-gray-600 flex gap-1.5">
-                                                        <span class="text-emerald-500">+</span> {{ $bullet }}
+                                        <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                                            <p class="font-bold text-gray-900">{{ $upgradePlan->name }}</p>
+                                            <p class="text-xl font-bold text-brand mt-0.5">${{ number_format($upgradePlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
+                                            <p class="text-xs text-gray-500 mt-2">{{ \App\Support\PlanCatalog::bestFor($upgradePlan) }}</p>
+                                            <ul class="mt-4 space-y-2">
+                                                @foreach (\App\Support\PlanCatalog::upgradeGains($site->plan, $upgradePlan) as $gain)
+                                                    <li class="text-sm text-gray-700 flex gap-2">
+                                                        <span class="text-emerald-500 font-bold shrink-0">+</span>
+                                                        <span>{{ $gain }}</span>
                                                     </li>
                                                 @endforeach
                                             </ul>
-                                            <a href="{{ route('portal.billing', ['tab' => 'plan']) }}"
-                                                class="mt-4 inline-block text-sm font-semibold text-brand hover:underline">
-                                                Upgrade in billing →
-                                            </a>
+                                            <button type="button"
+                                                wire:click="upgradePlan('{{ $upgradePlan->slug }}')"
+                                                wire:confirm="{{ \App\Support\PlanCatalog::upgradeConfirmMessage($site->plan, $upgradePlan) }}"
+                                                wire:loading.attr="disabled"
+                                                class="mt-5 w-full text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-lg">
+                                                Upgrade to {{ $upgradePlan->name }}
+                                            </button>
                                         </div>
                                     @endif
                                 @endforeach
@@ -542,7 +567,8 @@
                     @endif
 
                     <p class="text-xs text-gray-400">
-                        Compare all plans in <a href="{{ route('portal.billing', ['tab' => 'plan']) }}" class="text-brand hover:underline">Account → Plan</a>.
+                        Full comparison in <a href="{{ route('portal.billing', ['tab' => 'plan']) }}" class="text-brand hover:underline">Account → Plan</a>.
+                        Payment method? <a href="{{ route('portal.billing', ['tab' => 'billing']) }}" class="text-brand hover:underline">Billing</a>.
                     </p>
                 </div>
             @else

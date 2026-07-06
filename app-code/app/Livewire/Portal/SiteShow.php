@@ -9,6 +9,7 @@ use App\Services\ClientActivityService;
 use App\Services\StripeBillingService;
 use App\Services\WordPressSsoService;
 use App\Support\MonitorSettings;
+use App\Support\PlanCatalog;
 use App\Support\SiteUptimeChart;
 use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
@@ -214,6 +215,46 @@ class SiteShow extends Component
         session()->flash('success', $paused
             ? 'Monitoring paused. Uptime checks and down alerts are on hold.'
             : 'Monitoring resumed. Checks will run on your saved schedule.');
+    }
+
+    public function upgradePlan(string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
+    {
+        if (! $this->site->hasPaidSubscription()) {
+            return;
+        }
+
+        $client  = Auth::guard('client')->user();
+        $newPlan = Plan::where('slug', $planSlug)->where('is_active', true)->first();
+
+        if (! $newPlan || ! PlanCatalog::isUpgrade($this->site->plan, $newPlan)) {
+            session()->flash('error', 'Please select a higher plan to upgrade.');
+
+            return;
+        }
+
+        $fromSlug = $this->site->plan?->slug;
+
+        try {
+            $billing->upgradeSitePlan($client, $this->site, $newPlan);
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+            report($e);
+
+            return;
+        }
+
+        $this->site->refresh()->load(['plan', 'subscription']);
+
+        $activity->log(
+            $client,
+            'plan_upgraded',
+            "Plan upgraded to {$newPlan->name}",
+            'New features are active on this site.',
+            $this->site,
+            ['from' => $fromSlug, 'to' => $newPlan->slug],
+        );
+
+        session()->flash('success', "Upgraded to {$newPlan->name}. New features are active now.");
     }
 
     public function openCredentials(): void

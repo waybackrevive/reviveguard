@@ -4,6 +4,7 @@ namespace App\Livewire\Portal;
 
 use App\Models\Plan;
 use App\Models\Site;
+use App\Services\ClientActivityService;
 use App\Services\StripeBillingService;
 use App\Support\PlanCatalog;
 use Illuminate\Support\Facades\Auth;
@@ -111,6 +112,53 @@ class Account extends Component
         }
 
         return redirect()->route('portal.sites.show', ['site' => $site, 'tab' => 'plan']);
+    }
+
+    public function upgradeSitePlan(string $siteId, string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
+    {
+        $client = Auth::guard('client')->user();
+
+        $site = Site::where('id', $siteId)
+            ->where('client_id', $client->id)
+            ->with(['plan', 'subscription'])
+            ->first();
+
+        if (! $site) {
+            $this->addError('upgrade', 'Site not found.');
+
+            return;
+        }
+
+        $newPlan = Plan::where('slug', $planSlug)->where('is_active', true)->first();
+
+        if (! $newPlan) {
+            $this->addError('upgrade', 'Plan not found.');
+
+            return;
+        }
+
+        $fromSlug = $site->plan?->slug;
+
+        try {
+            $billing->upgradeSitePlan($client, $site, $newPlan);
+        } catch (\Throwable $e) {
+            $this->addError('upgrade', $e->getMessage());
+            report($e);
+
+            return;
+        }
+
+        $activity->log(
+            $client,
+            'plan_upgraded',
+            "Plan upgraded to {$newPlan->name}",
+            $site->displayName() . ' — new features are active now.',
+            $site->fresh(),
+            ['from' => $fromSlug, 'to' => $newPlan->slug],
+        );
+
+        session()->flash('success', "Upgraded to {$newPlan->name}. Your new features are active — no extra steps needed.");
+        $this->activeTab = 'plan';
     }
 
     public function render(): \Illuminate\View\View

@@ -101,6 +101,18 @@
     {{-- ── Plan tab ─────────────────────────────────────────────────────── --}}
     @if ($activeTab === 'plan')
     <div class="space-y-6">
+        @if (session('success'))
+            <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+        @endif
+        @error('upgrade')
+            <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ $message }}</div>
+        @enderror
+
+        <div class="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700">
+            <p class="font-semibold text-gray-900">Done-for-you protection by the WaybackRevive team</p>
+            <p class="mt-1 text-gray-600">Same experts who restored 500+ websites — we watch, backup, and fix so you don't have to. Upgrade anytime; your card on file is charged only the prorated difference.</p>
+        </div>
+
         {{-- Active subscriptions --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-start justify-between gap-4 mb-4">
@@ -174,7 +186,7 @@
             @endif
 
             <p class="mt-5 pt-5 border-t border-gray-100 text-xs text-gray-400">
-                Upgrades are applied per site. Use <strong>Manage billing</strong> to change payment method, view receipts, or switch plans in Stripe.
+                <strong>Manage billing</strong> is for payment method &amp; receipts only. To change plan, use the upgrade buttons below — one click, instant activation.
             </p>
         </div>
 
@@ -202,16 +214,27 @@
                             ${{ number_format($catalogPlan->price_monthly, 0) }}
                             <span class="text-sm font-normal text-gray-500">/mo per site</span>
                         </p>
-                        <p class="text-sm text-gray-500 mt-2 leading-relaxed">{{ $catalogPlan->portalSummary() }}</p>
+                        <p class="text-sm text-gray-500 mt-2 leading-relaxed">{{ \App\Support\PlanCatalog::tagline($catalogPlan) }}</p>
+                        <p class="text-xs text-gray-400 mt-1">{{ \App\Support\PlanCatalog::bestFor($catalogPlan) }}</p>
 
                         <ul class="mt-4 space-y-2 flex-1">
-                            @foreach (\App\Support\PlanCatalog::bullets($catalogPlan) as $bullet)
+                            @foreach (\App\Support\PlanCatalog::included($catalogPlan) as $feature)
                                 <li class="flex items-start gap-2 text-sm text-gray-700">
                                     <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span>{{ $bullet }}</span>
+                                    <span><strong class="font-medium">{{ $feature['name'] }}</strong>@if ($feature['desc'])<span class="text-gray-500"> — {{ $feature['desc'] }}</span>@endif</span>
                                 </li>
                             @endforeach
                         </ul>
+                        @if (\App\Support\PlanCatalog::notIncluded($catalogPlan))
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Not included</p>
+                                <ul class="space-y-1">
+                                    @foreach (\App\Support\PlanCatalog::notIncluded($catalogPlan) as $item)
+                                        <li class="text-xs text-gray-500">– {{ $item['name'] }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -252,30 +275,35 @@
         {{-- Upgrade prompts per site --}}
         @foreach ($sites as $site)
             @if ($site->hasPaidSubscription() && $site->plan && $site->plan->slug !== 'shield')
-                <div class="bg-violet-50 border border-violet-100 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-semibold text-violet-900">Upgrade {{ $site->displayName() }}</p>
-                        <p class="text-sm text-violet-800 mt-0.5">
-                            Currently on <strong>{{ $site->plan->name }}</strong>.
-                            @if ($site->plan->slug === 'monitor')
-                                Move to Guard for daily backups &amp; managed updates, or Shield for priority care.
-                            @else
-                                Move to Shield for 2-min checks, longer backup retention &amp; priority support.
+                <div class="bg-white border border-violet-200 rounded-2xl p-5 shadow-sm">
+                    <p class="text-sm font-semibold text-gray-900">Upgrade {{ $site->displayName() }}</p>
+                    <p class="text-sm text-gray-500 mt-0.5 mb-4">
+                        On <strong>{{ $site->plan->name }}</strong> (${{ number_format($site->plan->price_monthly, 0) }}/mo).
+                        Pick a higher plan — charged prorated today, features activate immediately.
+                    </p>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @foreach ($plans as $upgradePlan)
+                            @if (\App\Support\PlanCatalog::isUpgrade($site->plan, $upgradePlan))
+                                <div class="border border-gray-200 rounded-xl p-4">
+                                    <div class="flex items-baseline justify-between gap-2">
+                                        <p class="font-bold text-gray-900">{{ $upgradePlan->name }}</p>
+                                        <p class="text-lg font-bold text-brand">${{ number_format($upgradePlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
+                                    </div>
+                                    <ul class="mt-3 space-y-1.5">
+                                        @foreach (\App\Support\PlanCatalog::upgradeGains($site->plan, $upgradePlan) as $gain)
+                                            <li class="text-xs text-gray-700 flex gap-1.5"><span class="text-emerald-500 font-bold">+</span> {{ $gain }}</li>
+                                        @endforeach
+                                    </ul>
+                                    <button type="button"
+                                        wire:click="upgradeSitePlan('{{ $site->id }}', '{{ $upgradePlan->slug }}')"
+                                        wire:confirm="{{ \App\Support\PlanCatalog::upgradeConfirmMessage($site->plan, $upgradePlan) }}"
+                                        wire:loading.attr="disabled"
+                                        class="mt-4 w-full text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-lg">
+                                        Upgrade to {{ $upgradePlan->name }}
+                                    </button>
+                                </div>
                             @endif
-                        </p>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" wire:click="goToSitePlan('{{ $site->id }}')"
-                            class="px-4 py-2 text-sm font-semibold text-violet-900 bg-white border border-violet-200 rounded-lg hover:bg-violet-100">
-                            View upgrade options
-                        </button>
-                        @if ($client->stripeCustomerId())
-                            <button type="button" wire:click="openBillingPortal"
-                                class="px-4 py-2 text-sm font-semibold text-white bg-violet-700 rounded-lg hover:bg-violet-800"
-                                wire:loading.attr="disabled" wire:target="openBillingPortal">
-                                Upgrade in billing portal
-                            </button>
-                        @endif
+                        @endforeach
                     </div>
                 </div>
             @endif
