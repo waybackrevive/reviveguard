@@ -245,17 +245,34 @@
                 </div>
             </div>
 
-            @if ($uptimeProbes->isNotEmpty())
-                <div class="bg-white rounded-[10px] border border-gray-200 p-5 mb-6 shadow-sm">
-                    <h2 class="text-sm font-semibold text-gray-900 mb-3">Uptime — last 14 days</h2>
-                    <div class="flex items-end gap-0.5 h-16">
-                        @foreach ($uptimeProbes->take(-96) as $probe)
-                            <div class="flex-1 min-w-[3px] rounded-sm {{ $probe->is_up ? 'bg-emerald-500' : 'bg-red-400' }}"
-                                title="{{ $probe->checked_at->format('M j g:i A') }} — {{ $probe->is_up ? 'Up' : 'Down' }}"></div>
-                        @endforeach
+            <div class="bg-white rounded-[10px] border border-gray-200 p-5 mb-6 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-900">Uptime rate — last 14 days</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Daily checks at your {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} schedule</p>
                     </div>
+                    @if ($periodUptimePct !== null)
+                        <span class="inline-flex items-center text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                            {{ number_format($periodUptimePct, 2) }}%
+                        </span>
+                    @endif
                 </div>
-            @endif
+                <div class="flex items-end justify-between gap-1 h-24 px-1">
+                    @foreach ($uptimeDailyBars as $bar)
+                        <div class="flex-1 min-w-0 flex flex-col items-center justify-end gap-1.5 h-full">
+                            <div
+                                class="w-full max-w-[14px] mx-auto rounded-sm {{ $bar['color'] }} transition-all"
+                                style="height: {{ $bar['bar_height'] }}px"
+                                title="{{ $bar['has_data'] ? $bar['label'] . ': ' . number_format((float) $bar['pct'], 1) . '% uptime' : $bar['label'] . ': no checks yet' }}"
+                            ></div>
+                            <span class="text-[9px] text-gray-400 leading-none truncate w-full text-center">{{ $bar['label'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                @if ($uptimeProbes->isEmpty())
+                    <p class="text-xs text-gray-500 mt-4 text-center">Collecting uptime data — bars will fill in as checks run.</p>
+                @endif
+            </div>
 
             <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
                 <div class="px-5 py-4 border-b border-gray-100">
@@ -284,16 +301,23 @@
 
     {{-- Activity --}}
     @if ($tab === 'activity')
-        <p class="text-sm text-gray-500 mb-4">Full audit log for this site — backups, reports, alerts, and connection events.</p>
+        <p class="text-sm text-gray-500 mb-4">Audit log for this site — your actions, team updates, backups, reports, and alerts.</p>
         <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
             <ul class="divide-y divide-gray-100">
                 @forelse ($recentEvents as $event)
-                    <li class="px-5 py-4 text-sm">
-                        <p class="font-medium text-gray-800">{{ $event->title }}</p>
-                        @if ($event->message)
-                            <p class="text-gray-600 mt-0.5">{{ $event->message }}</p>
+                    <li class="px-5 py-4 text-sm flex items-start gap-3">
+                        @if ($event->type === 'client_action')
+                            <span class="mt-0.5 flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded">You</span>
+                        @else
+                            <span class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0 bg-gray-300"></span>
                         @endif
-                        <p class="text-xs text-gray-400 mt-1">{{ $event->created_at->format('M j, Y g:i A') }}</p>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-gray-800">{{ $event->title }}</p>
+                            @if ($event->message)
+                                <p class="text-gray-600 mt-0.5">{{ $event->message }}</p>
+                            @endif
+                            <p class="text-xs text-gray-400 mt-1">{{ $event->created_at->format('M j, Y g:i A') }}</p>
+                        </div>
                     </li>
                 @empty
                     <li class="px-5 py-12 text-center text-sm text-gray-500">No activity yet for this site.</li>

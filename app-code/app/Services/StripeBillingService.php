@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SiteStatus;
 use App\Jobs\OnboardClientJob;
+use App\Models\AddonOrder;
 use App\Models\Client;
 use App\Models\Plan;
 use App\Models\Site;
@@ -122,8 +123,64 @@ class StripeBillingService
         return $session->url;
     }
 
+    public function createAddonCheckoutSession(Client $client, AddonOrder $order): string
+    {
+        if ($order->client_id !== $client->id) {
+            throw new \RuntimeException('Order does not belong to this account.');
+        }
+
+        if (! $order->isAwaitingPayment()) {
+            throw new \RuntimeException('This order is not awaiting payment.');
+        }
+
+        if (empty($order->amount_cents) || $order->amount_cents < 50) {
+            throw new \RuntimeException('Invalid order amount.');
+        }
+
+        if (empty(StripeConfig::secretKey())) {
+            throw new \RuntimeException('Payment system is not configured yet.');
+        }
+
+        $customerId = $this->getOrCreateCustomer($client);
+
+        $session = Session::create([
+            'mode'       => 'payment',
+            'customer'   => $customerId,
+            'line_items' => [[
+                'price_data' => [
+                    'currency'     => 'usd',
+                    'unit_amount'  => $order->amount_cents,
+                    'product_data' => [
+                        'name'        => $order->addon_name,
+                        'description' => 'ReviveGuard add-on · Qty ' . $order->quantity,
+                    ],
+                ],
+                'quantity' => 1,
+            ]],
+            'success_url' => route('portal.addons.checkout.success', ['session_id' => '{CHECKOUT_SESSION_ID}']),
+            'cancel_url'  => route('portal.addons'),
+            'client_reference_id' => $client->id,
+            'metadata' => [
+                'type'           => 'addon_order',
+                'addon_order_id' => $order->id,
+                'client_id'      => $client->id,
+                'tenant_id'      => $this->tenantId,
+            ],
+        ]);
+
+        $order->update(['stripe_checkout_session_id' => $session->id]);
+
+        return $session->url;
+    }
+
     public function handleCheckoutSessionCompleted(object $session): void
     {
+        if (($session->metadata->type ?? null) === 'addon_order') {
+            $this->handleAddonCheckoutCompleted($session);
+
+            return;
+        }
+
         $clientId = $session->metadata->client_id ?? null;
         $siteId   = $session->metadata->site_id ?? null;
         $planId   = $session->metadata->plan_id ?? null;
@@ -147,6 +204,35 @@ class StripeBillingService
 
         $stripeSub = StripeSubscription::retrieve($session->subscription);
         $this->upsertSubscriptionFromStripe($client, $site, $stripeSub, $planId);
+    }
+
+    public function handleAddonCheckoutCompleted(object $session): bool
+    {
+        $orderId = $session->metadata->addon_order_id ?? null;
+
+        if (! $orderId) {
+            Log::warning('StripeBillingService: addon checkout missing order id');
+
+            return false;
+        }
+
+        if (! in_array($session->payment_status ?? null, ['paid', 'no_payment_required'], true)
+            && ($session->status ?? null) !== 'complete') {
+            return false;
+        }
+
+        $order = AddonOrder::find($orderId);
+
+        if (! $order || ! $order->isAwaitingPayment()) {
+            return false;
+        }
+
+        $order->update([
+            'status'  => 'in_progress',
+            'paid_at' => now(),
+        ]);
+
+        return true;
     }
 
     public function handleSubscriptionEvent(object $stripeSub): void

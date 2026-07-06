@@ -66,7 +66,7 @@ class Plan extends Model
     public function portalSummary(): string
     {
         return match ($this->slug) {
-            'monitor' => 'Uptime & SSL monitoring, monthly backups, email alerts',
+            'monitor' => 'Uptime & SSL monitoring, monthly backups, unlimited email support',
             'guard'   => 'Daily backups, WP updates handled for you — best for most sites',
             'shield'  => 'Priority support, extended backup retention, full hands-off care',
             default   => '',

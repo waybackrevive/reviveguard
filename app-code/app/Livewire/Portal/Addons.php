@@ -4,6 +4,9 @@ namespace App\Livewire\Portal;
 
 use App\Models\AddonOrder;
 use App\Models\Site;
+use App\Services\ClientActivityService;
+use App\Services\StripeBillingService;
+use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
@@ -43,7 +46,7 @@ class Addons extends Component
         $this->selectedAddonSlug = null;
     }
 
-    public function placeOrder(): void
+    public function placeOrder(StripeBillingService $billing, ClientActivityService $activity)
     {
         $addon = $this->selectedAddonSlug ? $this->findAddon($this->selectedAddonSlug) : null;
 
@@ -72,32 +75,94 @@ class Addons extends Component
             return;
         }
 
-        if ($addon['requires_site'] ?? false) {
-            $ownsSite = Site::where('id', $this->orderSiteId)
-                ->where('client_id', $client->id)
-                ->exists();
+        $site = null;
 
-            if (! $ownsSite) {
+        if ($addon['requires_site'] ?? false) {
+            $site = Site::where('id', $this->orderSiteId)
+                ->where('client_id', $client->id)
+                ->first();
+
+            if (! $site) {
                 session()->flash('error', 'Please select a valid site.');
 
                 return;
             }
         }
 
-        AddonOrder::create([
+        if (empty(StripeConfig::secretKey())) {
+            session()->flash('error', 'Payment system is not configured yet. Please contact support.');
+
+            return;
+        }
+
+        $amountCents = $this->calculateAmountCents($addon, $this->orderQuantity);
+
+        if ($amountCents < 50) {
+            session()->flash('error', 'Invalid order amount.');
+
+            return;
+        }
+
+        $order = AddonOrder::create([
             'tenant_id'    => $client->tenant_id,
             'client_id'    => $client->id,
-            'site_id'      => $this->orderSiteId ?: null,
+            'site_id'      => $site?->id,
             'addon_slug'   => $addon['slug'],
             'addon_name'   => $addon['name'],
             'price_label'  => $addon['price_label'],
+            'amount_cents' => $amountCents,
             'quantity'     => $this->orderQuantity,
             'client_notes' => $this->orderNotes,
-            'status'       => 'pending',
+            'status'       => 'awaiting_payment',
         ]);
 
+        $activity->log(
+            $client,
+            'addon_order_placed',
+            "Add-on requested: {$addon['name']}",
+            'Order submitted — proceeding to secure payment.',
+            $site,
+            ['addon_order_id' => $order->id, 'addon_slug' => $addon['slug'], 'amount_cents' => $amountCents],
+        );
+
         $this->closeOrder();
-        session()->flash('success', 'Order placed. Our team will review it and update you here.');
+
+        try {
+            $url = $billing->createAddonCheckoutSession($client, $order);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Unable to start payment: ' . $e->getMessage());
+            report($e);
+
+            return;
+        }
+
+        return redirect()->away($url);
+    }
+
+    public function payOrder(string $orderId, StripeBillingService $billing)
+    {
+        $client = Auth::guard('client')->user();
+
+        $order = AddonOrder::where('id', $orderId)
+            ->where('client_id', $client->id)
+            ->first();
+
+        if (! $order || ! $order->isAwaitingPayment()) {
+            session()->flash('error', 'This order cannot be paid right now.');
+
+            return;
+        }
+
+        try {
+            $url = $billing->createAddonCheckoutSession($client, $order);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Unable to start payment: ' . $e->getMessage());
+            report($e);
+
+            return;
+        }
+
+        return redirect()->away($url);
     }
 
     public function render(): \Illuminate\View\View
@@ -137,5 +202,12 @@ class Addons extends Component
         $client = Auth::guard('client')->user();
 
         return Site::where('client_id', $client->id)->value('id');
+    }
+
+    private function calculateAmountCents(array $addon, int $quantity): int
+    {
+        $price = (float) ($addon['price'] ?? 0);
+
+        return (int) round($price * max(1, $quantity) * 100);
     }
 }

@@ -4,6 +4,8 @@ namespace App\Livewire\Portal;
 
 use App\Models\Site;
 use App\Models\Ticket;
+use App\Services\ClientActivityService;
+use App\Support\SupportTier;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +18,6 @@ class Tickets extends Component
     public string  $message = '';
     public ?string $siteId  = null;
 
-    // Ticket detail modal
     public ?Ticket $selectedTicket = null;
 
     public bool $submitted = false;
@@ -61,7 +62,7 @@ class Tickets extends Component
         }
     }
 
-    public function submitTicket(): void
+    public function submitTicket(ClientActivityService $activity): void
     {
         $client = Auth::guard('client')->user();
 
@@ -75,35 +76,36 @@ class Tickets extends Component
             return;
         }
 
-        // Plan limit enforcement
-        $plan = optional($client->activeSubscription)->plan;
-        if (optional($plan)->slug === 'monitor') {
-            session()->flash('ticket_error', 'Support tickets are available on Guard and Shield plans.');
+        $plan = $client->bestSupportPlan();
+
+        if (! SupportTier::canSubmitTicket($plan)) {
+            session()->flash('ticket_error', 'Email support is not available on your current plan.');
             return;
         }
 
-        // Guard plan: 1 ticket/month limit
-        if (optional($plan)->slug === 'guard') {
-            try {
-                $usedThisMonth = Ticket::where('client_id', $client->id)
-                    ->where('created_at', '>=', now()->startOfMonth())
-                    ->count();
-            } catch (QueryException $e) {
-                Log::warning('Portal tickets monthly usage query failed', [
-                    'client_id' => $client->id,
-                    'error' => $e->getMessage(),
-                ]);
-                session()->flash('ticket_error', 'Support is temporarily unavailable. Please try again shortly.');
-                return;
-            }
+        try {
+            $usedThisMonth = Ticket::where('client_id', $client->id)
+                ->where('created_at', '>=', now()->startOfMonth())
+                ->count();
+        } catch (QueryException $e) {
+            Log::warning('Portal tickets monthly usage query failed', [
+                'client_id' => $client->id,
+                'error' => $e->getMessage(),
+            ]);
+            session()->flash('ticket_error', 'Support is temporarily unavailable. Please try again shortly.');
+            return;
+        }
 
-            if ($usedThisMonth >= 1) {
-                session()->flash('ticket_error', 'You have used your 1 support ticket for this month.');
-                return;
-            }
+        if (SupportTier::ticketLimitReached($plan, $usedThisMonth)) {
+            session()->flash('ticket_error', 'You have reached your support ticket limit for this month.');
+            return;
         }
 
         $validated = $this->validate();
+
+        $site = $validated['siteId']
+            ? Site::where('id', $validated['siteId'])->where('client_id', $client->id)->first()
+            : null;
 
         try {
             Ticket::create([
@@ -113,7 +115,7 @@ class Tickets extends Component
                 'subject'   => $validated['subject'],
                 'message'   => $validated['message'],
                 'status'    => 'open',
-                'priority'  => 'medium',
+                'priority'  => optional($plan)->slug === 'shield' ? 'high' : 'medium',
             ]);
         } catch (QueryException $e) {
             Log::warning('Portal ticket create failed', [
@@ -123,6 +125,15 @@ class Tickets extends Component
             session()->flash('ticket_error', 'Could not submit ticket right now. Please try again shortly.');
             return;
         }
+
+        $activity->log(
+            $client,
+            'support_ticket_submitted',
+            'Support ticket submitted',
+            $validated['subject'],
+            $site,
+            ['priority' => optional($plan)->slug === 'shield' ? 'high' : 'medium'],
+        );
 
         $this->reset('subject', 'message');
         $this->submitted = true;
@@ -170,6 +181,7 @@ class Tickets extends Component
                 'tickets' => collect(),
                 'sites' => collect(),
                 'plan' => null,
+                'supportTier' => SupportTier::forPlan(null),
             ])->layout('portal.layouts.app');
         }
 
@@ -200,12 +212,13 @@ class Tickets extends Component
             }
         }
 
-        $plan = optional($client->activeSubscription)->plan;
+        $plan = $client->bestSupportPlan();
 
         return view('livewire.portal.tickets', [
-            'tickets' => $tickets,
-            'sites'   => $sites,
-            'plan'    => $plan,
+            'tickets'     => $tickets,
+            'sites'       => $sites,
+            'plan'        => $plan,
+            'supportTier' => SupportTier::forPlan($plan),
         ])->layout('portal.layouts.app');
     }
 }

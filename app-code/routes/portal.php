@@ -3,6 +3,7 @@
 use App\Http\Controllers\Portal\AcceptInviteController;
 use App\Http\Controllers\Portal\ActivateController;
 use App\Http\Controllers\Portal\AuthController;
+use App\Http\Controllers\Portal\AddonCheckoutSuccessController;
 use App\Http\Controllers\Portal\CheckoutSuccessController;
 use App\Http\Controllers\Portal\PasswordResetController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,7 @@ Route::middleware(['portal.auth', 'portal.timeout', 'portal.onboarded'])->group(
 
     Route::get('/reports', \App\Livewire\Portal\Reports::class)->name('portal.reports');
     Route::get('/addons', \App\Livewire\Portal\Addons::class)->name('portal.addons');
+    Route::get('/addons/checkout/success', AddonCheckoutSuccessController::class)->name('portal.addons.checkout.success');
     Route::get('/tickets', \App\Livewire\Portal\Tickets::class)->name('portal.tickets');
     Route::get('/billing', \App\Livewire\Portal\Account::class)->name('portal.billing');
     Route::redirect('/account', '/portal/billing')->name('portal.account');

@@ -101,6 +101,28 @@ class Client extends Authenticatable
         return $this->hasMany(Report::class);
     }
 
+  /**
+     * Best plan across paid sites — used for support tier (email vs phone).
+     */
+    public function bestSupportPlan(): ?Plan
+    {
+        $rank = ['monitor' => 1, 'guard' => 2, 'shield' => 3];
+
+        $fromSites = $this->sites()
+            ->with('plan')
+            ->whereHas('subscription', function ($q) {
+                $q->whereIn('stripe_status', ['active', 'trialing'])
+                    ->orWhere('whop_status', 'active');
+            })
+            ->get()
+            ->map(fn (Site $site) => $site->plan)
+            ->filter()
+            ->sortByDesc(fn (Plan $plan) => $rank[$plan->slug] ?? 0)
+            ->first();
+
+        return $fromSites ?? optional($this->activeSubscription)->plan;
+    }
+
     public function activeSubscription(): HasOne
     {
         // Note: ofMany() generates MAX(id) which fails on PostgreSQL UUID columns.

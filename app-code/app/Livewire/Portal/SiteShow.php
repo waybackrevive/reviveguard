@@ -5,9 +5,11 @@ namespace App\Livewire\Portal;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\SiteUptimeProbe;
+use App\Services\ClientActivityService;
 use App\Services\StripeBillingService;
 use App\Services\WordPressSsoService;
 use App\Support\MonitorSettings;
+use App\Support\SiteUptimeChart;
 use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
@@ -153,12 +155,13 @@ class SiteShow extends Component
         return redirect()->away($url);
     }
 
-    public function saveMonitorSettings(): void
+    public function saveMonitorSettings(ClientActivityService $activity): void
     {
         if (! $this->site->hasPaidSubscription()) {
             return;
         }
 
+        $client   = Auth::guard('client')->user();
         $interval = MonitorSettings::normalizeInterval($this->site, $this->monitorInterval);
         $region   = MonitorSettings::normalizeRegion($this->site, $this->monitorRegion);
 
@@ -171,14 +174,24 @@ class SiteShow extends Component
         $this->monitorRegion   = $region;
         $this->monitorSettingsSaved = true;
         $this->site->refresh();
+
+        $activity->log(
+            $client,
+            'monitor_settings_updated',
+            'Monitoring settings updated',
+            MonitorSettings::intervalLabel($interval) . ' · ' . MonitorSettings::regionLabel($region),
+            $this->site,
+            ['interval_minutes' => $interval, 'region' => $region],
+        );
     }
 
-    public function toggleMonitoringPause(): void
+    public function toggleMonitoringPause(ClientActivityService $activity): void
     {
         if (! $this->site->hasPaidSubscription()) {
             return;
         }
 
+        $client = Auth::guard('client')->user();
         $paused = ! $this->site->monitoring_paused;
 
         $this->site->update([
@@ -187,6 +200,17 @@ class SiteShow extends Component
         ]);
 
         $this->site->refresh();
+
+        $activity->log(
+            $client,
+            $paused ? 'monitoring_paused' : 'monitoring_resumed',
+            $paused ? 'Monitoring paused' : 'Monitoring resumed',
+            $paused
+                ? 'Uptime checks and down alerts are on hold for this site.'
+                : 'Uptime checks will run on your saved schedule.',
+            $this->site,
+        );
+
         session()->flash('success', $paused
             ? 'Monitoring paused. Uptime checks and down alerts are on hold.'
             : 'Monitoring resumed. Checks will run on your saved schedule.');
@@ -210,8 +234,10 @@ class SiteShow extends Component
         $this->showCredentialsModal = true;
     }
 
-    public function saveCredentials(): void
+    public function saveCredentials(ClientActivityService $activity): void
     {
+        $client = Auth::guard('client')->user();
+
         $this->site->update([
             'hosting_credentials' => [
                 'hosting_provider' => $this->credHostingProvider,
@@ -228,24 +254,42 @@ class SiteShow extends Component
             ],
         ]);
 
+        $activity->log(
+            $client,
+            'credentials_updated',
+            'Hosting credentials updated',
+            'Connection details saved for our team.',
+            $this->site,
+        );
+
         $this->credentialsSaved = true;
         $this->showCredentialsModal = false;
     }
 
     public function render(): \Illuminate\View\View
     {
+        $activityTypes = ['heartbeat_missed', 'site_recovered'];
+
         $this->site->load([
-            'events' => fn ($q) => $q->latest()->limit($this->tab === 'activity' ? 50 : 8),
+            'events' => function ($q) {
+                if ($this->tab === 'activity') {
+                    $q->whereNotIn('type', ['heartbeat_missed', 'site_recovered']);
+                }
+
+                $q->latest()->limit($this->tab === 'activity' ? 50 : 8);
+            },
             'backups' => fn ($q) => $q->latest()->limit(20),
             'reports' => fn ($q) => $q->latest()->limit(20),
         ]);
 
         $overviewEvents = $this->site->events
-            ->whereNotIn('type', ['heartbeat_missed', 'site_recovered'])
+            ->whereNotIn('type', $activityTypes)
             ->take(5);
 
-        $uptimeIncidents = collect();
-        $uptimeProbes    = collect();
+        $uptimeIncidents  = collect();
+        $uptimeProbes     = collect();
+        $uptimeDailyBars  = [];
+        $periodUptimePct  = null;
         $allowedIntervals = MonitorSettings::allowedIntervals($this->site);
         $allowedRegions   = MonitorSettings::allowedRegions($this->site);
 
@@ -260,6 +304,9 @@ class SiteShow extends Component
                 ->where('checked_at', '>=', now()->subDays(14))
                 ->orderBy('checked_at')
                 ->get();
+
+            $uptimeDailyBars = SiteUptimeChart::dailyBars($this->site->id, 14);
+            $periodUptimePct = SiteUptimeChart::periodUptimePercent($uptimeProbes);
         }
 
         return view('livewire.portal.site-show', [
@@ -274,6 +321,8 @@ class SiteShow extends Component
             'canOpenWpAdmin'   => app(WordPressSsoService::class)->canLogin($this->site),
             'uptimeIncidents'  => $uptimeIncidents,
             'uptimeProbes'     => $uptimeProbes,
+            'uptimeDailyBars'  => $uptimeDailyBars,
+            'periodUptimePct'  => $periodUptimePct,
             'allowedIntervals' => $allowedIntervals,
             'allowedRegions'   => $allowedRegions,
         ])->layout('portal.layouts.app');

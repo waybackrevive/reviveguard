@@ -1,26 +1,38 @@
 <div>
-    <h1 class="text-2xl font-semibold text-gray-900 mb-6">Support</h1>
+    <h1 class="text-2xl font-semibold text-gray-900 mb-2">Support</h1>
+    <p class="text-sm text-gray-500 mb-6">{{ $supportTier['headline'] }}</p>
 
-    {{-- ── Monitor plan restriction ────────────────────────────────────────── --}}
-    @if (optional($plan)->slug === 'monitor')
-        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6 text-sm text-amber-800">
-            Support tickets are available on Guard and Shield plans.
-            <a href="{{ route('portal.account') }}" class="font-semibold hover:underline">View your plan →</a>
+    <div class="bg-white border border-gray-200 rounded-2xl p-5 mb-6 text-sm">
+        <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                <p class="text-gray-900 font-medium">{{ $supportTier['email'] ? 'Unlimited' : 'Not included' }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Response time</p>
+                <p class="text-gray-900 font-medium">{{ $supportTier['reply_sla'] }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Phone</p>
+                <p class="text-gray-900 font-medium">
+                    @if ($supportTier['phone'])
+                        Included — we call you back on priority issues
+                    @else
+                        Email only on Monitor
+                    @endif
+                </p>
+            </div>
         </div>
-    @else
+        @if (optional($plan)->slug === 'shield')
+            <p class="mt-4 text-xs text-violet-800 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
+                Shield clients receive priority routing — high-impact issues are escalated first.
+            </p>
+        @endif
+    </div>
 
-    {{-- ── Guard plan counter ──────────────────────────────────────────────── --}}
-    @if (optional($plan)->slug === 'guard')
-        @php $usedCount = $tickets->where('created_at', '>=', now()->startOfMonth())->count(); @endphp
-        <p class="text-sm text-gray-500 mb-4">
-            {{ $usedCount }} of 1 support ticket{{ $usedCount === 1 ? '' : 's' }} used this month.
-        </p>
-    @endif
-
-    {{-- ── Success message ─────────────────────────────────────────────────── --}}
     @if ($submitted)
         <div class="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex items-start justify-between gap-4">
-            <p class="text-sm text-green-700">Ticket submitted. We'll respond within 24 hours.</p>
+            <p class="text-sm text-green-700">Ticket submitted. {{ $supportTier['reply_sla'] }}.</p>
             <button wire:click="dismissSuccess" class="text-green-500 hover:text-green-700 text-xs">Dismiss</button>
         </div>
     @endif
@@ -31,52 +43,50 @@
         </div>
     @endif
 
-    {{-- ── Submit form ─────────────────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
-        <h2 class="text-base font-semibold text-gray-900 mb-4">Need help with your website?</h2>
+    @if ($supportTier['email'])
+        <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+            <h2 class="text-base font-semibold text-gray-900 mb-4">Need help with your website?</h2>
 
-        <form wire:submit.prevent="submitTicket" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                <input type="text" wire:model="subject" placeholder="Briefly describe your issue"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('subject') border-red-400 @enderror">
-                @error('subject') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-            </div>
-
-            @if ($sites->count() > 1)
+            <form wire:submit.prevent="submitTicket" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
-                    <select wire:model="siteId"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">Select a site</option>
-                        @foreach ($sites as $s)
-                            <option value="{{ $s->id }}">{{ $s->name }}</option>
-                        @endforeach
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <input type="text" wire:model="subject" placeholder="Briefly describe your issue"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('subject') border-red-400 @enderror">
+                    @error('subject') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
-            @endif
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                <textarea wire:model="message" rows="4" placeholder="Please describe the issue in detail"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('message') border-red-400 @enderror"></textarea>
-                @error('message') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-            </div>
+                @if ($sites->count() > 1)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Site</label>
+                        <select wire:model="siteId"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select a site</option>
+                            @foreach ($sites as $s)
+                                <option value="{{ $s->id }}">{{ $s->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
 
-            <button type="submit"
-                    class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                    wire:loading.attr="disabled" wire:loading.class="opacity-60">
-                <span wire:loading.remove>Submit Ticket</span>
-                <span wire:loading>Submitting…</span>
-            </button>
-        </form>
-    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <textarea wire:model="message" rows="4" placeholder="Please describe the issue in detail"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('message') border-red-400 @enderror"></textarea>
+                    @error('message') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
 
-    @endif {{-- end monitor restriction --}}
+                <button type="submit"
+                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                        wire:loading.attr="disabled" wire:loading.class="opacity-60">
+                    <span wire:loading.remove>Submit ticket</span>
+                    <span wire:loading>Submitting…</span>
+                </button>
+            </form>
+        </div>
+    @endif
 
-    {{-- ── Ticket list ─────────────────────────────────────────────────────── --}}
     @if ($tickets->isNotEmpty())
-        <h2 class="text-base font-semibold text-gray-900 mb-3">Your Tickets</h2>
+        <h2 class="text-base font-semibold text-gray-900 mb-3">Your tickets</h2>
         <div class="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
             @foreach ($tickets as $ticket)
                 <div wire:click="showTicket('{{ $ticket->id }}')"
@@ -96,7 +106,6 @@
         </div>
     @endif
 
-    {{-- ── Ticket detail modal ─────────────────────────────────────────────── --}}
     @if ($selectedTicket)
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
              wire:click.self="closeModal">

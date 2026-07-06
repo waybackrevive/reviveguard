@@ -48,7 +48,7 @@ class MigrationAndSeedTest extends TestCase
         $this->assertNotNull($monitor);
         $this->assertSame('monthly', $monitor->backup_frequency);
         $this->assertSame(30, $monitor->retention_days);
-        $this->assertSame(0, $monitor->support_tickets_per_month);
+        $this->assertSame(-1, $monitor->support_tickets_per_month);
         $this->assertSame(49.00, (float) $monitor->price_monthly);
     }
 
