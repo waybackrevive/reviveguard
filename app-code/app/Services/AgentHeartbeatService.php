@@ -15,7 +15,9 @@ class AgentHeartbeatService
 
     public function record(Site $site, array $payload): Site
     {
+        $site->loadMissing('subscription');
         $previousStatus = $site->status;
+        $paid           = $site->hasPaidSubscription();
 
         $site->update(array_filter([
             'last_seen_at'  => now(),
@@ -28,15 +30,17 @@ class AgentHeartbeatService
             'debug_mode'    => array_key_exists('debug_mode', $payload) ? (bool) $payload['debug_mode'] : null,
             'plugin_count'  => $payload['plugin_count'] ?? null,
             'theme_name'    => $payload['theme_name'] ?? null,
-            'status'        => SiteStatus::ACTIVE,
+            'status'        => $paid ? SiteStatus::ACTIVE : SiteStatus::PENDING,
         ], fn ($v) => $v !== null));
 
-        // Ensure last_seen_at is always set even when optional fields are empty
         if ($site->last_seen_at === null) {
-            $site->update(['last_seen_at' => now(), 'status' => SiteStatus::ACTIVE]);
+            $site->update([
+                'last_seen_at' => now(),
+                'status'       => $paid ? SiteStatus::ACTIVE : SiteStatus::PENDING,
+            ]);
         }
 
-        if (in_array($previousStatus, [SiteStatus::DOWN, SiteStatus::WARNING], true)) {
+        if (in_array($previousStatus, [SiteStatus::DOWN, SiteStatus::WARNING], true) && $paid) {
             try {
                 $this->alertService->siteRecovered($site->fresh());
             } catch (\Throwable $e) {

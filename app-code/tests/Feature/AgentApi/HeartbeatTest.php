@@ -88,9 +88,28 @@ class HeartbeatTest extends TestCase
             ->assertJson(['status' => 'ok']);
 
         $this->site->refresh();
-        $this->assertEquals(SiteStatus::ACTIVE, $this->site->status);
+        $this->assertEquals(SiteStatus::PENDING, $this->site->status);
         $this->assertEquals('6.5.0', $this->site->wp_version);
         $this->assertNotNull($this->site->last_seen_at);
+    }
+
+    public function test_heartbeat_sets_active_when_site_has_paid_subscription(): void
+    {
+        $subscription = \App\Models\Subscription::create([
+            'tenant_id'              => $this->site->tenant_id,
+            'client_id'              => $this->site->client_id,
+            'site_id'                => $this->site->id,
+            'plan_id'                => $this->site->plan_id,
+            'stripe_subscription_id' => 'sub_test_123',
+            'stripe_status'          => 'active',
+        ]);
+
+        $this->site->update(['subscription_id' => $subscription->id]);
+
+        $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/heartbeat', ['agent_version' => '1.0.0']);
+
+        $this->assertEquals(SiteStatus::ACTIVE, $this->site->fresh()->status);
     }
 
     public function test_heartbeat_returns_pending_command(): void

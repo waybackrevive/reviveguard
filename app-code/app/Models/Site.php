@@ -164,8 +164,8 @@ class Site extends Model
      */
     public function portalStatusKey(): string
     {
-        if ($this->status === SiteStatus::PENDING && ! $this->hasPaidSubscription()) {
-            return 'checkout';
+        if (! $this->hasPaidSubscription()) {
+            return $this->hasAgentConnected() ? 'checkout' : 'setup';
         }
 
         if (! $this->hasAgentConnected()) {

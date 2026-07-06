@@ -72,6 +72,13 @@
 
     {{-- Overview --}}
     @if ($tab === 'overview')
+        @if (! $site->hasPaidSubscription())
+            <div class="mb-6 rounded-[10px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                <p class="font-semibold">Protection not active yet</p>
+                <p class="mt-1">Your site can connect before payment, but monitoring, backups, and alerts start after you complete checkout.</p>
+                <button wire:click="setTab('plan')" class="mt-3 text-sm font-semibold text-amber-800 underline hover:no-underline">Go to Plan →</button>
+            </div>
+        @else
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
             <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Uptime (30d)</p>
@@ -118,6 +125,7 @@
                 @endforelse
             </ul>
         </div>
+        @endif
     @endif
 
     {{-- Activity --}}
@@ -250,7 +258,7 @@
     {{-- Plan --}}
     @if ($tab === 'plan')
         <div class="max-w-2xl">
-            @if ($site->status === \App\Enums\SiteStatus::PENDING)
+            @if (! $site->hasPaidSubscription())
                 <p class="text-sm text-gray-600 mb-4">Pick a plan for this site. You'll pay on the next screen{{ $stripeTestMode ? ' (Stripe test mode — use test card 4242 4242 4242 4242)' : '' }}.</p>
 
                 <div class="grid gap-3 sm:grid-cols-3 mb-6">

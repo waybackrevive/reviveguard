@@ -40,8 +40,10 @@ class MyWebsites extends Component
 
         Site::where('id', $siteId)
             ->where('client_id', $client->id)
-            ->where('status', SiteStatus::PENDING)
-            ->delete();
+            ->with('subscription')
+            ->get()
+            ->filter(fn (Site $site) => ! $site->hasPaidSubscription())
+            ->each->delete();
 
         session()->flash('success', 'Site removed.');
     }
@@ -55,12 +57,16 @@ class MyWebsites extends Component
 
         $site = Site::where('id', $siteId)
             ->where('client_id', $client->id)
-            ->where('status', SiteStatus::PENDING)
-            ->with('plan')
+            ->with(['plan', 'subscription'])
             ->first();
 
-        if (! $site || ! $site->plan) {
-            session()->flash('error', 'Cannot resume checkout: site or plan not found.');
+        if (! $site || $site->hasPaidSubscription()) {
+            session()->flash('error', 'Cannot resume checkout: site not found or already subscribed.');
+            return;
+        }
+
+        if (! $site->plan) {
+            session()->flash('error', 'Please choose a plan first.');
             return;
         }
 

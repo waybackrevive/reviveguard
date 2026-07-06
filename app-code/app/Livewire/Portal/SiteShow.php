@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Portal;
 
-use App\Enums\SiteStatus;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\StripeBillingService;
@@ -60,7 +59,8 @@ class SiteShow extends Component
     {
         $client = Auth::guard('client')->user();
 
-        if ($this->site->client_id !== $client->id || $this->site->status !== SiteStatus::PENDING) {
+        if ($this->site->client_id !== $client->id || $this->site->hasPaidSubscription()) {
+            session()->flash('error', 'This site already has an active subscription.');
             return;
         }
 
@@ -101,7 +101,7 @@ class SiteShow extends Component
     {
         $this->selectedPlanSlug = $slug;
 
-        if ($this->site->status === SiteStatus::PENDING) {
+        if (! $this->site->hasPaidSubscription()) {
             $plan = Plan::where('slug', $slug)->where('is_active', true)->first();
             if ($plan) {
                 $this->site->update(['plan_id' => $plan->id]);
@@ -114,7 +114,7 @@ class SiteShow extends Component
     {
         $client = Auth::guard('client')->user();
 
-        if ($this->site->client_id !== $client->id || $this->site->status !== SiteStatus::PENDING) {
+        if ($this->site->client_id !== $client->id || $this->site->hasPaidSubscription()) {
             session()->flash('error', 'Only unpaid sites waiting for checkout can be removed.');
             return;
         }

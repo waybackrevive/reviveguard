@@ -19,12 +19,28 @@ class SitePortalStatusTest extends TestCase
         $this->assertSame('Setup needed', $site->portalStatusLabel());
     }
 
-    public function test_connected_active_site_shows_protected(): void
+    public function test_connected_unpaid_site_shows_checkout_not_protected(): void
     {
         $site = new Site([
             'status'       => SiteStatus::ACTIVE,
             'last_seen_at' => now(),
         ]);
+
+        $this->assertSame('checkout', $site->portalStatusKey());
+        $this->assertSame('Complete checkout', $site->portalStatusLabel());
+    }
+
+    public function test_connected_paid_site_shows_protected(): void
+    {
+        $site = new Site([
+            'status'          => SiteStatus::ACTIVE,
+            'last_seen_at'    => now(),
+            'subscription_id' => 'sub-1',
+        ]);
+
+        $site->setRelation('subscription', new \App\Models\Subscription([
+            'stripe_status' => 'active',
+        ]));
 
         $this->assertSame('protected', $site->portalStatusKey());
     }
