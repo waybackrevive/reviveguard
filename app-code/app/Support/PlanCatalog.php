@@ -85,7 +85,7 @@ final class PlanCatalog
 
         return match ($plan->slug) {
             'monitor' => [
-                ['name' => '24/7 uptime monitoring', 'desc' => 'Checks every 5 minutes with instant down alerts'],
+                ['name' => '24/7 uptime monitoring', 'desc' => 'Checks every 10 minutes with instant down alerts'],
                 ['name' => 'SSL certificate alerts', 'desc' => 'Warned before your HTTPS certificate expires'],
                 ['name' => 'Domain expiry alerts', 'desc' => 'So you never lose your domain by accident'],
                 ['name' => "{$freq} cloud backups", 'desc' => "{$days}-day retention, independent of your host"],
@@ -103,7 +103,7 @@ final class PlanCatalog
             ],
             'shield' => [
                 ['name' => 'Everything in Guard', 'desc' => 'All managed updates and daily backups'],
-                ['name' => '2-minute uptime checks', 'desc' => 'Fastest detection for critical sites'],
+                ['name' => '2-minute uptime checks', 'desc' => 'Fastest detection for critical sites (Guard: 5 min)'],
                 ['name' => 'Daily backups · 180 days', 'desc' => 'Longer history for peace of mind'],
                 ['name' => 'US + EU + Asia regions', 'desc' => 'Global monitoring coverage'],
                 ['name' => 'Priority support', 'desc' => 'Same-business-day response · phone included'],
@@ -130,7 +130,7 @@ final class PlanCatalog
                 ['name' => 'Phone support', 'desc' => 'Email only — upgrade to Guard for phone'],
             ],
             'guard' => [
-                ['name' => '2-minute uptime checks', 'desc' => 'Shield plan — or keep 5-min checks on Guard'],
+                ['name' => '2-minute uptime checks', 'desc' => 'Shield plan — or keep 10-min checks on Guard'],
                 ['name' => 'Content edits included', 'desc' => 'Order Content Edit Hours as an add-on'],
                 ['name' => '4-hour emergency restore SLA', 'desc' => 'Shield plan — or one-time restore add-on'],
                 ['name' => 'SEO, ads, or e-commerce fixes', 'desc' => 'Contact us for a custom quote'],
@@ -202,7 +202,7 @@ final class PlanCatalog
     {
         return [
             ['label' => 'Price (per site)', 'monitor' => '$49/mo', 'guard' => '$99/mo', 'shield' => '$179/mo'],
-            ['label' => 'Uptime checks', 'monitor' => 'Every 5 min', 'guard' => 'Every 5 min', 'shield' => 'Every 2 min'],
+            ['label' => 'Uptime checks', 'monitor' => 'Every 10 min', 'guard' => 'Every 5 min', 'shield' => 'Every 2 min'],
             ['label' => 'SSL & domain alerts', 'monitor' => 'Daily', 'guard' => 'Daily', 'shield' => 'Daily'],
             ['label' => 'Monitor regions', 'monitor' => 'US East', 'guard' => 'US + EU', 'shield' => 'US + EU + Asia'],
             ['label' => 'Backups', 'monitor' => 'Monthly · 30 days', 'guard' => 'Daily · 90 days', 'shield' => 'Daily · 180 days'],

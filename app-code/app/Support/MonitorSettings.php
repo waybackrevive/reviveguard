@@ -10,9 +10,10 @@ use App\Models\Site;
  */
 final class MonitorSettings
 {
+    /** Fastest interval first — plan minimum check frequency. */
     /** @var array<string, list<int>> */
     private const INTERVALS = [
-        'monitor' => [5, 10, 30],
+        'monitor' => [10, 30],
         'guard'   => [5, 10, 30],
         'shield'  => [2, 5, 10, 30],
     ];
@@ -84,8 +85,30 @@ final class MonitorSettings
         $slug = $plan?->slug ?? 'monitor';
 
         return [
-            'monitor_interval_minutes' => self::INTERVALS[$slug][0] ?? 5,
+            'monitor_interval_minutes' => self::INTERVALS[$slug][0] ?? 10,
             'monitor_region'           => self::REGIONS[$slug][0] ?? 'us-east',
         ];
+    }
+
+    public static function fastestInterval(Site $site): int
+    {
+        return self::allowedIntervals($site)[0];
+    }
+
+    public static function slowestInterval(Site $site): int
+    {
+        $allowed = self::allowedIntervals($site);
+
+        return $allowed[array_key_last($allowed)];
+    }
+
+    public static function planIntervalHint(Site $site): string
+    {
+        return match (self::planSlug($site)) {
+            'monitor' => 'Monitor plan: checks every 10–30 minutes (10 min is fastest).',
+            'guard'   => 'Guard plan: checks every 5–30 minutes (5 min is fastest).',
+            'shield'  => 'Shield plan: checks every 2–30 minutes (2 min is fastest).',
+            default   => 'Check frequency depends on your plan.',
+        };
     }
 }

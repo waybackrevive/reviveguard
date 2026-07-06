@@ -202,7 +202,7 @@
                 @if ($monitorSettingsSaved)
                     <span class="text-xs text-emerald-700">Saved</span>
                 @endif
-                <p class="text-xs text-gray-500 w-full sm:w-auto sm:ml-auto">Higher frequency available on Shield. SSL &amp; domain checked daily.</p>
+                <p class="text-xs text-gray-500 w-full">{{ \App\Support\MonitorSettings::planIntervalHint($site) }} SSL &amp; domain checked daily.</p>
                 @if (! $site->monitoring_paused)
                     <button wire:click="toggleMonitoringPause" wire:confirm="Pause uptime monitoring and down alerts for this site?"
                         class="text-xs font-semibold text-gray-500 hover:text-amber-700 underline w-full sm:w-auto">
@@ -213,11 +213,17 @@
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                 <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Currently up for</p>
-                    <p class="text-lg font-bold {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'text-red-600' : 'text-emerald-700' }}">
-                        {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'Offline' : ($site->last_uptime_probe_at?->diffForHumans() ?? 'Checking…') }}
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Last check</p>
+                    <p class="text-lg font-bold {{ ($lastProbe && ! $lastProbe->is_up) || $site->status === \App\Enums\SiteStatus::DOWN ? 'text-red-600' : 'text-emerald-700' }}">
+                        @if ($lastProbe && ! $lastProbe->is_up)
+                            Down · {{ $lastProbe->checked_at->format('M j, g:i A') }}
+                        @elseif ($lastProbe)
+                            Online · {{ $lastProbe->checked_at->format('g:i A') }}
+                        @else
+                            Waiting for first check…
+                        @endif
                     </p>
-                    <p class="text-xs text-gray-400 mt-1">Agent: {{ $site->last_seen_at?->diffForHumans() ?? '—' }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Every {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} · Agent {{ $site->last_seen_at?->diffForHumans() ?? '—' }}</p>
                 </div>
                 <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Uptime (30d)</p>
@@ -248,36 +254,50 @@
             <div class="bg-white rounded-[10px] border border-gray-200 p-5 mb-6 shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 class="text-sm font-semibold text-gray-900">Uptime rate — last 14 days</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">Daily checks at your {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} schedule</p>
+                        <h2 class="text-sm font-semibold text-gray-900">Uptime checks — last 7 days</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            One bar per check at your {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} schedule.
+                            <span class="text-emerald-600">Green</span> = online,
+                            <span class="text-red-600">red</span> = down. Hover for time &amp; HTTP status.
+                        </p>
                     </div>
                     @if ($periodUptimePct !== null)
                         <span class="inline-flex items-center text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                            {{ number_format($periodUptimePct, 2) }}%
+                            {{ number_format($periodUptimePct, 2) }}% <span class="font-normal text-emerald-600 ml-1">14d</span>
                         </span>
                     @endif
                 </div>
-                <div class="flex items-end justify-between gap-1 h-24 px-1">
-                    @foreach ($uptimeDailyBars as $bar)
-                        <div class="flex-1 min-w-0 flex flex-col items-center justify-end gap-1.5 h-full">
-                            <div
-                                class="w-full max-w-[14px] mx-auto rounded-sm {{ $bar['color'] }} transition-all"
-                                style="height: {{ $bar['bar_height'] }}px"
-                                title="{{ $bar['has_data'] ? $bar['label'] . ': ' . number_format((float) $bar['pct'], 1) . '% uptime' : $bar['label'] . ': no checks yet' }}"
-                            ></div>
-                            <span class="text-[9px] text-gray-400 leading-none truncate w-full text-center">{{ $bar['label'] }}</span>
+                <div class="flex items-end gap-2 overflow-x-auto pb-2 px-1 min-h-[8rem]">
+                    @foreach ($uptimeDayGroups as $day)
+                        <div class="flex flex-col items-center gap-1 shrink-0 min-w-[2.75rem]">
+                            <div class="flex flex-col-reverse items-center gap-px h-24 w-full justify-end" title="{{ $day['has_data'] ? $day['check_count'] . ' checks' : 'No checks' }}">
+                                @forelse ($day['checks'] as $check)
+                                    <div
+                                        class="w-2.5 rounded-sm {{ $check['color'] }} hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 cursor-default transition-shadow"
+                                        style="height: {{ $check['bar_height'] }}px"
+                                        title="{{ $check['tooltip'] }}"
+                                    ></div>
+                                @empty
+                                    <div class="w-2.5 h-8 rounded-sm bg-gray-200" title="{{ $day['label'] }}: no checks yet"></div>
+                                @endforelse
+                            </div>
+                            <span class="text-[9px] text-gray-500 leading-none">{{ $day['label'] }}</span>
+                            @if ($day['has_data'])
+                                <span class="text-[8px] text-gray-400 leading-none">{{ $day['check_count'] }}×</span>
+                                <span class="text-[8px] font-medium {{ ($day['pct'] ?? 0) >= 99 ? 'text-emerald-600' : (($day['pct'] ?? 0) >= 90 ? 'text-amber-600' : 'text-red-600') }}">{{ number_format((float) $day['pct'], 0) }}%</span>
+                            @endif
                         </div>
                     @endforeach
                 </div>
                 @if ($uptimeProbes->isEmpty())
-                    <p class="text-xs text-gray-500 mt-4 text-center">Collecting uptime data — bars will fill in as checks run.</p>
+                    <p class="text-xs text-gray-500 mt-4 text-center">Collecting uptime data — bars appear after the first checks run.</p>
                 @endif
             </div>
 
             <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
                 <div class="px-5 py-4 border-b border-gray-100">
                     <h2 class="text-sm font-semibold text-gray-900">Incident timeline</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Downtime detected by our uptime monitors — not plugin heartbeats.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Downtime from HTTP uptime checks — timestamped when detected.</p>
                 </div>
                 <ul class="divide-y divide-gray-100">
                     @forelse ($uptimeIncidents as $event)

@@ -58,9 +58,23 @@ class SiteShow extends Component
         }
 
         $this->site = $site->load(['plan', 'subscription']);
+
+        $interval = MonitorSettings::normalizeInterval(
+            $this->site,
+            (int) ($this->site->monitor_interval_minutes ?? MonitorSettings::fastestInterval($this->site)),
+        );
+        $region = MonitorSettings::normalizeRegion($this->site, (string) ($this->site->monitor_region ?? 'us-east'));
+
+        if ($interval !== (int) $this->site->monitor_interval_minutes || $region !== $this->site->monitor_region) {
+            $this->site->update([
+                'monitor_interval_minutes' => $interval,
+                'monitor_region'           => $region,
+            ]);
+        }
+
         $this->selectedPlanSlug = $this->site->plan?->slug ?? 'guard';
-        $this->monitorInterval  = (int) ($this->site->monitor_interval_minutes ?? 5);
-        $this->monitorRegion    = (string) ($this->site->monitor_region ?? 'us-east');
+        $this->monitorInterval  = $interval;
+        $this->monitorRegion    = $region;
 
         if (! request()->has('tab') && in_array($this->site->portalStatusKey(), ['setup', 'checkout'], true)) {
             $this->tab = $this->site->portalStatusKey() === 'checkout' ? 'plan' : 'connection';
@@ -375,16 +389,17 @@ class SiteShow extends Component
 
         $uptimeIncidents  = collect();
         $uptimeProbes     = collect();
-        $uptimeDailyBars  = [];
+        $uptimeDayGroups  = [];
+        $lastProbe        = null;
         $periodUptimePct  = null;
         $allowedIntervals = MonitorSettings::allowedIntervals($this->site);
         $allowedRegions   = MonitorSettings::allowedRegions($this->site);
 
         if ($this->tab === 'monitoring' && $this->site->hasPaidSubscription()) {
             $uptimeIncidents = $this->site->events()
-                ->where('type', 'uptime_kuma_alert')
+                ->whereIn('type', ['uptime_kuma_alert', 'uptime_probe'])
                 ->latest()
-                ->limit(20)
+                ->limit(30)
                 ->get();
 
             $uptimeProbes = SiteUptimeProbe::where('site_id', $this->site->id)
@@ -392,7 +407,9 @@ class SiteShow extends Component
                 ->orderBy('checked_at')
                 ->get();
 
-            $uptimeDailyBars = SiteUptimeChart::dailyBars($this->site->id, 14);
+            $lastProbe = $uptimeProbes->sortByDesc('checked_at')->first();
+
+            $uptimeDayGroups = SiteUptimeChart::daysWithCheckBars($this->site->id, 7);
             $periodUptimePct = SiteUptimeChart::periodUptimePercent($uptimeProbes);
         }
 
@@ -426,7 +443,8 @@ class SiteShow extends Component
             'canOpenWpAdmin'   => app(WordPressSsoService::class)->canLogin($this->site),
             'uptimeIncidents'  => $uptimeIncidents,
             'uptimeProbes'     => $uptimeProbes,
-            'uptimeDailyBars'  => $uptimeDailyBars,
+            'uptimeDayGroups'  => $uptimeDayGroups,
+            'lastProbe'        => $lastProbe,
             'periodUptimePct'  => $periodUptimePct,
             'allowedIntervals' => $allowedIntervals,
             'allowedRegions'   => $allowedRegions,

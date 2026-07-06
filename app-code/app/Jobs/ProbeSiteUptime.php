@@ -9,7 +9,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
 /**
- * HTTP uptime probe every 5 minutes for protected sites (no Uptime Kuma required).
+ * HTTP uptime probe every 2 minutes for protected sites (per-site interval respected).
  */
 final class ProbeSiteUptime implements ShouldQueue
 {

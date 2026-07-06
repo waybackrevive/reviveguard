@@ -17,8 +17,8 @@ Artisan::command('inspire', function () {
 // Phase 1C — Heartbeat monitoring (every 5 min)
 Schedule::job(new CheckMissedHeartbeats)->everyFiveMinutes();
 
-// HTTP uptime probes (built-in — no Uptime Kuma required)
-Schedule::job(new \App\Jobs\ProbeSiteUptime)->everyFiveMinutes();
+// HTTP uptime probes (built-in — supports Shield 2-min checks)
+Schedule::job(new \App\Jobs\ProbeSiteUptime)->everyTwoMinutes();
 
 // Phase 1E — Monitoring jobs
 Schedule::job(new CheckSslExpiry)->dailyAt('06:00');
@@ -78,7 +78,7 @@ Artisan::command('monitoring:status', function () {
     $kuma = app(\App\Services\UptimeKumaService::class);
 
     $this->info('── Monitoring stack ──');
-    $this->line('Built-in HTTP probes: active (every 5 min via scheduler)');
+    $this->line('Built-in HTTP probes: active (every 2 min via scheduler; per-site interval respected)');
     $this->line('SSL checks: native TLS (daily + on-demand)');
     $this->line('Domain expiry: WHOIS socket → RDAP → who-dat → WhoisJSON → WhoisXML');
 
