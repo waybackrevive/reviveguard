@@ -242,4 +242,36 @@ final class PlanCatalog
             ? self::downgradeConfirmMessage($from, $to)
             : self::upgradeConfirmMessage($from, $to);
     }
+
+    /**
+     * Structured copy for the plan-change confirmation modal.
+     *
+     * @return array<string, mixed>
+     */
+    public static function planChangeModalData(Plan $from, Plan $to, ?string $siteName = null): array
+    {
+        $isUpgrade = self::isUpgrade($from, $to);
+        $toPrice   = number_format((float) $to->price_monthly, 0);
+        $fromPrice = number_format((float) $from->price_monthly, 0);
+
+        return [
+            'is_upgrade'    => $isUpgrade,
+            'title'         => $isUpgrade ? "Upgrade to {$to->name}" : "Switch to {$to->name}",
+            'site_name'     => $siteName,
+            'from_name'     => $from->name,
+            'to_name'       => $to->name,
+            'from_price'    => $fromPrice,
+            'to_price'      => $toPrice,
+            'gains'         => $isUpgrade ? self::upgradeGains($from, $to) : [],
+            'billing_note'  => $isUpgrade
+                ? 'Your card on file is charged the prorated difference today. New features activate immediately and a receipt appears under Billing & Invoices.'
+                : 'No charge today. Unused time on your current plan is credited toward your next bill. A confirmation appears under Billing & Invoices.',
+            'warning'       => $isUpgrade
+                ? null
+                : 'Some features (faster uptime checks, phone support, longer backup history) may stop right away.',
+            'confirm_label' => $isUpgrade
+                ? "Confirm upgrade — \${$toPrice}/mo"
+                : "Confirm switch — \${$toPrice}/mo",
+        ];
+    }
 }

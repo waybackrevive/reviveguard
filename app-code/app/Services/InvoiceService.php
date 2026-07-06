@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Models\Client;
+use App\Models\Event;
+use App\Models\Plan;
+use App\Models\Subscription;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -57,8 +60,10 @@ class InvoiceService
         }
 
         $subscription = null;
-        if (! empty($stripeInvoice->subscription)) {
-            $subscription = \App\Models\Subscription::where('stripe_subscription_id', $stripeInvoice->subscription)->first();
+        $stripeSubId  = $this->resolveStripeSubscriptionId($stripeInvoice);
+
+        if ($stripeSubId) {
+            $subscription = Subscription::where('stripe_subscription_id', $stripeSubId)->first();
         }
 
         $issuedAt = isset($stripeInvoice->created)
@@ -91,21 +96,144 @@ class InvoiceService
         }
 
         return Invoice::create([
-            'tenant_id'          => $tenantId,
-            'client_id'          => $client->id,
-            'subscription_id'    => $subscription?->id,
-            'invoice_number'     => $this->generateInvoiceNumber($tenantId),
-            'period_start'       => $periodStart,
-            'period_end'         => $periodEnd,
-            'issued_at'          => $issuedAt->toDateString(),
-            'subtotal_cents'     => $amountCents,
-            'tax_cents'          => 0,
-            'total_cents'        => $amountCents,
-            'currency'           => strtoupper($stripeInvoice->currency ?? 'USD'),
-            'status'             => 'paid',
-            'stripe_invoice_id'  => $stripeInvoice->id,
-            'line_items'         => $lineItems,
+            'tenant_id'                 => $tenantId,
+            'client_id'                 => $client->id,
+            'subscription_id'           => $subscription?->id,
+            'invoice_number'            => $this->generateInvoiceNumber($tenantId),
+            'period_start'              => $periodStart,
+            'period_end'                => $periodEnd,
+            'issued_at'                 => $issuedAt->toDateString(),
+            'subtotal_cents'            => $amountCents,
+            'tax_cents'                 => 0,
+            'total_cents'               => $amountCents,
+            'currency'                  => strtoupper($stripeInvoice->currency ?? 'USD'),
+            'status'                    => 'paid',
+            'stripe_invoice_id'         => $stripeInvoice->id,
+            'stripe_hosted_invoice_url' => $stripeInvoice->hosted_invoice_url ?? null,
+            'line_items'                => $lineItems,
         ]);
+    }
+
+    /**
+     * Local receipt when a plan changes without a separate Stripe charge (e.g. downgrade credit).
+     */
+    public function createPlanChangeReceipt(
+        Client $client,
+        Subscription $subscription,
+        Plan $from,
+        Plan $to,
+        bool $isUpgrade,
+        ?string $referenceKey = null,
+    ): ?Invoice {
+        $referenceKey ??= 'plan_change:' . $subscription->id . ':' . now()->timestamp;
+
+        if (Invoice::where('reference_key', $referenceKey)->exists()) {
+            return null;
+        }
+
+        $tenantId = config('app.tenant_id', '00000000-0000-0000-0000-000000000001');
+        $today    = now()->toDateString();
+        $action   = $isUpgrade ? 'Upgrade' : 'Plan change';
+
+        $description = $isUpgrade
+            ? "{$action}: {$from->name} → {$to->name}"
+            : "{$action}: {$from->name} → {$to->name} (credit on next bill)";
+
+        return Invoice::create([
+            'tenant_id'       => $tenantId,
+            'client_id'       => $client->id,
+            'subscription_id' => $subscription->id,
+            'invoice_number'  => $this->generateInvoiceNumber($tenantId),
+            'period_start'    => $today,
+            'period_end'      => $today,
+            'issued_at'       => $today,
+            'subtotal_cents'  => 0,
+            'tax_cents'       => 0,
+            'total_cents'     => 0,
+            'currency'        => 'USD',
+            'status'          => 'paid',
+            'reference_key'   => $referenceKey,
+            'line_items'      => [[
+                'description'  => $description,
+                'amount_cents' => 0,
+            ]],
+        ]);
+    }
+
+    /**
+     * Backfill plan-change receipts from portal activity events (for changes before invoice sync).
+     */
+    public function backfillPlanChangeReceipts(Client $client): int
+    {
+        $events = Event::query()
+            ->where('type', 'client_action')
+            ->where('metadata->client_id', $client->id)
+            ->whereIn('metadata->action', ['plan_upgraded', 'plan_downgraded'])
+            ->orderBy('created_at')
+            ->get();
+
+        $created = 0;
+
+        foreach ($events as $event) {
+            $referenceKey = 'plan_change:' . $event->id;
+
+            if (Invoice::where('reference_key', $referenceKey)->exists()) {
+                continue;
+            }
+
+            $fromSlug = $event->metadata['from'] ?? null;
+            $toSlug   = $event->metadata['to'] ?? null;
+
+            if (! $fromSlug || ! $toSlug) {
+                continue;
+            }
+
+            $from = Plan::where('slug', $fromSlug)->first();
+            $to   = Plan::where('slug', $toSlug)->first();
+
+            if (! $from || ! $to) {
+                continue;
+            }
+
+            $subscription = $event->site_id
+                ? Subscription::where('site_id', $event->site_id)->orderByDesc('created_at')->first()
+                : $client->subscriptions()->orderByDesc('created_at')->first();
+
+            if (! $subscription) {
+                continue;
+            }
+
+            $isUpgrade = \App\Support\PlanCatalog::isUpgrade($from, $to);
+
+            if ($this->createPlanChangeReceipt($client, $subscription, $from, $to, $isUpgrade, $referenceKey)) {
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    private function resolveStripeSubscriptionId(object $stripeInvoice): ?string
+    {
+        if (! empty($stripeInvoice->subscription)) {
+            return is_string($stripeInvoice->subscription)
+                ? $stripeInvoice->subscription
+                : ($stripeInvoice->subscription->id ?? null);
+        }
+
+        $parent = $stripeInvoice->parent ?? null;
+
+        if ($parent && ($parent->type ?? '') === 'subscription_details') {
+            return $parent->subscription_details->subscription ?? null;
+        }
+
+        foreach ($stripeInvoice->lines->data ?? [] as $line) {
+            if (! empty($line->subscription)) {
+                return is_string($line->subscription) ? $line->subscription : ($line->subscription->id ?? null);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -120,6 +248,10 @@ class InvoiceService
         $existing = Invoice::where('stripe_invoice_id', $stripeInvoice->id)->first();
 
         if ($existing) {
+            if (empty($existing->stripe_hosted_invoice_url) && ! empty($stripeInvoice->hosted_invoice_url)) {
+                $existing->update(['stripe_hosted_invoice_url' => $stripeInvoice->hosted_invoice_url]);
+            }
+
             return $existing;
         }
 

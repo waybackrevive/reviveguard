@@ -300,8 +300,7 @@
                                         @endforeach
                                     </ul>
                                     <button type="button"
-                                        wire:click="changeSitePlan('{{ $site->id }}', '{{ $upgradePlan->slug }}')"
-                                        wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $upgradePlan) }}"
+                                        wire:click="openPlanChangeModal('{{ $site->id }}', '{{ $upgradePlan->slug }}')"
                                         wire:loading.attr="disabled"
                                         class="mt-4 w-full text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-lg">
                                         Upgrade to {{ $upgradePlan->name }}
@@ -328,8 +327,7 @@
                                         <p class="text-lg font-bold text-gray-700">${{ number_format($lowerPlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
                                     </div>
                                     <button type="button"
-                                        wire:click="changeSitePlan('{{ $site->id }}', '{{ $lowerPlan->slug }}')"
-                                        wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $lowerPlan) }}"
+                                        wire:click="openPlanChangeModal('{{ $site->id }}', '{{ $lowerPlan->slug }}')"
                                         wire:loading.attr="disabled"
                                         class="mt-4 w-full text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2.5 rounded-lg">
                                         Switch to {{ $lowerPlan->name }}
@@ -398,15 +396,15 @@
                                 <td class="py-3 pr-4 font-medium text-gray-800">{{ $invoice->formatted_total }}</td>
                                 <td class="py-3 pr-4">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
-                                        {{ $invoice->status === 'paid' ? 'bg-green-100 text-green-700' : ($invoice->status === 'void' ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700') }}">
-                                        {{ ucfirst($invoice->status) }}
+                                        {{ $invoice->isPlanChangeCredit() ? 'bg-blue-100 text-blue-700' : ($invoice->status === 'paid' ? 'bg-green-100 text-green-700' : ($invoice->status === 'void' ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700')) }}">
+                                        {{ $invoice->statusLabel() }}
                                     </span>
                                 </td>
                                 <td class="py-3">
-                                    @if ($invoice->pdf_url)
-                                        <a href="{{ $invoice->pdf_url }}" target="_blank" rel="noopener"
+                                    @if ($invoice->receiptUrl())
+                                        <a href="{{ $invoice->receiptUrl() }}" target="_blank" rel="noopener"
                                            class="text-emerald-700 hover:underline text-xs">
-                                            Download
+                                            {{ $invoice->stripe_hosted_invoice_url ? 'View receipt' : 'Download' }}
                                         </a>
                                     @else
                                         <span class="text-gray-400 text-xs">—</span>
@@ -421,4 +419,6 @@
     </div>
     </div>
     @endif
+
+    <x-portal.plan-change-modal :show="$showPlanChangeModal" :modal="$planChangeModal" />
 </div>

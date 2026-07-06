@@ -173,7 +173,7 @@ class StripeBillingService
             'items' => [
                 ['id' => $itemId, 'price' => $newPriceId],
             ],
-            'proration_behavior' => 'create_prorations',
+            'proration_behavior' => $isUpgrade ? 'always_invoice' : 'create_prorations',
             'metadata'           => StripeSubscriptionMetadata::forSitePlan($client, $site, $newPlan, $this->tenantId),
         ]);
 
@@ -199,14 +199,10 @@ class StripeBillingService
         $stripeInvoiceId = null;
 
         try {
-            $this->syncClientInvoicesFromStripe($client, 6);
-            $latest = StripeInvoice::all([
-                'subscription' => $subscription->stripe_subscription_id,
-                'limit'        => 1,
-            ]);
-            $stripeInvoice = $latest->data[0] ?? null;
+            $this->syncClientInvoicesFromStripe($client, 50);
+            $stripeInvoice = $this->findLatestPaidSubscriptionInvoice($subscription->stripe_subscription_id);
 
-            if ($stripeInvoice && ($stripeInvoice->status ?? '') === 'paid') {
+            if ($stripeInvoice) {
                 $this->invoiceService->importStripeInvoice($stripeInvoice);
                 $stripeInvoiceId = $stripeInvoice->id;
                 $paid = (int) ($stripeInvoice->amount_paid ?? 0);
@@ -234,7 +230,7 @@ class StripeBillingService
     /**
      * Import recent paid Stripe invoices into the local invoices table.
      */
-    public function syncClientInvoicesFromStripe(Client $client, int $limit = 12): int
+    public function syncClientInvoicesFromStripe(Client $client, int $limit = 50): int
     {
         $customerId = $client->stripeCustomerId();
 
@@ -250,16 +246,32 @@ class StripeBillingService
                 continue;
             }
 
-            if (Invoice::where('stripe_invoice_id', $stripeInvoice->id)->exists()) {
-                continue;
-            }
+            $hadLocal = Invoice::where('stripe_invoice_id', $stripeInvoice->id)->exists();
+            $imported = $this->invoiceService->importStripeInvoice($stripeInvoice);
 
-            if ($this->invoiceService->importStripeInvoice($stripeInvoice)) {
+            if ($imported && ! $hadLocal) {
                 $synced++;
             }
         }
 
+        $synced += $this->invoiceService->backfillPlanChangeReceipts($client);
+
         return $synced;
+    }
+
+    private function findLatestPaidSubscriptionInvoice(string $stripeSubscriptionId): ?object
+    {
+        $invoices = StripeInvoice::all([
+            'subscription' => $stripeSubscriptionId,
+            'status'       => 'paid',
+            'limit'        => 5,
+        ]);
+
+        $sorted = collect($invoices->data ?? [])
+            ->sortByDesc(fn ($inv) => (int) ($inv->created ?? 0))
+            ->values();
+
+        return $sorted->first();
     }
 
     public function createBillingPortalSession(Client $client): string

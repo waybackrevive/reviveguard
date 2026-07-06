@@ -5,6 +5,7 @@ namespace App\Livewire\Portal;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\ClientActivityService;
+use App\Services\InvoiceService;
 use App\Services\StripeBillingService;
 use App\Support\PlanCatalog;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,10 @@ class Account extends Component
     public bool $passwordSaved = false;
 
     public string $activeTab = 'profile'; // 'profile' | 'plan' | 'billing'
+
+    public bool $showPlanChangeModal = false;
+    public ?string $planChangeSiteId = null;
+    public ?string $planChangePlanSlug = null;
 
     public function mount(): void
     {
@@ -122,6 +127,32 @@ class Account extends Component
         return redirect()->route('portal.sites.show', ['site' => $site, 'tab' => 'plan']);
     }
 
+    public function openPlanChangeModal(string $siteId, string $planSlug): void
+    {
+        $this->planChangeSiteId   = $siteId;
+        $this->planChangePlanSlug = $planSlug;
+        $this->showPlanChangeModal = true;
+    }
+
+    public function closePlanChangeModal(): void
+    {
+        $this->showPlanChangeModal = false;
+        $this->planChangeSiteId    = null;
+        $this->planChangePlanSlug  = null;
+    }
+
+    public function confirmPlanChange(StripeBillingService $billing, ClientActivityService $activity): void
+    {
+        if (! $this->planChangeSiteId || ! $this->planChangePlanSlug) {
+            return;
+        }
+
+        $siteId = $this->planChangeSiteId;
+        $slug   = $this->planChangePlanSlug;
+        $this->closePlanChangeModal();
+        $this->changeSitePlan($siteId, $slug, $billing, $activity);
+    }
+
     public function changeSitePlan(string $siteId, string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
     {
         $client = Auth::guard('client')->user();
@@ -152,6 +183,7 @@ class Account extends Component
         }
 
         $fromSlug   = $site->plan?->slug;
+        $fromPlan   = $site->plan;
         $isUpgrade  = PlanCatalog::isUpgrade($site->plan, $newPlan);
 
         try {
@@ -163,7 +195,7 @@ class Account extends Component
             return;
         }
 
-        $activity->log(
+        $event = $activity->log(
             $client,
             $isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
             $isUpgrade ? "Plan upgraded to {$newPlan->name}" : "Plan changed to {$newPlan->name}",
@@ -171,6 +203,17 @@ class Account extends Component
             $site->fresh(),
             ['from' => $fromSlug, 'to' => $newPlan->slug],
         );
+
+        if (! $isUpgrade && $fromPlan) {
+            app(InvoiceService::class)->createPlanChangeReceipt(
+                $client,
+                $result->subscription,
+                $fromPlan,
+                $newPlan,
+                false,
+                'plan_change:' . $event->id,
+            );
+        }
 
         session()->flash('success', $result->successMessage($newPlan->name));
         $this->activeTab = $isUpgrade ? 'plan' : 'billing';
@@ -187,7 +230,7 @@ class Account extends Component
         $client = Auth::guard('client')->user();
         $sub      = $client->activeSubscription;
         $plan     = optional($sub)->plan;
-        $invoices = $client->invoices()->orderByDesc('issued_at')->limit(24)->get();
+        $invoices = $client->invoices()->orderByDesc('issued_at')->orderByDesc('created_at')->limit(50)->get();
         $siteSubscriptions = $client->subscriptions()
             ->with(['plan', 'site'])
             ->orderByDesc('created_at')
@@ -196,6 +239,20 @@ class Account extends Component
         $plans          = PlanCatalog::all();
         $comparisonRows = PlanCatalog::comparisonRows();
         $sites          = Site::where('client_id', $client->id)->with('plan')->orderBy('name')->get();
+
+        $planChangeModal = [];
+
+        if ($this->showPlanChangeModal && $this->planChangeSiteId && $this->planChangePlanSlug) {
+            $modalSite = $sites->firstWhere('id', $this->planChangeSiteId);
+            $fromPlan  = $modalSite?->plan;
+            $toPlan    = $plans->firstWhere('slug', $this->planChangePlanSlug);
+
+            if ($fromPlan && $toPlan && PlanCatalog::canChangePlan($fromPlan, $toPlan)) {
+                $planChangeModal = PlanCatalog::planChangeModalData($fromPlan, $toPlan, $modalSite?->displayName());
+            } else {
+                $this->closePlanChangeModal();
+            }
+        }
 
         return view('livewire.portal.account', [
             'client'            => $client,
@@ -206,6 +263,7 @@ class Account extends Component
             'plans'             => $plans,
             'comparisonRows'    => $comparisonRows,
             'sites'             => $sites,
+            'planChangeModal'   => $planChangeModal,
         ])->layout('portal.layouts.app');
     }
 }

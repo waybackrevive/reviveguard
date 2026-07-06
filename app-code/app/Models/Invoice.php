@@ -55,6 +55,8 @@ class Invoice extends Model
         'status',
         'whop_charge_id',
         'stripe_invoice_id',
+        'stripe_hosted_invoice_url',
+        'reference_key',
         'pdf_b2_key',
         'pdf_url',
         'pdf_generated_at',
@@ -117,6 +119,27 @@ class Invoice extends Model
         }
 
         return $descriptions[0] . ' · ' . $descriptions[1];
+    }
+
+    public function isPlanChangeCredit(): bool
+    {
+        return $this->total_cents === 0
+            && $this->reference_key !== null
+            && str_starts_with($this->reference_key, 'plan_change:');
+    }
+
+    public function receiptUrl(): ?string
+    {
+        return $this->pdf_url ?: $this->stripe_hosted_invoice_url;
+    }
+
+    public function statusLabel(): string
+    {
+        if ($this->isPlanChangeCredit()) {
+            return 'Credit';
+        }
+
+        return ucfirst($this->status);
     }
 
     // ── Relationships ─────────────────────────────────────────────────────────

@@ -553,8 +553,7 @@
                                                 @endforeach
                                             </ul>
                                             <button type="button"
-                                                wire:click="changePlan('{{ $upgradePlan->slug }}')"
-                                                wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $upgradePlan) }}"
+                                                wire:click="openPlanChangeModal('{{ $upgradePlan->slug }}')"
                                                 wire:loading.attr="disabled"
                                                 class="mt-5 w-full text-sm font-semibold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-lg">
                                                 Upgrade to {{ $upgradePlan->name }}
@@ -577,8 +576,7 @@
                                             <p class="font-bold text-gray-900">{{ $lowerPlan->name }}</p>
                                             <p class="text-xl font-bold text-gray-700 mt-0.5">${{ number_format($lowerPlan->price_monthly, 0) }}<span class="text-xs font-normal text-gray-500">/mo</span></p>
                                             <button type="button"
-                                                wire:click="changePlan('{{ $lowerPlan->slug }}')"
-                                                wire:confirm="{{ \App\Support\PlanCatalog::planChangeConfirmMessage($site->plan, $lowerPlan) }}"
+                                                wire:click="openPlanChangeModal('{{ $lowerPlan->slug }}')"
                                                 wire:loading.attr="disabled"
                                                 class="mt-5 w-full text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2.5 rounded-lg">
                                                 Switch to {{ $lowerPlan->name }}
@@ -600,4 +598,6 @@
             @endif
         </div>
     @endif
+
+    <x-portal.plan-change-modal :show="$showPlanChangeModal" :modal="$planChangeModal" />
 </div>

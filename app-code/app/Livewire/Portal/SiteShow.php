@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Site;
 use App\Models\SiteUptimeProbe;
 use App\Services\ClientActivityService;
+use App\Services\InvoiceService;
 use App\Services\StripeBillingService;
 use App\Services\WordPressSsoService;
 use App\Support\MonitorSettings;
@@ -38,6 +39,9 @@ class SiteShow extends Component
     public bool $credentialsSaved = false;
 
     public string $selectedPlanSlug = 'guard';
+
+    public bool $showPlanChangeModal = false;
+    public ?string $planChangePlanSlug = null;
 
     public int $monitorInterval = 5;
 
@@ -217,6 +221,29 @@ class SiteShow extends Component
             : 'Monitoring resumed. Checks will run on your saved schedule.');
     }
 
+    public function openPlanChangeModal(string $planSlug): void
+    {
+        $this->planChangePlanSlug  = $planSlug;
+        $this->showPlanChangeModal = true;
+    }
+
+    public function closePlanChangeModal(): void
+    {
+        $this->showPlanChangeModal = false;
+        $this->planChangePlanSlug  = null;
+    }
+
+    public function confirmPlanChange(StripeBillingService $billing, ClientActivityService $activity): void
+    {
+        if (! $this->planChangePlanSlug) {
+            return;
+        }
+
+        $slug = $this->planChangePlanSlug;
+        $this->closePlanChangeModal();
+        $this->changePlan($slug, $billing, $activity);
+    }
+
     public function changePlan(string $planSlug, StripeBillingService $billing, ClientActivityService $activity): void
     {
         if (! $this->site->hasPaidSubscription()) {
@@ -233,6 +260,7 @@ class SiteShow extends Component
         }
 
         $fromSlug  = $this->site->plan?->slug;
+        $fromPlan  = $this->site->plan;
         $isUpgrade = PlanCatalog::isUpgrade($this->site->plan, $newPlan);
 
         try {
@@ -246,7 +274,7 @@ class SiteShow extends Component
 
         $this->site->refresh()->load(['plan', 'subscription']);
 
-        $activity->log(
+        $event = $activity->log(
             $client,
             $isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
             $isUpgrade ? "Plan upgraded to {$newPlan->name}" : "Plan changed to {$newPlan->name}",
@@ -254,6 +282,17 @@ class SiteShow extends Component
             $this->site,
             ['from' => $fromSlug, 'to' => $newPlan->slug],
         );
+
+        if (! $isUpgrade && $fromPlan) {
+            app(InvoiceService::class)->createPlanChangeReceipt(
+                $client,
+                $result->subscription,
+                $fromPlan,
+                $newPlan,
+                false,
+                'plan_change:' . $event->id,
+            );
+        }
 
         session()->flash('success', $result->successMessage($newPlan->name));
     }
@@ -357,6 +396,23 @@ class SiteShow extends Component
             $periodUptimePct = SiteUptimeChart::periodUptimePercent($uptimeProbes);
         }
 
+        $plans = Plan::where('is_active', true)->orderBy('price_monthly')->get();
+        $planChangeModal = [];
+
+        if ($this->showPlanChangeModal && $this->planChangePlanSlug && $this->site->plan) {
+            $toPlan = $plans->firstWhere('slug', $this->planChangePlanSlug);
+
+            if ($toPlan && PlanCatalog::canChangePlan($this->site->plan, $toPlan)) {
+                $planChangeModal = PlanCatalog::planChangeModalData(
+                    $this->site->plan,
+                    $toPlan,
+                    $this->site->displayName(),
+                );
+            } else {
+                $this->closePlanChangeModal();
+            }
+        }
+
         return view('livewire.portal.site-show', [
             'site'             => $this->site,
             'recentEvents'     => $this->site->events,
@@ -364,7 +420,8 @@ class SiteShow extends Component
             'backups'          => $this->site->backups,
             'reports'          => $this->site->reports,
             'latestBackup'     => $this->site->latestBackup,
-            'plans'            => Plan::where('is_active', true)->orderBy('price_monthly')->get(),
+            'plans'            => $plans,
+            'planChangeModal'  => $planChangeModal,
             'stripeTestMode'   => StripeConfig::isTestMode(),
             'canOpenWpAdmin'   => app(WordPressSsoService::class)->canLogin($this->site),
             'uptimeIncidents'  => $uptimeIncidents,

@@ -96,6 +96,20 @@ class PlanCatalogTest extends TestCase
     }
 
     /** @test */
+    public function plan_change_modal_data_includes_billing_context(): void
+    {
+        $shield = new Plan(['slug' => 'shield', 'name' => 'Shield', 'price_monthly' => 179]);
+        $guard  = new Plan(['slug' => 'guard', 'name' => 'Guard', 'price_monthly' => 99]);
+
+        $modal = PlanCatalog::planChangeModalData($shield, $guard, 'example.com');
+
+        $this->assertFalse($modal['is_upgrade']);
+        $this->assertSame('Switch to Guard', $modal['title']);
+        $this->assertSame('example.com', $modal['site_name']);
+        $this->assertStringContainsString('credit', strtolower($modal['billing_note']));
+    }
+
+    /** @test */
     public function upgrade_confirm_message_includes_plan_names(): void
     {
         $monitor = new Plan(['slug' => 'monitor', 'name' => 'Monitor', 'price_monthly' => 49]);
