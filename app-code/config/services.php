@@ -73,4 +73,13 @@ return [
         'key' => env('WHOISXML_API_KEY', ''),
     ],
 
+    'whoisjson' => [
+        'key' => env('WHOISJSON_API_KEY', ''),
+    ],
+
+    'who_dat' => [
+        'url'      => env('WHO_DAT_URL', ''),
+        'auth_key' => env('WHO_DAT_AUTH_KEY', ''),
+    ],
+
 ];

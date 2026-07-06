@@ -20,6 +20,12 @@ class SiteUptimeService
             return;
         }
 
+        $interval = max(2, (int) ($site->monitor_interval_minutes ?? 5));
+
+        if ($site->last_uptime_probe_at && $site->last_uptime_probe_at->gt(now()->subMinutes($interval))) {
+            return;
+        }
+
         $started = microtime(true);
         $isUp    = false;
         $status  = null;
@@ -48,6 +54,8 @@ class SiteUptimeService
 
         $this->recalculate($site);
         $this->pruneOld($site);
+
+        $site->update(['last_uptime_probe_at' => now()]);
     }
 
     public function recalculate(Site $site): void

@@ -74,38 +74,13 @@ Artisan::command('stripe:validate-prices', function () {
     return 0;
 })->purpose('Validate Stripe price IDs for checkout (run on server after .env changes)');
 
-Artisan::command('sites:refresh-health {site?}', function (?string $site) {
-    $query = \App\Models\Site::protected()->whereNotNull('url');
-
-    if ($site) {
-        $query->where('id', $site);
-    }
-
-    $sites = $query->get();
-
-    if ($sites->isEmpty()) {
-        $this->warn('No protected sites with a URL found.');
-
-        return 1;
-    }
-
-    foreach ($sites as $site) {
-        \App\Jobs\RefreshSiteHealthJob::dispatchSync($site->id);
-        $this->line("Refreshed: {$site->displayName()}");
-    }
-
-    $this->info('Health refresh complete.');
-
-    return 0;
-})->purpose('Run SSL, domain, and uptime checks for protected sites');
-
 Artisan::command('monitoring:status', function () {
     $kuma = app(\App\Services\UptimeKumaService::class);
 
     $this->info('── Monitoring stack ──');
     $this->line('Built-in HTTP probes: active (every 5 min via scheduler)');
     $this->line('SSL checks: native TLS (daily + on-demand)');
-    $this->line('Domain expiry: WHOIS socket → RDAP → optional WhoisXML');
+    $this->line('Domain expiry: WHOIS socket → RDAP → who-dat → WhoisJSON → WhoisXML');
 
     if ($kuma->isConfigured()) {
         $this->line('Uptime Kuma: configured at ' . config('services.uptime_kuma.url'));

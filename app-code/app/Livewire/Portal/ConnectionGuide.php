@@ -24,6 +24,7 @@ class ConnectionGuide extends Component
             'pluginUrl'       => $pluginUrl,
             'connectionToken' => $this->connectionToken,
             'isConnected'     => $site?->hasAgentConnected() ?? false,
+            'canOpenWpAdmin'  => $site ? app(\App\Services\WordPressSsoService::class)->canLogin($site) : false,
         ]);
     }
 }

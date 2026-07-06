@@ -51,6 +51,7 @@ Route::middleware(['portal.auth', 'portal.timeout', 'portal.onboarded'])->group(
     Route::redirect('/events', '/portal/alerts')->name('portal.events');
 
     Route::get('/reports', \App\Livewire\Portal\Reports::class)->name('portal.reports');
+    Route::get('/addons', \App\Livewire\Portal\Addons::class)->name('portal.addons');
     Route::get('/tickets', \App\Livewire\Portal\Tickets::class)->name('portal.tickets');
     Route::get('/billing', \App\Livewire\Portal\Account::class)->name('portal.billing');
     Route::redirect('/account', '/portal/billing')->name('portal.account');

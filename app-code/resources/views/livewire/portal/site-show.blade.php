@@ -145,13 +145,13 @@
                 <button wire:click="setTab('activity')" class="text-xs text-brand font-medium hover:underline">View all</button>
             </div>
             <ul class="divide-y divide-gray-100">
-                @forelse ($recentEvents as $event)
+                @forelse ($overviewEvents as $event)
                     <li class="px-5 py-3 text-sm">
                         <p class="font-medium text-gray-800">{{ $event->title }}</p>
                         <p class="text-xs text-gray-400 mt-0.5">{{ $event->created_at->diffForHumans() }}</p>
                     </li>
                 @empty
-                    <li class="px-5 py-8 text-center text-sm text-gray-500">Activity will appear once your site is connected.</li>
+                    <li class="px-5 py-8 text-center text-sm text-gray-500">No notable activity yet. Your site is running smoothly.</li>
                 @endforelse
             </ul>
         </div>
@@ -165,15 +165,39 @@
                 Monitoring starts after you complete checkout on the Plan tab.
             </div>
         @else
-            <p class="text-sm text-gray-500 mb-4">Checks run every <strong>5 minutes</strong>. SSL and domain expiry are verified daily.</p>
+            <div class="mb-5 rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-3 flex flex-wrap items-center gap-4">
+                <div class="flex items-center gap-2 text-sm text-gray-700">
+                    <span class="font-semibold text-violet-900">Monitor</span>
+                    <select wire:model="monitorInterval" class="text-sm border border-violet-200 rounded-lg px-2 py-1.5 bg-white">
+                        @foreach ($allowedIntervals as $mins)
+                            <option value="{{ $mins }}">{{ \App\Support\MonitorSettings::intervalLabel($mins) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 text-sm text-gray-700">
+                    <span class="font-semibold text-violet-900">Region</span>
+                    <select wire:model="monitorRegion" class="text-sm border border-violet-200 rounded-lg px-2 py-1.5 bg-white">
+                        @foreach ($allowedRegions as $region)
+                            <option value="{{ $region }}">{{ \App\Support\MonitorSettings::regionLabel($region) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button wire:click="saveMonitorSettings" class="text-sm font-semibold text-violet-800 hover:text-violet-950 underline">
+                    Save
+                </button>
+                @if ($monitorSettingsSaved)
+                    <span class="text-xs text-emerald-700">Saved</span>
+                @endif
+                <p class="text-xs text-gray-500 w-full sm:w-auto sm:ml-auto">Higher frequency available on Shield. SSL &amp; domain checked daily.</p>
+            </div>
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                 <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Currently up for</p>
                     <p class="text-lg font-bold {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'text-red-600' : 'text-emerald-700' }}">
-                        {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'Offline' : 'Operational' }}
+                        {{ $site->status === \App\Enums\SiteStatus::DOWN ? 'Offline' : ($site->last_uptime_probe_at?->diffForHumans() ?? 'Checking…') }}
                     </p>
-                    <p class="text-xs text-gray-400 mt-1">Last agent: {{ $site->last_seen_at?->diffForHumans() ?? '—' }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Agent: {{ $site->last_seen_at?->diffForHumans() ?? '—' }}</p>
                 </div>
                 <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Uptime (30d)</p>
@@ -183,7 +207,7 @@
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">SSL expires</p>
                     @php $sslM = $site->sslExpiresInDays(); @endphp
                     <p class="text-lg font-bold {{ $sslM !== null && $sslM <= 30 ? 'text-amber-600' : 'text-gray-900' }}">
-                        {{ $site->ssl_expires_at?->format('M j, Y') ?? '—' }}
+                        {{ $site->ssl_expires_at?->format('M j, Y') ?? ($site->metricSyncing('ssl') ? 'Syncing…' : '—') }}
                     </p>
                     @if ($sslM !== null)
                         <p class="text-xs text-gray-400 mt-1">{{ $sslM < 0 ? 'Expired' : "in {$sslM} days" }}</p>
@@ -193,7 +217,7 @@
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Domain expires</p>
                     @php $domM = $site->domainExpiresInDays(); @endphp
                     <p class="text-lg font-bold {{ $domM !== null && $domM <= 60 ? 'text-amber-600' : 'text-gray-900' }}">
-                        {{ $site->domain_expires_at?->format('M j, Y') ?? '—' }}
+                        {{ $site->domain_expires_at?->format('M j, Y') ?? ($site->metricSyncing('domain') ? 'Syncing…' : '—') }}
                     </p>
                     @if ($domM !== null)
                         <p class="text-xs text-gray-400 mt-1">{{ $domM < 0 ? 'Expired' : "in {$domM} days" }}</p>
@@ -215,7 +239,8 @@
 
             <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
                 <div class="px-5 py-4 border-b border-gray-100">
-                    <h2 class="text-sm font-semibold text-gray-900">Incidents</h2>
+                    <h2 class="text-sm font-semibold text-gray-900">Incident timeline</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Downtime detected by our uptime monitors — not plugin heartbeats.</p>
                 </div>
                 <ul class="divide-y divide-gray-100">
                     @forelse ($uptimeIncidents as $event)
@@ -239,6 +264,7 @@
 
     {{-- Activity --}}
     @if ($tab === 'activity')
+        <p class="text-sm text-gray-500 mb-4">Full audit log for this site — backups, reports, alerts, and connection events.</p>
         <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
             <ul class="divide-y divide-gray-100">
                 @forelse ($recentEvents as $event)
@@ -258,9 +284,27 @@
 
     {{-- Backups --}}
     @if ($tab === 'backups')
+        @if ($site->hasPaidSubscription())
+            <p class="text-sm text-gray-500 mb-4">
+                Backups run on your {{ $site->plan?->name ?? 'plan' }} schedule.
+                @if ($latestBackup?->completed_at)
+                    Last completed {{ $latestBackup->completed_at->diffForHumans() }}.
+                @else
+                    Your first backup will appear here after the next scheduled run.
+                @endif
+            </p>
+        @endif
         <div class="bg-white rounded-[10px] border border-gray-200 overflow-hidden mb-4">
             @if ($backups->isEmpty())
-                <p class="px-5 py-10 text-center text-sm text-gray-500">Backup copies will appear here once your site is connected.</p>
+                <p class="px-5 py-10 text-center text-sm text-gray-500">
+                    @if ($site->hasPaidSubscription() && $site->hasAgentConnected())
+                        No backup copies yet. They're created automatically — check back after your next scheduled run.
+                    @elseif (! $site->hasPaidSubscription())
+                        Backups start after you complete checkout on the Plan tab.
+                    @else
+                        Connect the plugin first so we can back up your site.
+                    @endif
+                </p>
             @else
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 border-b border-gray-200">
@@ -307,7 +351,7 @@
 
     {{-- Connection --}}
     @if ($tab === 'connection')
-        <livewire:portal.connection-guide :site-id="$site->id" :compact="true" :key="'conn-tab-'.$site->id" />
+        <livewire:portal.connection-guide :site-id="$site->id" :compact="true" :key="'conn-tab-'.$site->id.'-'.($site->hasAgentConnected() ? 'on' : 'off')" />
 
         <div class="mt-4 bg-white rounded-[10px] border border-gray-200 p-6 shadow-sm">
                 <div class="flex items-start justify-between gap-4">

@@ -47,6 +47,18 @@ class Tickets extends Component
                 'error' => $e->getMessage(),
             ]);
         }
+
+        $addonSlug = request()->query('addon');
+
+        if ($addonSlug) {
+            $addon = collect(config('reviveguard_addons', []))->firstWhere('slug', $addonSlug);
+
+            if ($addon) {
+                $this->subject = 'Add-on request: ' . $addon['name'];
+                $this->message = "I'd like to order the {$addon['name']} add-on ({$addon['price_label']}).\n\n"
+                    . $addon['description'] . "\n\nPlease apply this to site: ";
+            }
+        }
     }
 
     public function submitTicket(): void

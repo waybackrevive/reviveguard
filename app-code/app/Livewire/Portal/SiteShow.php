@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Models\SiteUptimeProbe;
 use App\Services\StripeBillingService;
 use App\Services\WordPressSsoService;
+use App\Support\MonitorSettings;
 use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
@@ -35,6 +36,12 @@ class SiteShow extends Component
 
     public string $selectedPlanSlug = 'guard';
 
+    public int $monitorInterval = 5;
+
+    public string $monitorRegion = 'us-east';
+
+    public bool $monitorSettingsSaved = false;
+
     public function mount(Site $site): void
     {
         $client = Auth::guard('client')->user();
@@ -45,6 +52,8 @@ class SiteShow extends Component
 
         $this->site = $site->load(['plan', 'subscription']);
         $this->selectedPlanSlug = $this->site->plan?->slug ?? 'guard';
+        $this->monitorInterval  = (int) ($this->site->monitor_interval_minutes ?? 5);
+        $this->monitorRegion    = (string) ($this->site->monitor_region ?? 'us-east');
 
         if (! request()->has('tab') && in_array($this->site->portalStatusKey(), ['setup', 'checkout'], true)) {
             $this->tab = $this->site->portalStatusKey() === 'checkout' ? 'plan' : 'connection';
@@ -144,6 +153,26 @@ class SiteShow extends Component
         return redirect()->away($url);
     }
 
+    public function saveMonitorSettings(): void
+    {
+        if (! $this->site->hasPaidSubscription()) {
+            return;
+        }
+
+        $interval = MonitorSettings::normalizeInterval($this->site, $this->monitorInterval);
+        $region   = MonitorSettings::normalizeRegion($this->site, $this->monitorRegion);
+
+        $this->site->update([
+            'monitor_interval_minutes' => $interval,
+            'monitor_region'           => $region,
+        ]);
+
+        $this->monitorInterval = $interval;
+        $this->monitorRegion   = $region;
+        $this->monitorSettingsSaved = true;
+        $this->site->refresh();
+    }
+
     public function openCredentials(): void
     {
         $existing = $this->site->hosting_credentials ?? [];
@@ -187,17 +216,23 @@ class SiteShow extends Component
     public function render(): \Illuminate\View\View
     {
         $this->site->load([
-            'events' => fn ($q) => $q->latest()->limit($this->tab === 'activity' ? 50 : 5),
+            'events' => fn ($q) => $q->latest()->limit($this->tab === 'activity' ? 50 : 8),
             'backups' => fn ($q) => $q->latest()->limit(20),
             'reports' => fn ($q) => $q->latest()->limit(20),
         ]);
 
+        $overviewEvents = $this->site->events
+            ->whereNotIn('type', ['heartbeat_missed', 'site_recovered'])
+            ->take(5);
+
         $uptimeIncidents = collect();
         $uptimeProbes    = collect();
+        $allowedIntervals = MonitorSettings::allowedIntervals($this->site);
+        $allowedRegions   = MonitorSettings::allowedRegions($this->site);
 
         if ($this->tab === 'monitoring' && $this->site->hasPaidSubscription()) {
             $uptimeIncidents = $this->site->events()
-                ->whereIn('type', ['uptime_kuma_alert', 'heartbeat_missed', 'site_recovered'])
+                ->where('type', 'uptime_kuma_alert')
                 ->latest()
                 ->limit(20)
                 ->get();
@@ -209,16 +244,19 @@ class SiteShow extends Component
         }
 
         return view('livewire.portal.site-show', [
-            'site'            => $this->site,
-            'recentEvents'    => $this->site->events,
-            'backups'         => $this->site->backups,
-            'reports'         => $this->site->reports,
-            'latestBackup'    => $this->site->latestBackup,
-            'plans'           => Plan::where('is_active', true)->orderBy('price_monthly')->get(),
-            'stripeTestMode'  => StripeConfig::isTestMode(),
-            'canOpenWpAdmin'  => app(WordPressSsoService::class)->canLogin($this->site),
-            'uptimeIncidents' => $uptimeIncidents,
-            'uptimeProbes'    => $uptimeProbes,
+            'site'             => $this->site,
+            'recentEvents'     => $this->site->events,
+            'overviewEvents'   => $overviewEvents,
+            'backups'          => $this->site->backups,
+            'reports'          => $this->site->reports,
+            'latestBackup'     => $this->site->latestBackup,
+            'plans'            => Plan::where('is_active', true)->orderBy('price_monthly')->get(),
+            'stripeTestMode'   => StripeConfig::isTestMode(),
+            'canOpenWpAdmin'   => app(WordPressSsoService::class)->canLogin($this->site),
+            'uptimeIncidents'  => $uptimeIncidents,
+            'uptimeProbes'     => $uptimeProbes,
+            'allowedIntervals' => $allowedIntervals,
+            'allowedRegions'   => $allowedRegions,
         ])->layout('portal.layouts.app');
     }
 }

@@ -16,6 +16,7 @@ class SiteHealthService
         private readonly DomainLookupService $domains,
         private readonly UptimeKumaService $uptimeKuma,
         private readonly SiteUptimeService $siteUptime,
+        private readonly WhoisXmlService $whoisXml,
     ) {}
 
     public function refresh(Site $site): void
@@ -40,6 +41,14 @@ class SiteHealthService
     private function refreshSsl(Site $site, string $host): void
     {
         $data = $this->ssl->inspect($host);
+
+        if ((isset($data['error']) || ! isset($data['expires_at'])) && config('services.whoisxml.key')) {
+            $api = $this->whoisXml->ssl($host);
+
+            if (! isset($api['error']) && isset($api['expires_at'])) {
+                $data = $api;
+            }
+        }
 
         if (isset($data['error']) || ! isset($data['expires_at'])) {
             Log::info('SiteHealthService: SSL inspect failed', [

@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Event;
 use App\Models\Plan;
 use App\Models\Site;
+use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Services\AlertService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,7 +51,7 @@ class CheckMissedHeartbeatsTest extends TestCase
 
     private function makeSite(array $attrs = []): Site
     {
-        return Site::create(array_merge([
+        $site = Site::create(array_merge([
             'tenant_id'         => $this->tenant->id,
             'client_id'         => $this->client->id,
             'plan_id'           => $this->plan->id,
@@ -61,11 +62,26 @@ class CheckMissedHeartbeatsTest extends TestCase
             'is_active'         => true,
             'status'            => SiteStatus::ACTIVE,
         ], $attrs));
+
+        if ($attrs['with_subscription'] ?? true) {
+            $subscription = Subscription::create([
+                'tenant_id'              => $this->tenant->id,
+                'client_id'              => $this->client->id,
+                'site_id'                => $site->id,
+                'plan_id'                => $this->plan->id,
+                'stripe_subscription_id' => 'sub_' . $site->id,
+                'stripe_status'          => 'active',
+            ]);
+
+            $site->update(['subscription_id' => $subscription->id]);
+        }
+
+        return $site->fresh();
     }
 
     public function test_flags_site_down_when_heartbeat_missed(): void
     {
-        $site = $this->makeSite(['last_seen_at' => now()->subMinutes(20)]);
+        $site = $this->makeSite(['last_seen_at' => now()->subMinutes(35)]);
 
         $alertService = Mockery::mock(AlertService::class);
         $alertService->shouldReceive('siteDown')->once()->with(Mockery::on(
@@ -114,7 +130,7 @@ class CheckMissedHeartbeatsTest extends TestCase
     {
         $site = $this->makeSite([
             'is_active'    => false,
-            'last_seen_at' => now()->subMinutes(30),
+            'last_seen_at' => now()->subMinutes(40),
         ]);
 
         $alertService = Mockery::mock(AlertService::class);
@@ -132,6 +148,7 @@ class CheckMissedHeartbeatsTest extends TestCase
         $site = $this->makeSite([
             'status'       => SiteStatus::ACTIVE,
             'last_seen_at' => null,
+            'with_subscription' => false,
         ]);
 
         $alertService = Mockery::mock(AlertService::class);

@@ -33,7 +33,13 @@ class SslCertificateService
                 return $result;
             }
 
-            $lastError = $result;
+            $relaxed = $this->probeHostRelaxed($candidate);
+
+            if (! isset($relaxed['error'])) {
+                return $relaxed;
+            }
+
+            $lastError = $relaxed;
         }
 
         return $lastError ?? ['domain' => $host, 'valid' => false, 'error' => 'SSL check failed', 'source' => 'tls'];
@@ -75,24 +81,76 @@ class SslCertificateService
                 return ['domain' => $host, 'valid' => false, 'error' => 'Cannot parse certificate', 'source' => 'tls'];
             }
 
-            $expiresAt     = Carbon::createFromTimestamp($cert['validTo_time_t']);
-            $daysRemaining = (int) now()->diffInDays($expiresAt, false);
-
-            return [
-                'domain'         => $host,
-                'valid'          => $daysRemaining > 0,
-                'issuer'         => $cert['issuer']['O'] ?? $cert['issuer']['CN'] ?? 'Unknown',
-                'subject'        => $cert['subject']['CN'] ?? $host,
-                'expires_at'     => $expiresAt->toDateString(),
-                'days_remaining' => $daysRemaining,
-                'expired'        => $daysRemaining < 0,
-                'expiring_soon'  => $daysRemaining >= 0 && $daysRemaining <= 30,
-                'source'         => 'tls',
-            ];
+            return $this->formatCert($host, $cert, true);
         } catch (\Throwable $e) {
             Log::debug("SslCertificateService: inspect failed for {$host}", ['error' => $e->getMessage()]);
 
             return ['domain' => $host, 'valid' => false, 'error' => $e->getMessage(), 'source' => 'tls'];
         }
+    }
+
+    /**
+     * Read certificate even when chain validation fails (expiry monitoring only).
+     *
+     * @return array{domain: string, valid: bool, issuer?: string, subject?: string, expires_at?: string, days_remaining?: int, expired?: bool, expiring_soon?: bool, error?: string, source: string}
+     */
+    private function probeHostRelaxed(string $host): array
+    {
+        try {
+            $ctx = stream_context_create(['ssl' => [
+                'capture_peer_cert' => true,
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+                'SNI_enabled'       => true,
+            ]]);
+
+            $sock = @stream_socket_client(
+                "ssl://{$host}:443",
+                $errno,
+                $errstr,
+                12,
+                STREAM_CLIENT_CONNECT,
+                $ctx
+            );
+
+            if (! $sock) {
+                return ['domain' => $host, 'valid' => false, 'error' => $errstr ?: "Connection failed ({$errno})", 'source' => 'tls'];
+            }
+
+            $params = stream_context_get_params($sock);
+            fclose($sock);
+
+            $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate'] ?? '');
+
+            if (! $cert) {
+                return ['domain' => $host, 'valid' => false, 'error' => 'Cannot parse certificate', 'source' => 'tls'];
+            }
+
+            return $this->formatCert($host, $cert, false);
+        } catch (\Throwable $e) {
+            return ['domain' => $host, 'valid' => false, 'error' => $e->getMessage(), 'source' => 'tls'];
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $cert
+     * @return array{domain: string, valid: bool, issuer?: string, subject?: string, expires_at?: string, days_remaining?: int, expired?: bool, expiring_soon?: bool, error?: string, source: string}
+     */
+    private function formatCert(string $host, array $cert, bool $chainValid): array
+    {
+        $expiresAt     = Carbon::createFromTimestamp($cert['validTo_time_t']);
+        $daysRemaining = (int) now()->diffInDays($expiresAt, false);
+
+        return [
+            'domain'         => $host,
+            'valid'          => $chainValid && $daysRemaining > 0,
+            'issuer'         => $cert['issuer']['O'] ?? $cert['issuer']['CN'] ?? 'Unknown',
+            'subject'        => $cert['subject']['CN'] ?? $host,
+            'expires_at'     => $expiresAt->toDateString(),
+            'days_remaining' => $daysRemaining,
+            'expired'        => $daysRemaining < 0,
+            'expiring_soon'  => $daysRemaining >= 0 && $daysRemaining <= 30,
+            'source'         => 'tls',
+        ];
     }
 }

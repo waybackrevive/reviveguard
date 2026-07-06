@@ -2,16 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\PlatformSetting;
-
 /**
- * Domain expiry — WHOIS socket (authoritative) → RDAP → optional WhoisXML.
+ * Domain expiry — WHOIS socket → RDAP → who-dat → WhoisJSON → WhoisXML.
  */
 class DomainLookupService
 {
     public function __construct(
         private readonly WhoisSocketService $whoisSocket,
         private readonly RdapDomainService $rdap,
+        private readonly WhoDatService $whoDat,
+        private readonly WhoisJsonService $whoisJson,
         private readonly WhoisXmlService $whoisXml,
     ) {}
 
@@ -20,28 +20,33 @@ class DomainLookupService
      */
     public function lookup(string $domain): array
     {
-        $whois = $this->whoisSocket->lookup($domain);
+        $resolvers = [
+            fn () => $this->whoisSocket->lookup($domain),
+            fn () => $this->rdap->lookup($domain),
+        ];
 
-        if (! isset($whois['error']) && isset($whois['expires_at'])) {
-            return $whois;
+        if (config('services.who_dat.url')) {
+            $resolvers[] = fn () => $this->whoDat->lookup($domain);
         }
 
-        $rdap = $this->rdap->lookup($domain);
-
-        if (! isset($rdap['error']) && isset($rdap['expires_at'])) {
-            return $rdap;
+        if (config('services.whoisjson.key')) {
+            $resolvers[] = fn () => $this->whoisJson->lookup($domain);
         }
 
-        $apiKey = PlatformSetting::get('whoisxml_api_key', config('services.whoisxml.key', '')) ?? '';
+        if (config('services.whoisxml.key')) {
+            $resolvers[] = fn () => $this->whoisXml->whois($domain);
+        }
 
-        if ($apiKey !== '') {
-            $api = $this->whoisXml->whois($domain);
+        $result = null;
 
-            if (! isset($api['error']) && isset($api['expires_at'])) {
-                return $api;
+        foreach ($resolvers as $resolver) {
+            $result = $resolver();
+
+            if (! isset($result['error']) && isset($result['expires_at'])) {
+                return $result;
             }
         }
 
-        return $whois['error'] ? $whois : $rdap;
+        return $result ?? ['domain' => $domain, 'error' => 'All domain lookup methods failed', 'source' => 'none'];
     }
 }
