@@ -267,7 +267,7 @@
             <div class="bg-white rounded-[10px] border border-gray-200 p-5 mb-6 shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 class="text-sm font-semibold text-gray-900">Uptime rate — last 14 days</h2>
+                        <h2 class="text-sm font-semibold text-gray-900">Uptime rate — last 7 days</h2>
                         <p class="text-xs text-gray-500 mt-0.5">Daily checks at your {{ \App\Support\MonitorSettings::intervalLabel((int) $site->monitor_interval_minutes) }} schedule</p>
                     </div>
                     @if ($periodUptimePct !== null)

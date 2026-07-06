@@ -391,7 +391,6 @@ class SiteShow extends Component
         $uptimeIncidents  = collect();
         $uptimeProbes     = collect();
         $uptimeDailyBars  = [];
-        $uptimeDailyBars  = [];
         $lastProbe        = null;
         $periodUptimePct  = null;
         $allowedIntervals = MonitorSettings::allowedIntervals($this->site);
@@ -411,13 +410,13 @@ class SiteShow extends Component
                 ->get();
 
             $uptimeProbes = SiteUptimeProbe::where('site_id', $this->site->id)
-                ->where('checked_at', '>=', now()->subDays(14))
+                ->where('checked_at', '>=', now()->subDays(7))
                 ->orderBy('checked_at')
                 ->get();
 
             $lastProbe = $uptimeProbes->sortByDesc('checked_at')->first();
 
-            $uptimeDailyBars = SiteUptimeChart::dailyBars($this->site->id, 14, $timezone);
+            $uptimeDailyBars = SiteUptimeChart::dailyBars($this->site->id, 7, $timezone);
             $periodUptimePct = SiteUptimeChart::periodUptimePercent($uptimeProbes);
             $clientTimezoneLabel = ClientTimezone::label($client);
         }
