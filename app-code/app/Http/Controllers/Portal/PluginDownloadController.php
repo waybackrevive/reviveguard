@@ -10,6 +10,9 @@ use ZipArchive;
 
 /**
  * Serves the ReviveGuard WordPress agent plugin as a zip for self-service install.
+ *
+ * Priority: REVIVEGUARD_PLUGIN_DOWNLOAD_URL (CDN) → public/downloads (built on deploy)
+ * → on-the-fly zip from wp-plugin source in the monorepo.
  */
 class PluginDownloadController extends Controller
 {
@@ -20,9 +23,9 @@ class PluginDownloadController extends Controller
             return redirect()->away($customUrl);
         }
 
-        $bundledZip = public_path('downloads/reviveguard-agent.zip');
-        if (is_file($bundledZip)) {
-            return response()->download($bundledZip, 'reviveguard-agent.zip', [
+        $deployedZip = public_path('downloads/reviveguard-agent.zip');
+        if (is_file($deployedZip)) {
+            return response()->download($deployedZip, 'reviveguard-agent.zip', [
                 'Content-Type' => 'application/zip',
             ]);
         }
@@ -30,15 +33,27 @@ class PluginDownloadController extends Controller
         $pluginPath = $this->resolvePluginSourcePath();
 
         if ($pluginPath === null) {
-            abort(503, 'Plugin package is not available on this server. Contact support or upload the plugin manually.');
+            abort(503, 'Plugin package is not available. Set REVIVEGUARD_PLUGIN_DOWNLOAD_URL or redeploy to build the package.');
         }
 
         if (! class_exists(ZipArchive::class)) {
             abort(500, 'ZipArchive PHP extension is required to build the plugin package.');
         }
 
-        $zipPath = storage_path('app/temp/reviveguard-agent.zip');
-        File::ensureDirectoryExists(dirname($zipPath));
+        $cacheZip = storage_path('framework/cache/reviveguard-agent.zip');
+        File::ensureDirectoryExists(dirname($cacheZip));
+
+        if (! is_file($cacheZip) || filemtime($cacheZip) < $this->latestSourceMtime($pluginPath)) {
+            $this->buildZip($pluginPath, $cacheZip);
+        }
+
+        return response()->download($cacheZip, 'reviveguard-agent.zip', [
+            'Content-Type' => 'application/zip',
+        ]);
+    }
+
+    private function buildZip(string $pluginPath, string $zipPath): void
+    {
         File::delete($zipPath);
 
         $zip = new ZipArchive;
@@ -52,10 +67,17 @@ class PluginDownloadController extends Controller
             $zip->addFile($file->getPathname(), str_replace('\\', '/', $relative));
         }
         $zip->close();
+    }
 
-        return response()->download($zipPath, 'reviveguard-agent.zip', [
-            'Content-Type' => 'application/zip',
-        ])->deleteFileAfterSend(true);
+    private function latestSourceMtime(string $pluginPath): int
+    {
+        $latest = filemtime($pluginPath) ?: 0;
+
+        foreach (File::allFiles($pluginPath) as $file) {
+            $latest = max($latest, $file->getMTime());
+        }
+
+        return $latest;
     }
 
     private function resolvePluginSourcePath(): ?string

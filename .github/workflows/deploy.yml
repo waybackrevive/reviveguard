@@ -114,11 +114,11 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             export PATH="$HOME/.nvm/bin:$HOME/.composer/vendor/bin:/usr/local/bin:/usr/bin:$PATH"
 
-            echo "=== [1/7] Pull latest code ==="
+            echo "=== [1/8] Pull latest code ==="
             cd /var/www/reviveguard
             git pull origin master
 
-            echo "=== [2/7] Composer install ==="
+            echo "=== [2/8] Composer install ==="
             cd /var/www/reviveguard/app-code
             /usr/local/bin/composer install \
               --no-dev \
@@ -128,27 +128,36 @@ jobs:
               --ignore-platform-req=ext-pcntl \
               --ignore-platform-req=ext-posix
 
-            echo "=== [3/7] Fix storage permissions ==="
+            echo "=== [3/8] Build plugin zip from source (not in git) ==="
+            mkdir -p /var/www/reviveguard/app-code/public/downloads
+            rm -f /var/www/reviveguard/app-code/public/downloads/reviveguard-agent.zip
+            cd /var/www/reviveguard/wp-plugin
+            zip -qr ../app-code/public/downloads/reviveguard-agent.zip reviveguard-agent -x "*.git*"
+
+            echo "=== [4/8] Fix storage permissions ==="
+            # Runtime zips in storage/app/temp are owned by www-data and break chmod -R
+            sudo rm -rf /var/www/reviveguard/app-code/storage/app/temp/*
+            sudo rm -f /var/www/reviveguard/app-code/storage/framework/cache/reviveguard-agent.zip
             chmod -R 775 /var/www/reviveguard/app-code/storage
             chmod -R 775 /var/www/reviveguard/app-code/bootstrap/cache
 
-            echo "=== [4/7] NPM build ==="
+            echo "=== [5/8] NPM build ==="
             npm ci
             npm run build
 
-            echo "=== [5/7] Cache config, routes, views ==="
+            echo "=== [6/8] Cache config, routes, views ==="
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan event:cache
 
-            echo "=== [6/7] Migrations ==="
+            echo "=== [7/8] Migrations ==="
             php artisan migrate --force
 
-            echo "=== [7/7] Restart queue workers ==="
+            echo "=== [8/8] Restart queue workers ==="
             sudo /usr/bin/supervisorctl restart reviveguard-worker:*
 
-            echo "=== [8/8] Restart PDF service ==="
+            echo "=== [9/9] Restart PDF service ==="
             pm2 restart reviveguard-pdf
 
             echo "✓ Deploy complete"
