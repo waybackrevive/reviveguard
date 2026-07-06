@@ -26,6 +26,8 @@ class SiteWizard extends Component
     public string $selectedPlan   = 'guard';
     public bool   $showComparison = false;
 
+    public bool $siteConnected = false;
+
     /** @var array<int, array<string, mixed>> */
     public array $plans = [];
 
@@ -86,11 +88,23 @@ class SiteWizard extends Component
 
         $this->siteId          = $site->id;
         $this->connectionToken = $rawToken;
+        $this->siteConnected   = false;
         $this->step            = 2;
+    }
+
+    public function refreshConnectionStatus(): void
+    {
+        if (! $this->siteId) {
+            return;
+        }
+
+        $site = Site::find($this->siteId);
+        $this->siteConnected = $site?->hasAgentConnected() ?? false;
     }
 
     public function goToPlan(): void
     {
+        $this->refreshConnectionStatus();
         $this->loadPlans();
         $this->step = 3;
     }
@@ -133,7 +147,7 @@ class SiteWizard extends Component
         $this->step = 4;
     }
 
-    public function proceedToCheckout(StripeBillingService $billing): void
+    public function proceedToCheckout(StripeBillingService $billing)
     {
         $plan = Plan::where('slug', $this->selectedPlan)->where('is_active', true)->first();
 
@@ -162,7 +176,7 @@ class SiteWizard extends Component
             return;
         }
 
-        $this->redirect($checkoutUrl, navigate: false);
+        return redirect()->away($checkoutUrl);
     }
 
     public function goBackTo(int $targetStep): void
@@ -189,6 +203,7 @@ class SiteWizard extends Component
             'selectedPlanData' => $this->getSelectedPlanData(),
             'domain'           => parse_url($this->siteUrl, PHP_URL_HOST) ?: $this->siteUrl,
             'stripeTestMode'   => StripeConfig::isTestMode(),
+            'siteConnected'    => $this->siteConnected,
         ]);
     }
 }

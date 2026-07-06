@@ -56,7 +56,7 @@ class SiteShow extends Component
         $this->tab = in_array($tab, $allowed, true) ? $tab : 'overview';
     }
 
-    public function resumeCheckout(StripeBillingService $billing): void
+    public function resumeCheckout(StripeBillingService $billing)
     {
         $client = Auth::guard('client')->user();
 
@@ -94,7 +94,7 @@ class SiteShow extends Component
             return;
         }
 
-        $this->redirect($url, navigate: false);
+        return redirect()->away($url);
     }
 
     public function selectPlan(string $slug): void

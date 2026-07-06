@@ -2,20 +2,23 @@
     {{-- Step indicator --}}
     <div class="flex items-center mb-8 overflow-x-auto">
         @foreach ([1 => 'Site URL', 2 => 'Connection', 3 => 'Plan', 4 => 'Payment'] as $num => $label)
+            @php
+                $stepDone = $step > $num || ($num === 2 && $siteConnected && $step >= 2);
+            @endphp
             <div class="flex items-center gap-2 {{ $num > 1 ? 'flex-1' : '' }}">
                 @if ($num > 1)
-                    <div class="flex-1 h-px {{ $step >= $num ? 'bg-emerald-400' : 'bg-gray-200' }} mx-2 min-w-[12px]"></div>
+                    <div class="flex-1 h-px {{ $stepDone || $step >= $num ? 'bg-emerald-400' : 'bg-gray-200' }} mx-2 min-w-[12px]"></div>
                 @endif
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
-                        {{ $step === $num ? 'bg-brand text-white ring-2 ring-emerald-200' : ($step > $num ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400') }}">
-                        @if ($step > $num)
+                        {{ $step === $num ? 'bg-brand text-white ring-2 ring-emerald-200' : ($stepDone ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400') }}">
+                        @if ($stepDone)
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                         @else
                             {{ $num }}
                         @endif
                     </div>
-                    <span class="text-xs font-medium hidden sm:inline {{ $step === $num ? 'text-brand' : ($step > $num ? 'text-emerald-600' : 'text-gray-400') }}">{{ $label }}</span>
+                    <span class="text-xs font-medium hidden sm:inline {{ $step === $num ? 'text-brand' : ($stepDone ? 'text-emerald-600' : 'text-gray-400') }}">{{ $label }}</span>
                 </div>
             </div>
         @endforeach
@@ -51,15 +54,23 @@
 
     {{-- Step 2: Connection --}}
     @if ($step === 2)
-        <livewire:portal.connection-guide :site-id="$siteId" :connection-token="$connectionToken" :key="'conn-'.$siteId" />
+        <div wire:poll.5s="refreshConnectionStatus">
+            <livewire:portal.connection-guide :site-id="$siteId" :connection-token="$connectionToken" :key="'conn-'.$siteId" />
 
-        <div class="flex gap-3 mt-6">
-            <button wire:click="goToPlan" class="px-5 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold rounded-lg">
-                Continue to plan →
-            </button>
-            <button wire:click="goBackTo(1)" type="button" class="px-4 py-2.5 text-sm text-gray-600">← Back</button>
+            @if ($siteConnected)
+                <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    <strong>Plugin connected!</strong> Your site is talking to ReviveGuard. Continue to choose your plan.
+                </div>
+            @endif
+
+            <div class="flex gap-3 mt-6">
+                <button wire:click="goToPlan" class="px-5 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold rounded-lg">
+                    Continue to plan →
+                </button>
+                <button wire:click="goBackTo(1)" type="button" class="px-4 py-2.5 text-sm text-gray-600">← Back</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-3">You can pay before or after connecting — both work.</p>
         </div>
-        <p class="text-xs text-gray-400 mt-3">You can finish payment while we wait for the connection.</p>
     @endif
 
     {{-- Step 3: Plan --}}

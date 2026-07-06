@@ -151,6 +151,12 @@ class Site extends Model
         return $this->last_seen_at !== null;
     }
 
+    public function hasPaidSubscription(): bool
+    {
+        return $this->subscription_id !== null
+            && $this->subscription?->isActive();
+    }
+
     /**
      * Client-facing status bucket — never "down" for sites still in setup.
      *
@@ -158,7 +164,7 @@ class Site extends Model
      */
     public function portalStatusKey(): string
     {
-        if ($this->status === SiteStatus::PENDING) {
+        if ($this->status === SiteStatus::PENDING && ! $this->hasPaidSubscription()) {
             return 'checkout';
         }
 

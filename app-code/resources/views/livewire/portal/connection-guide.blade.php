@@ -21,7 +21,7 @@
             <div>
                 <p class="font-medium text-gray-900">Download &amp; install the plugin</p>
                 <p class="mt-1 text-gray-500">Download the zip, then in WordPress go to <strong>Plugins → Add New → Upload Plugin</strong> and activate it.</p>
-                <a href="{{ $pluginUrl }}" target="_blank" rel="noopener"
+                <a href="{{ $pluginUrl }}" download="reviveguard-agent.zip"
                    class="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dark transition-colors">
                     Download ReviveGuard plugin (.zip)
                 </a>
@@ -62,7 +62,11 @@
 
     @if (! $isConnected && $site)
         <p class="mt-5 text-xs text-gray-500 border-t border-gray-100 pt-4">
-            After connection, choose your plan under the <strong>Plan</strong> tab (or finish payment if you already picked one).
+            We check for the plugin every few seconds. Once connected, this banner turns green automatically.
+        </p>
+    @elseif ($isConnected)
+        <p class="mt-5 text-xs text-emerald-700 border-t border-emerald-100 pt-4">
+            Connection verified. Continue to plan selection and payment when you're ready.
         </p>
     @endif
 

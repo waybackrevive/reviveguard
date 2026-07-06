@@ -80,7 +80,7 @@ class StripeBillingService
                 'price'    => $priceId,
                 'quantity' => 1,
             ]],
-            'success_url' => route('portal.welcome', ['session_id' => '{CHECKOUT_SESSION_ID}']),
+            'success_url' => route('portal.checkout.success', ['session_id' => '{CHECKOUT_SESSION_ID}']),
             'cancel_url'  => route('portal.sites', ['list' => 1]),
             'client_reference_id' => $client->id,
             'metadata' => [
@@ -247,7 +247,7 @@ class StripeBillingService
             $site->update([
                 'plan_id'         => $plan?->id ?? $site->plan_id,
                 'subscription_id' => $subscription->id,
-                'status'          => $site->last_seen_at ? SiteStatus::ACTIVE : SiteStatus::PENDING,
+                'status'          => SiteStatus::ACTIVE,
             ]);
 
             if ($isNew) {
@@ -279,7 +279,7 @@ class StripeBillingService
                 Site::where('id', $subscription->site_id)->update([
                     'plan_id'         => $plan?->id ?? $subscription->plan_id,
                     'subscription_id' => $subscription->id,
-                    'status'          => SiteStatus::PENDING,
+                    'status'          => SiteStatus::ACTIVE,
                 ]);
             }
         } elseif (in_array($stripeSub->status, ['canceled', 'unpaid', 'incomplete_expired'], true)) {

@@ -49,7 +49,7 @@ class MyWebsites extends Component
     /**
      * Start Stripe Checkout for a pending site.
      */
-    public function resumeCheckout(string $siteId, StripeBillingService $billing): void
+    public function resumeCheckout(string $siteId, StripeBillingService $billing)
     {
         $client = Auth::guard('client')->user();
 
@@ -83,14 +83,14 @@ class MyWebsites extends Component
             return;
         }
 
-        $this->redirect($checkoutUrl, navigate: false);
+        return redirect()->away($checkoutUrl);
     }
 
     public function render(): \Illuminate\View\View
     {
         $client = Auth::guard('client')->user();
 
-        $query = Site::where('client_id', $client->id)->with('plan');
+        $query = Site::where('client_id', $client->id)->with(['plan', 'subscription']);
 
         if ($this->search) {
             $query->where(fn ($q) => $q

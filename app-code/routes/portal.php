@@ -3,6 +3,7 @@
 use App\Http\Controllers\Portal\AcceptInviteController;
 use App\Http\Controllers\Portal\ActivateController;
 use App\Http\Controllers\Portal\AuthController;
+use App\Http\Controllers\Portal\CheckoutSuccessController;
 use App\Http\Controllers\Portal\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +44,7 @@ Route::middleware(['portal.auth', 'portal.timeout', 'portal.onboarded'])->group(
     Route::get('/sites', \App\Livewire\Portal\MyWebsites::class)->name('portal.sites');
     Route::get('/sites/add', \App\Livewire\Portal\AddSite::class)->name('portal.sites.add');
     Route::get('/plugin/download', \App\Http\Controllers\Portal\PluginDownloadController::class)->name('portal.plugin.download');
+    Route::get('/checkout/success', CheckoutSuccessController::class)->name('portal.checkout.success');
     Route::get('/sites/{site}', \App\Livewire\Portal\SiteShow::class)->name('portal.sites.show');
 
     Route::get('/alerts', \App\Livewire\Portal\Events::class)->name('portal.alerts');

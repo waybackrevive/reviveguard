@@ -27,7 +27,7 @@ class HeartbeatController extends Controller
         ]);
 
         // Dispatch async job to process status changes and emit events
-        ProcessHeartbeat::dispatch($site->id, $validated);
+        ProcessHeartbeat::dispatchSync($site->id, $validated);
 
         // Fetch pending command (already loaded via HasOne relation)
         $pending = $site->pendingCommand;
