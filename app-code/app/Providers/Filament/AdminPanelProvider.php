@@ -39,6 +39,12 @@ class AdminPanelProvider extends PanelProvider
                 : 'ReviveGuard Admin • WaybackRevive')
             ->favicon(asset('favicon.svg'))
             ->sidebarCollapsibleOnDesktop()
+            ->navigationGroups([
+                'Clients & revenue',
+                'Pre-sales',
+                'Monitoring & care',
+                'System',
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -46,8 +52,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
+                \App\Filament\Widgets\NeedsAttentionWidget::class,
                 \App\Filament\Widgets\SiteHealthOverview::class,
                 \App\Filament\Widgets\SiteEventsChart::class,
+                \App\Filament\Widgets\ClientActivityChart::class,
+                \App\Filament\Widgets\NewSubscriptionsChart::class,
+                \App\Filament\Widgets\ProbeFailuresChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,

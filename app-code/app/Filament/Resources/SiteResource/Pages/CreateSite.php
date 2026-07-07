@@ -15,7 +15,7 @@ class CreateSite extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['tenant_id'] = '00000000-0000-0000-0000-000000000001';
+        $data['tenant_id'] = config('app.tenant_id');
 
         // Generate a secure agent token (stored as sha256 hash)
         $raw = bin2hex(random_bytes(32)); // 64-char hex

@@ -35,7 +35,8 @@ ReviveGuard is a **done-for-you** WordPress protection SaaS — not a DIY mainte
 1. **Multi-region probe execution** — `monitor_region` is UI-only today; all HTTP checks run from app server  
 2. **Portal feature tests** — billing Livewire, addons, tickets, SiteShow tabs (see §12)  
 3. **Mobile fleet table polish** — compact rows on small screens  
-4. **Agency features** — client grouping, team seats (Phase 2)  
+4. **Admin dashboard truth (A1)** — ops widgets aligned with portal status  
+5. **Agency features** — client grouping, team seats (Phase 2)  
 5. **Evaluation → portal** flow hardening in Filament  
 
 ---
@@ -376,9 +377,10 @@ Paid site → Monitoring tab → auto probes every N min
 |-----|------|
 | `01_BUSINESS_PLAN.md` | Business model, pricing, GTM |
 | `05_MVP_FEATURE_SPEC.md` | Scope in/out |
-| `07_CLIENT_PORTAL_SPEC.md` | Legacy spec — update to match this file |
+| `07_CLIENT_PORTAL_SPEC.md` | Legacy spec — superseded by §10 for shipped features |
 | `09_DEPLOYMENT_GUIDE.md` | Production deploy steps |
-| **`10_PORTAL_UX_MASTER_PLAN.md`** | **This file** — platform context & status |
+| **`10_PORTAL_UX_MASTER_PLAN.md`** | **This file** — platform context & portal status |
+| **`11_ADMIN_OPS_MASTER_PLAN.md`** | Admin ops dashboard & Filament roadmap |
 | `.cursor/rules` | Agent coding rules |
 
 ---
@@ -392,4 +394,4 @@ Paid site → Monitoring tab → auto probes every N min
 
 ---
 
-*Last verified: July 7, 2026 — 97 tests green, monitoring chart 7 days, minimal monitoring UI restored.*
+*Last verified: July 7, 2026 — 129 tests green, admin A1–A6 complete.*

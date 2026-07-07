@@ -17,9 +17,9 @@ class BackupResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
 
-    protected static ?string $navigationGroup = 'Monitoring';
+    protected static ?string $navigationGroup = 'Monitoring & care';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $navigationLabel = 'Backups';
 
@@ -86,10 +86,26 @@ class BackupResource extends Resource
 
                 Tables\Filters\SelectFilter::make('site_id')
                     ->label('Site')
-                    ->options(fn () => Site::orderBy('name')->pluck('name', 'id')->toArray()),
+                    ->options(fn () => Site::where('tenant_id', config('app.tenant_id'))
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->toArray()),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([
+                Tables\Actions\Action::make('download')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('primary')
+                    ->url(fn (Backup $record) => $record->signedDownloadUrl())
+                    ->openUrlInNewTab()
+                    ->visible(fn (Backup $record) => $record->canDownload()),
+
+                Tables\Actions\Action::make('site')
+                    ->label('Site')
+                    ->icon('heroicon-o-globe-alt')
+                    ->url(fn (Backup $record) => SiteResource::getUrl('edit', ['record' => $record->site_id])),
+
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -109,7 +125,7 @@ class BackupResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('tenant_id', '00000000-0000-0000-0000-000000000001')
+            ->where('tenant_id', config('app.tenant_id'))
             ->with(['site', 'site.client']);
     }
 

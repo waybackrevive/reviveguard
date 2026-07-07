@@ -125,6 +125,16 @@ class Site extends Model
         return $this->hasMany(Report::class);
     }
 
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    public function uptimeProbes(): HasMany
+    {
+        return $this->hasMany(SiteUptimeProbe::class);
+    }
+
     public function latestPluginSnapshot(): HasOne
     {
         return $this->hasOne(PluginSnapshot::class)->ofMany(['created_at' => 'max']);
@@ -201,6 +211,17 @@ class Site extends Model
         };
     }
 
+    public function portalStatusColor(): string
+    {
+        return match ($this->portalStatusKey()) {
+            'protected' => 'success',
+            'warning'   => 'warning',
+            'issue'     => 'danger',
+            'checkout'  => 'info',
+            default     => 'gray',
+        };
+    }
+
     public function displayName(): string
     {
         return $this->client_label ?: $this->name;
@@ -262,6 +283,56 @@ class Site extends Model
     public function scopeProtected($query)
     {
         return $query->whereHas('subscription', fn ($q) => $q->whereIn('stripe_status', ['active', 'trialing']));
+    }
+
+    public function scopeWherePaid(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->whereNotNull('subscription_id')
+            ->whereHas('subscription', function (\Illuminate\Database\Eloquent\Builder $sub): void {
+                $sub->whereIn('stripe_status', ['active', 'trialing'])
+                    ->orWhere('whop_status', 'active');
+            });
+    }
+
+    public function scopeWhereUnpaid(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where(function (\Illuminate\Database\Eloquent\Builder $inner): void {
+            $inner->whereNull('subscription_id')
+                ->orWhereHas('subscription', function (\Illuminate\Database\Eloquent\Builder $sub): void {
+                    $sub->where(function (\Illuminate\Database\Eloquent\Builder $stripe): void {
+                        $stripe->whereNotIn('stripe_status', ['active', 'trialing'])
+                            ->orWhereNull('stripe_status');
+                    })->where(function (\Illuminate\Database\Eloquent\Builder $whop): void {
+                        $whop->where('whop_status', '!=', 'active')
+                            ->orWhereNull('whop_status');
+                    });
+                });
+        });
+    }
+
+    public function scopeWherePortalStatus(\Illuminate\Database\Eloquent\Builder $query, string $key): \Illuminate\Database\Eloquent\Builder
+    {
+        return match ($key) {
+            'protected' => $query->wherePaid()
+                ->whereNotNull('last_seen_at')
+                ->where('status', SiteStatus::ACTIVE),
+            'warning' => $query->wherePaid()
+                ->whereNotNull('last_seen_at')
+                ->where('status', SiteStatus::WARNING),
+            'issue' => $query->wherePaid()
+                ->whereNotNull('last_seen_at')
+                ->where('status', SiteStatus::DOWN),
+            'checkout' => $query->whereUnpaid()
+                ->whereNotNull('last_seen_at'),
+            'setup' => $query->where(function (\Illuminate\Database\Eloquent\Builder $inner): void {
+                $inner->where(fn (\Illuminate\Database\Eloquent\Builder $q) => $q->whereUnpaid()->whereNull('last_seen_at'))
+                    ->orWhere(fn (\Illuminate\Database\Eloquent\Builder $q) => $q->wherePaid()->whereNull('last_seen_at'))
+                    ->orWhere(fn (\Illuminate\Database\Eloquent\Builder $q) => $q->wherePaid()
+                        ->whereNotNull('last_seen_at')
+                        ->whereIn('status', [SiteStatus::SUSPENDED, SiteStatus::PENDING]));
+            }),
+            default => $query,
+        };
     }
 
     public function scopeMonitoringActive($query)

@@ -23,8 +23,9 @@ class ClientInviteResource extends Resource
 {
     protected static ?string $model = ClientInvite::class;
     protected static ?string $navigationIcon = 'heroicon-o-envelope-open';
-    protected static ?string $navigationGroup = 'Clients';
+    protected static ?string $navigationGroup = 'Pre-sales';
     protected static ?int $navigationSort = 2;
+    protected static ?string $navigationLabel = 'Client invites';
     protected static ?string $recordTitleAttribute = 'email';
 
     // ── Form ──────────────────────────────────────────────────────────────────

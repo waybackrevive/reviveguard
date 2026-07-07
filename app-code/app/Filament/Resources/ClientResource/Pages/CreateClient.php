@@ -11,7 +11,7 @@ class CreateClient extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['tenant_id'] = '00000000-0000-0000-0000-000000000001';
+        $data['tenant_id'] = config('app.tenant_id');
         return $data;
     }
 }

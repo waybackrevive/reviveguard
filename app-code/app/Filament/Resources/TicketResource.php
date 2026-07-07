@@ -20,11 +20,11 @@ class TicketResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
-    protected static ?string $navigationGroup = 'Support';
+    protected static ?string $navigationGroup = 'Monitoring & care';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 5;
 
-    protected static ?string $navigationLabel = 'Support Tickets';
+    protected static ?string $navigationLabel = 'Support tickets';
 
     public static function form(Form $form): Form
     {
@@ -33,7 +33,7 @@ class TicketResource extends Resource
                 ->schema([
                     Forms\Components\Select::make('client_id')
                         ->label('Client')
-                        ->options(fn () => Client::where('tenant_id', '00000000-0000-0000-0000-000000000001')
+                        ->options(fn () => Client::where('tenant_id', config('app.tenant_id'))
                             ->orderBy('name')
                             ->pluck('name', 'id'))
                         ->searchable()
@@ -42,7 +42,7 @@ class TicketResource extends Resource
 
                     Forms\Components\Select::make('site_id')
                         ->label('Site')
-                        ->options(fn () => Site::where('tenant_id', '00000000-0000-0000-0000-000000000001')
+                        ->options(fn () => Site::where('tenant_id', config('app.tenant_id'))
                             ->orderBy('name')
                             ->pluck('name', 'id'))
                         ->searchable()
@@ -97,7 +97,15 @@ class TicketResource extends Resource
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Client')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->url(fn (Ticket $record) => ClientResource::getUrl('edit', ['record' => $record->client_id])),
+
+                Tables\Columns\TextColumn::make('site.name')
+                    ->label('Site')
+                    ->placeholder('—')
+                    ->url(fn (Ticket $record) => $record->site_id
+                        ? SiteResource::getUrl('edit', ['record' => $record->site_id])
+                        : null),
 
                 Tables\Columns\TextColumn::make('subject')
                     ->searchable()
@@ -162,6 +170,19 @@ class TicketResource extends Resource
                     ->query(fn (Builder $q) => $q->whereNull('admin_reply')),
             ])
             ->actions([
+                Tables\Actions\Action::make('client')
+                    ->label('Client')
+                    ->icon('heroicon-o-user')
+                    ->url(fn (Ticket $record) => ClientResource::getUrl('edit', ['record' => $record->client_id])),
+
+                Tables\Actions\Action::make('site')
+                    ->label('Site')
+                    ->icon('heroicon-o-globe-alt')
+                    ->url(fn (Ticket $record) => $record->site_id
+                        ? SiteResource::getUrl('edit', ['record' => $record->site_id])
+                        : null)
+                    ->visible(fn (Ticket $record) => $record->site_id !== null),
+
                 Tables\Actions\EditAction::make()
                     ->after(function (Ticket $record, array $data): void {
                         // Send notification if a reply was just added or updated
@@ -195,7 +216,7 @@ class TicketResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('tenant_id', '00000000-0000-0000-0000-000000000001')
+            ->where('tenant_id', config('app.tenant_id'))
             ->with(['client', 'site']);
     }
 

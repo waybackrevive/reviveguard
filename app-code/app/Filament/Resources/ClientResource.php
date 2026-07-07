@@ -3,9 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
-use App\Models\Plan;
-use App\Models\Subscription;
+use App\Support\PortalAccess;
+use App\Support\StripeConfig;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\HtmlString;
 
 class ClientResource extends Resource
 {
@@ -20,7 +22,7 @@ class ClientResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationGroup = 'Clients';
+    protected static ?string $navigationGroup = 'Clients & revenue';
 
     protected static ?int $navigationSort = 1;
 
@@ -51,11 +53,6 @@ class ClientResource extends Resource
                         ->searchable()
                         ->default('UTC'),
 
-                    Forms\Components\TextInput::make('whop_member_id')
-                        ->label('Whop Member ID')
-                        ->maxLength(100)
-                        ->helperText('From Whop dashboard — used for webhook matching'),
-
                     Forms\Components\Toggle::make('is_active')
                         ->label('Active')
                         ->default(true),
@@ -76,8 +73,30 @@ class ClientResource extends Resource
             Forms\Components\Section::make('Internal Notes')
                 ->schema([
                     Forms\Components\Hidden::make('tenant_id')
-                        ->default('00000000-0000-0000-0000-000000000001'),
+                        ->default(config('app.tenant_id')),
                 ])->hidden(),
+
+            Forms\Components\Section::make('Billing')
+                ->schema([
+                    Forms\Components\Placeholder::make('stripe_customer')
+                        ->label('Stripe customer')
+                        ->content(function (?Client $record): string|HtmlString {
+                            $id = $record?->stripeCustomerId();
+                            if (! $id) {
+                                return 'Created on first checkout';
+                            }
+
+                            $prefix = StripeConfig::isTestMode() ? 'test/' : '';
+                            $url    = 'https://dashboard.stripe.com/'.$prefix.'customers/'.$id;
+
+                            return new HtmlString(
+                                '<a href="'.e($url).'" target="_blank" class="text-primary-600 hover:underline">'
+                                .e($record->maskedStripeCustomerId())
+                                .'</a>'
+                            );
+                        }),
+                ])
+                ->visibleOn('edit'),
         ]);
     }
 
@@ -97,22 +116,21 @@ class ClientResource extends Resource
                     ->searchable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('sites_count')
-                    ->counts('sites')
+                Tables\Columns\TextColumn::make('sites_summary')
                     ->label('Sites')
-                    ->sortable(),
+                    ->state(fn (Client $record) => $record->sitesSummaryLabel())
+                    ->description(fn (Client $record) => $record->timezone ?: 'UTC')
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('sites_count', $direction)),
 
-                Tables\Columns\TextColumn::make('activeSubscription.stripe_status')
-                    ->label('Subscription')
-                    ->formatStateUsing(fn ($state, $record) => $record->activeSubscription?->billingStatusLabel() ?? '—')
-                    ->badge()
-                    ->color(fn ($state) => match($state) {
-                        'active'    => 'success',
-                        'past_due'  => 'warning',
-                        'canceled'  => 'danger',
-                        default     => 'gray',
-                    })
-                    ->default('—'),
+                Tables\Columns\TextColumn::make('open_tickets_count')
+                    ->label('Open tickets')
+                    ->sortable()
+                    ->color(fn (int $state) => $state > 0 ? 'warning' : 'gray'),
+
+                Tables\Columns\TextColumn::make('stripe_customer')
+                    ->label('Stripe')
+                    ->state(fn (Client $record) => $record->maskedStripeCustomerId() ?? '—')
+                    ->toggleable(),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Active')
@@ -155,12 +173,15 @@ class ClientResource extends Resource
                     ->color('danger')
                     ->visible(fn (Client $record) => $record->is_active)
                     ->requiresConfirmation()
-                    ->modalDescription('This will revoke portal access immediately.')
+                    ->modalHeading('Suspend client?')
+                    ->modalDescription('Revokes portal login immediately. Site monitoring and Stripe billing are not changed — pause monitoring per site if needed.')
                     ->action(fn (Client $record) => $record->update(['is_active' => false])),
-                Tables\Actions\Action::make('impersonate')
-                    ->label('Portal Login Link')
+                Tables\Actions\Action::make('portal_access')
+                    ->label('Open portal')
                     ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Client $record) => url('/portal/login'))
+                    ->color('primary')
+                    ->visible(fn (Client $record) => $record->is_active)
+                    ->url(fn (Client $record) => PortalAccess::signedLoginUrl($record))
                     ->openUrlInNewTab(),
             ])
             ->bulkActions([
@@ -173,7 +194,12 @@ class ClientResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\SitesRelationManager::class,
+            RelationManagers\SubscriptionsRelationManager::class,
+            RelationManagers\InvoicesRelationManager::class,
+            RelationManagers\TicketsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
@@ -188,7 +214,19 @@ class ClientResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('tenant_id', '00000000-0000-0000-0000-000000000001')
-            ->with(['sites', 'activeSubscription']);
+            ->where('tenant_id', config('app.tenant_id'))
+            ->withCount([
+                'sites',
+                'sites as paying_sites_count' => function (Builder $query): void {
+                    $query->whereNotNull('subscription_id')
+                        ->whereHas('subscription', function (Builder $sub): void {
+                            $sub->whereIn('stripe_status', ['active', 'trialing'])
+                                ->orWhere('whop_status', 'active');
+                        });
+                },
+                'tickets as open_tickets_count' => function (Builder $query): void {
+                    $query->whereIn('status', ['open', 'in_progress']);
+                },
+            ]);
     }
 }

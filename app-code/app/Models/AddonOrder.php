@@ -81,6 +81,17 @@ class AddonOrder extends Model
         };
     }
 
+    public function filamentStatusBadgeColor(): string
+    {
+        return match ($this->status) {
+            'awaiting_payment', 'pending' => 'warning',
+            'in_progress'                 => 'info',
+            'completed'                   => 'success',
+            'cancelled'                   => 'gray',
+            default                       => 'gray',
+        };
+    }
+
     public function formattedAmount(): ?string
     {
         if ($this->amount_cents === null) {
