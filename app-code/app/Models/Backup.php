@@ -48,17 +48,37 @@ class Backup extends Model
 
     public function getSizeHumanAttribute(): string
     {
-        if (!$this->size_bytes) {
+        if (! $this->size_bytes) {
             return 'Unknown';
         }
         $units = ['B', 'KB', 'MB', 'GB'];
         $bytes = $this->size_bytes;
-        $i = 0;
+        $i     = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {
             $bytes /= 1024;
             $i++;
         }
-        return round($bytes, 2) . ' ' . $units[$i];
+
+        return round($bytes, 2).' '.$units[$i];
+    }
+
+    public function canDownload(): bool
+    {
+        return $this->status === BackupStatus::SUCCESS
+            && filled($this->b2_bucket)
+            && filled($this->b2_file_key);
+    }
+
+    public function signedDownloadUrl(int $ttlSeconds = 3600): ?string
+    {
+        if (! $this->canDownload()) {
+            return null;
+        }
+
+        $url = app(\App\Services\BackblazeService::class)
+            ->getSignedUrl($this->b2_bucket, $this->b2_file_key, $ttlSeconds);
+
+        return $url !== '#' ? $url : null;
     }
 }
 

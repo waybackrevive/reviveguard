@@ -7,11 +7,71 @@ use App\Models\Client;
 use App\Models\Event;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Stripe\Invoice as StripeInvoice;
+use Stripe\Stripe;
 
 class InvoiceService
 {
+    /**
+     * Import paid Stripe invoices missing from the local database.
+     */
+    public function syncInvoicesForClient(Client $client, int $limit = 25): int
+    {
+        $customerId = $client->stripeCustomerId();
+
+        if (! $customerId) {
+            return 0;
+        }
+
+        Stripe::setApiKey(StripeConfig::secretKey());
+
+        $imported = 0;
+
+        $stripeInvoices = StripeInvoice::all([
+            'customer' => $customerId,
+            'status'   => 'paid',
+            'limit'    => $limit,
+        ]);
+
+        foreach ($stripeInvoices->data as $stripeInvoice) {
+            try {
+                if ($this->createFromStripeInvoice($stripeInvoice)) {
+                    $imported++;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('InvoiceService: sync skipped invoice', [
+                    'stripe_invoice_id' => $stripeInvoice->id ?? null,
+                    'client_id'         => $client->id,
+                    'error'             => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $imported;
+    }
+
+    public function syncAllTenantInvoices(int $perClientLimit = 25): int
+    {
+        $tenantId = config('app.tenant_id');
+        $total    = 0;
+
+        Client::query()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($query): void {
+                $query->whereNotNull('stripe_id')
+                    ->orWhereNotNull('stripe_test_id');
+            })
+            ->orderBy('name')
+            ->each(function (Client $client) use (&$total, $perClientLimit): void {
+                $total += $this->syncInvoicesForClient($client, $perClientLimit);
+            });
+
+        return $total;
+    }
+
     /**
      * Generate the next RVG-YYYY-NNN invoice number for the current tenant.
      */

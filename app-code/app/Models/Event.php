@@ -53,4 +53,57 @@ class Event extends Model
     {
         return $query->where('severity', EventSeverity::CRITICAL->value);
     }
+
+    public function isClientInitiated(): bool
+    {
+        return $this->type === 'client_action';
+    }
+
+    public function sourceLabel(): string
+    {
+        return $this->isClientInitiated() ? 'Client' : 'System';
+    }
+
+    public function sourceBadgeColor(): string
+    {
+        return $this->isClientInitiated() ? 'info' : 'gray';
+    }
+
+    public function typeLabel(): string
+    {
+        return self::typeLabels()[$this->type] ?? str_replace('_', ' ', ucfirst((string) $this->type));
+    }
+
+    /** @return array<string, string> */
+    public static function typeLabels(): array
+    {
+        return [
+            'client_action'         => 'Client action',
+            'uptime_probe'          => 'Uptime probe',
+            'heartbeat_missed'      => 'Heartbeat missed',
+            'site_recovered'        => 'Site recovered',
+            'domain_expiry_warning' => 'Domain expiry',
+            'uptime_kuma_alert'     => 'Uptime Kuma alert',
+            'addon_order'           => 'Add-on order',
+            'update_complete'       => 'Update complete',
+            'ssl_expiry_warning'    => 'SSL expiry',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public static function typeFilterOptions(): array
+    {
+        $labels = self::typeLabels();
+
+        $fromDb = self::query()
+            ->where('tenant_id', config('app.tenant_id'))
+            ->whereNotNull('type')
+            ->distinct()
+            ->orderBy('type')
+            ->pluck('type');
+
+        return $fromDb
+            ->mapWithKeys(fn (string $type) => [$type => $labels[$type] ?? str_replace('_', ' ', ucfirst($type))])
+            ->all();
+    }
 }

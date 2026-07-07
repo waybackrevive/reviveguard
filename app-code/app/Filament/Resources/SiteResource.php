@@ -7,6 +7,7 @@ use App\Enums\CommandType;
 use App\Enums\SiteStatus;
 use App\Enums\SiteType;
 use App\Filament\Resources\SiteResource\Pages;
+use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Jobs\GenerateSiteReport;
 use App\Models\Client;
 use App\Models\Plan;
@@ -15,12 +16,14 @@ use App\Models\Site;
 use App\Models\SiteCommand;
 use App\Services\NotificationService;
 use App\Services\WhoisXmlService;
+use App\Support\StripeConfig;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class SiteResource extends Resource
 {
@@ -28,18 +31,20 @@ class SiteResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
 
-    protected static ?string $navigationGroup = 'Clients';
+    protected static ?string $navigationGroup = 'Clients & revenue';
 
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
+        $tenantId = config('app.tenant_id');
+
         return $form->schema([
             Forms\Components\Section::make('Site Info')
                 ->schema([
                     Forms\Components\Select::make('client_id')
                         ->label('Client')
-                        ->options(fn () => Client::where('tenant_id', '00000000-0000-0000-0000-000000000001')
+                        ->options(fn () => Client::where('tenant_id', $tenantId)
                             ->orderBy('name')
                             ->pluck('name', 'id'))
                         ->searchable()
@@ -47,7 +52,7 @@ class SiteResource extends Resource
 
                     Forms\Components\Select::make('plan_id')
                         ->label('Plan')
-                        ->options(fn () => Plan::where('tenant_id', '00000000-0000-0000-0000-000000000001')
+                        ->options(fn () => Plan::where('tenant_id', $tenantId)
                             ->orderBy('name')
                             ->pluck('name', 'id'))
                         ->searchable()
@@ -71,26 +76,91 @@ class SiteResource extends Resource
                         ->required(),
 
                     Forms\Components\Select::make('status')
+                        ->label('Probe status')
                         ->options(SiteStatus::class)
                         ->default(SiteStatus::PENDING)
-                        ->required(),
+                        ->required()
+                        ->disabledOn('edit')
+                        ->helperText(fn (string $operation) => $operation === 'edit'
+                            ? 'Set by uptime probes and heartbeats — edit only to correct bad data.'
+                            : null),
 
                     Forms\Components\Textarea::make('notes')
                         ->rows(3)
                         ->columnSpanFull(),
                 ])->columns(2),
 
+            Forms\Components\Section::make('Monitoring')
+                ->schema([
+                    Forms\Components\Placeholder::make('monitor_interval')
+                        ->label('Interval')
+                        ->content(fn (?Site $record) => $record?->monitor_interval_minutes
+                            ? $record->monitor_interval_minutes.' min'
+                            : '—'),
+
+                    Forms\Components\Placeholder::make('monitor_region')
+                        ->label('Region')
+                        ->content(fn (?Site $record) => $record?->monitor_region ?? 'Default (app server)'),
+
+                    Forms\Components\Placeholder::make('monitoring_paused')
+                        ->label('Paused')
+                        ->content(fn (?Site $record) => $record?->monitoring_paused
+                            ? 'Yes · since '.$record->monitoring_paused_at?->format('M j, Y')
+                            : 'No'),
+
+                    Forms\Components\Placeholder::make('last_uptime_probe_at')
+                        ->label('Last probe')
+                        ->content(fn (?Site $record) => $record?->last_uptime_probe_at?->diffForHumans() ?? 'Never'),
+                ])
+                ->columns(2)
+                ->visibleOn('edit'),
+
+            Forms\Components\Section::make('Billing')
+                ->schema([
+                    Forms\Components\Placeholder::make('subscription_status')
+                        ->label('Subscription')
+                        ->content(fn (?Site $record) => $record?->subscription
+                            ? $record->subscription->billingStatusLabel()
+                            : 'No active subscription'),
+
+                    Forms\Components\Placeholder::make('period_end')
+                        ->label('Next billing')
+                        ->content(fn (?Site $record) => $record?->subscription?->nextBillingDate()?->format('M j, Y') ?? '—'),
+
+                    Forms\Components\Placeholder::make('stripe_customer')
+                        ->label('Stripe customer')
+                        ->content(function (?Site $record): string|HtmlString {
+                            $id = $record?->client?->stripeCustomerId();
+                            if (! $id) {
+                                return '—';
+                            }
+
+                            $prefix = StripeConfig::isTestMode() ? 'test/' : '';
+                            $url    = 'https://dashboard.stripe.com/'.$prefix.'customers/'.$id;
+
+                            return new HtmlString(
+                                '<a href="'.e($url).'" target="_blank" class="text-primary-600 hover:underline">'
+                                .e(substr($id, 0, 10).'…')
+                                .'</a>'
+                            );
+                        }),
+                ])
+                ->columns(2)
+                ->visibleOn('edit'),
+
             Forms\Components\Section::make('Agent Token')
                 ->schema([
                     Forms\Components\Placeholder::make('agent_token_last4')
                         ->label('Token (last 4)')
                         ->content(fn ($record) => $record?->agent_token_last4
-                            ? '····' . $record->agent_token_last4
+                            ? '····'.$record->agent_token_last4
                             : 'Generated on save'),
 
                     Forms\Components\Placeholder::make('agent_info')
-                        ->label('Agent Version')
-                        ->content(fn ($record) => $record?->agent_version ?? '—'),
+                        ->label('Agent')
+                        ->content(fn (?Site $record) => $record?->last_seen_at
+                            ? ($record->agent_version ?? 'unknown').' · last seen '.$record->last_seen_at->diffForHumans()
+                            : 'Never connected'),
                 ])
                 ->visibleOn('edit'),
         ]);
@@ -109,60 +179,139 @@ class SiteResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('portal_status')
+                    ->label('Portal status')
+                    ->badge()
+                    ->state(fn (Site $record) => $record->portalStatusLabel())
+                    ->color(fn (Site $record) => $record->portalStatusColor()),
+
+                Tables\Columns\TextColumn::make('plan.name')
+                    ->label('Plan')
+                    ->sortable()
+                    ->placeholder('—'),
+
+                Tables\Columns\TextColumn::make('subscription.stripe_status')
+                    ->label('Subscription')
+                    ->formatStateUsing(fn ($state, Site $record) => $record->subscription
+                        ? $record->subscription->billingStatusLabel()
+                        : 'Unpaid')
+                    ->description(fn (Site $record) => $record->subscription?->nextBillingDate()?->format('M j, Y'))
+                    ->color(fn (Site $record) => $record->hasPaidSubscription() ? 'success' : 'gray'),
+
+                Tables\Columns\TextColumn::make('monitoring_paused')
+                    ->label('Monitoring')
+                    ->formatStateUsing(fn ($state, Site $record) => $record->monitoring_paused
+                        ? 'Paused'
+                        : (($record->monitor_interval_minutes ?? '—').' min'))
+                    ->description(fn (Site $record) => $record->monitor_region ?? 'app server')
+                    ->badge()
+                    ->color(fn (Site $record) => $record->monitoring_paused ? 'warning' : 'success'),
+
+                Tables\Columns\TextColumn::make('last_uptime_probe_at')
+                    ->label('Last probe')
+                    ->since()
+                    ->sortable()
+                    ->placeholder('Never'),
+
+                Tables\Columns\TextColumn::make('last_seen_at')
+                    ->label('Agent')
+                    ->since()
+                    ->description(fn (Site $record) => $record->agent_version)
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('uptime_7d')
+                    ->label('7d')
+                    ->formatStateUsing(fn ($state) => $state ? number_format((float) $state, 1).'%' : '—')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('uptime_30d')
+                    ->label('30d')
+                    ->formatStateUsing(fn ($state) => $state ? number_format((float) $state, 1).'%' : '—')
+                    ->sortable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('url')
                     ->url(fn (Site $r) => $r->url)
                     ->openUrlInNewTab()
                     ->limit(40)
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('status')
+                    ->label('Probe status')
                     ->badge()
                     ->color(fn (SiteStatus $state) => $state->color())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
                     ->color('gray')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('uptime_7d')
-                    ->label('7d Uptime')
-                    ->formatStateUsing(fn ($state) => $state ? number_format((float)$state, 1) . '%' : '—')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('ssl_expires_at')
                     ->label('SSL Expires')
                     ->date()
                     ->sortable()
-                    ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->diffInDays() < 14 ? 'danger' : null),
+                    ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->diffInDays() < 14 ? 'danger' : null)
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('domain_expires_at')
                     ->label('Domain Expires')
                     ->date()
                     ->sortable()
-                    ->description(fn (Site $record) => $record->registrar ? 'via ' . $record->registrar : null)
-                    ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->diffInDays() < 30 ? 'warning' : null),
+                    ->description(fn (Site $record) => $record->registrar ? 'via '.$record->registrar : null)
+                    ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->diffInDays() < 30 ? 'warning' : null)
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('whoisxml_last_checked_at')
                     ->label('WHOIS Checked')
                     ->since()
                     ->sortable()
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->placeholder('Never'),
-
-                Tables\Columns\TextColumn::make('last_seen_at')
-                    ->label('Last Seen')
-                    ->since()
-                    ->sortable()
-                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('agent_token_last4')
                     ->label('Token')
-                    ->formatStateUsing(fn ($state) => $state ? '····' . $state : '—')
-                    ->toggleable(),
+                    ->formatStateUsing(fn ($state) => $state ? '····'.$state : '—')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('portal_status')
+                    ->label('Portal status')
+                    ->options([
+                        'protected' => 'Protected',
+                        'setup'     => 'Setup needed',
+                        'checkout'  => 'Complete checkout',
+                        'warning'   => 'Needs attention',
+                        'issue'     => 'Down (paid)',
+                    ])
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? $query->wherePortalStatus($data['value'])
+                        : $query),
+
+                Tables\Filters\SelectFilter::make('plan_id')
+                    ->label('Plan')
+                    ->options(fn () => Plan::where('tenant_id', config('app.tenant_id'))
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->toArray()),
+
+                Tables\Filters\TernaryFilter::make('monitoring_paused')
+                    ->label('Monitoring paused'),
+
+                Tables\Filters\Filter::make('ssl_expiring')
+                    ->label('SSL expiring (< 30 days)')
+                    ->query(fn (Builder $query) => $query
+                        ->whereNotNull('ssl_expires_at')
+                        ->where('ssl_expires_at', '<=', now()->addDays(30))),
+
+                Tables\Filters\Filter::make('unpaid')
+                    ->label('Unpaid')
+                    ->query(fn (Builder $query) => $query->whereUnpaid()),
+
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Probe status')
                     ->options(SiteStatus::class),
 
                 Tables\Filters\SelectFilter::make('type')
@@ -170,7 +319,10 @@ class SiteResource extends Resource
 
                 Tables\Filters\SelectFilter::make('client_id')
                     ->label('Client')
-                    ->options(fn () => \App\Models\Client::orderBy('name')->pluck('name', 'id')->toArray()),
+                    ->options(fn () => Client::where('tenant_id', config('app.tenant_id'))
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->toArray()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -402,7 +554,14 @@ class SiteResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\EventsRelationManager::class,
+            RelationManagers\BackupsRelationManager::class,
+            RelationManagers\ReportsRelationManager::class,
+            RelationManagers\TicketsRelationManager::class,
+            RelationManagers\CommandsRelationManager::class,
+            RelationManagers\UptimeProbesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
@@ -417,7 +576,7 @@ class SiteResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('tenant_id', '00000000-0000-0000-0000-000000000001')
-            ->with(['client', 'plan']);
+            ->where('tenant_id', config('app.tenant_id'))
+            ->with(['client', 'plan', 'subscription']);
     }
 }

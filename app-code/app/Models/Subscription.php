@@ -87,4 +87,25 @@ class Subscription extends Model
     {
         return $this->stripe_current_period_end ?? $this->whop_valid_until;
     }
+
+    public function stripeDashboardUrl(): ?string
+    {
+        if (! $this->stripe_subscription_id) {
+            return null;
+        }
+
+        return \App\Support\StripeDashboard::subscriptionUrl($this->stripe_subscription_id);
+    }
+
+    public function billingStatusBadgeColor(): string
+    {
+        $status = $this->stripe_status ?? $this->whop_status ?? 'pending';
+
+        return match ($status) {
+            'active', 'trialing' => 'success',
+            'past_due', 'unpaid' => 'warning',
+            'canceled', 'cancelled' => 'danger',
+            default => 'gray',
+        };
+    }
 }

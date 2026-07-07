@@ -25,8 +25,9 @@ class SiteEvaluationResource extends Resource
 {
     protected static ?string $model = SiteEvaluation::class;
     protected static ?string $navigationIcon = 'heroicon-o-magnifying-glass';
-    protected static ?string $navigationGroup = 'Clients';
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationGroup = 'Pre-sales';
+    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationLabel = 'Site evaluations';
     protected static ?string $recordTitleAttribute = 'prospect_email';
 
     // ── Form ──────────────────────────────────────────────────────────────────

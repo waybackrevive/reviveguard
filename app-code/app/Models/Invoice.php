@@ -133,6 +133,15 @@ class Invoice extends Model
         return $this->pdf_url ?: $this->stripe_hosted_invoice_url;
     }
 
+    public function stripeDashboardUrl(): ?string
+    {
+        if (! $this->stripe_invoice_id) {
+            return null;
+        }
+
+        return \App\Support\StripeDashboard::invoiceUrl($this->stripe_invoice_id);
+    }
+
     public function statusLabel(): string
     {
         if ($this->isPlanChangeCredit()) {

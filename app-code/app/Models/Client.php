@@ -145,6 +145,39 @@ class Client extends Authenticatable
         return $this->hasMany(Invoice::class);
     }
 
+    public function payingSitesCount(): int
+    {
+        return $this->sites()
+            ->whereNotNull('subscription_id')
+            ->whereHas('subscription', function ($query): void {
+                $query->whereIn('stripe_status', ['active', 'trialing'])
+                    ->orWhere('whop_status', 'active');
+            })
+            ->count();
+    }
+
+    public function openTicketsCount(): int
+    {
+        return $this->tickets()
+            ->whereIn('status', ['open', 'in_progress'])
+            ->count();
+    }
+
+    public function sitesSummaryLabel(): string
+    {
+        $total = $this->sites_count ?? $this->sites()->count();
+        $paid  = $this->paying_sites_count ?? $this->payingSitesCount();
+
+        return "{$total} ".str('site')->plural($total)." · {$paid} paid";
+    }
+
+    public function maskedStripeCustomerId(): ?string
+    {
+        $id = $this->stripeCustomerId();
+
+        return $id ? substr($id, 0, 10).'…' : null;
+    }
+
     public function hasCompletedOnboarding(): bool
     {
         return $this->onboarding_completed_at !== null;

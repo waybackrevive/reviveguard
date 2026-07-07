@@ -1,5 +1,7 @@
 # ReviveGuard — Client Portal Specification
 
+> **Note (July 2026):** For **shipped** portal behavior (billing, monitoring, timezone, toasts, add-ons), use **`10_PORTAL_UX_MASTER_PLAN.md`** as the source of truth. This file retains screen-level wireframes and legacy detail; admin ops are in **`11_ADMIN_OPS_MASTER_PLAN.md`**.
+
 ---
 
 ## Portal Philosophy

@@ -47,6 +47,47 @@ class Report extends Model
     {
         return $this->belongsTo(Client::class);
     }
+
+    public function canDownload(): bool
+    {
+        return $this->status === 'completed'
+            && filled($this->b2_bucket)
+            && filled($this->b2_file_key);
+    }
+
+    public function signedDownloadUrl(int $ttlSeconds = 3600): ?string
+    {
+        if (! $this->canDownload()) {
+            return null;
+        }
+
+        $url = app(\App\Services\BackblazeService::class)
+            ->getSignedUrl($this->b2_bucket, $this->b2_file_key, $ttlSeconds);
+
+        return $url !== '#' ? $url : null;
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            'completed'  => 'Completed',
+            'generating' => 'Generating',
+            'failed'     => 'Failed',
+            'pending'    => 'Pending',
+            'ready'      => 'Ready',
+            default      => ucfirst((string) $this->status),
+        };
+    }
+
+    public function statusBadgeColor(): string
+    {
+        return match ($this->status) {
+            'completed', 'ready' => 'success',
+            'failed'            => 'danger',
+            'generating'        => 'warning',
+            default             => 'gray',
+        };
+    }
 }
 
 

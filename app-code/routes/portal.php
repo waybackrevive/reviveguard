@@ -8,6 +8,11 @@ use App\Http\Controllers\Portal\CheckoutSuccessController;
 use App\Http\Controllers\Portal\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
+// ── Ops signed portal access (no auth required — signature is the gate) ───────
+Route::get('/admin-access/{client}', \App\Http\Controllers\Portal\AdminPortalAccessController::class)
+    ->middleware('signed')
+    ->name('portal.admin-access');
+
 // ── Post-payment confirmation (no auth required) ──────────────────────────────
 Route::get('/welcome', [AuthController::class, 'welcome'])->name('portal.welcome');
 
