@@ -44,6 +44,13 @@ class BackupsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('completed_at')
                     ->since()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('error_message')
+                    ->label('Error')
+                    ->limit(80)
+                    ->wrap()
+                    ->placeholder('—')
+                    ->color('danger'),
             ])
             ->defaultSort('created_at', 'desc');
     }

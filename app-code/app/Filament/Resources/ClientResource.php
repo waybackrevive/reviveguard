@@ -59,19 +59,24 @@ class ClientResource extends Resource
                         ->default(true),
                 ])->columns(2),
 
-            Forms\Components\Section::make('Shield premium')
-                ->description('Account manager and content-edit hours for Shield clients.')
+            Forms\Components\Section::make('Shield premium — assign manager')
+                ->description('Required for Shield clients: pick who appears as their account manager in the portal. Also set content-edit minutes remaining.')
                 ->schema([
                     Forms\Components\Select::make('account_manager_id')
                         ->label('Account manager')
-                        ->options(fn () => User::query()
-                            ->where('tenant_id', config('app.tenant_id'))
-                            ->where('is_super_admin', true)
-                            ->orderBy('name')
-                            ->pluck('name', 'id'))
+                        ->relationship(
+                            name: 'accountManager',
+                            titleAttribute: 'name',
+                            modifyQueryUsing: fn ($query) => $query
+                                ->where('tenant_id', config('app.tenant_id'))
+                                ->where('is_super_admin', true)
+                                ->orderBy('name'),
+                        )
+                        ->getOptionLabelFromRecordUsing(fn (User $record) => "{$record->name} ({$record->email})")
                         ->searchable()
+                        ->preload()
                         ->nullable()
-                        ->helperText('Shown in the Shield client portal.'),
+                        ->helperText('Clients → open this client → assign here. Portal shows “We’ll assign your manager soon” until set.'),
 
                     Forms\Components\TextInput::make('content_minutes_remaining')
                         ->label('Content minutes remaining')
@@ -81,6 +86,7 @@ class ClientResource extends Resource
                         ->helperText('Shield plan includes 120 min/month. Reset automatically on the 1st.'),
                 ])
                 ->columns(2)
+                ->collapsible(false)
                 ->visibleOn('edit'),
 
             Forms\Components\Section::make('Portal Access')
@@ -195,6 +201,30 @@ class ClientResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('assign_manager')
+                    ->label('Assign manager')
+                    ->icon('heroicon-o-user-plus')
+                    ->color('gray')
+                    ->form([
+                        Forms\Components\Select::make('account_manager_id')
+                            ->label('Account manager')
+                            ->options(fn () => User::query()
+                                ->where('tenant_id', config('app.tenant_id'))
+                                ->where('is_super_admin', true)
+                                ->orderBy('name')
+                                ->get()
+                                ->mapWithKeys(fn (User $u) => [$u->id => "{$u->name} ({$u->email})"]))
+                            ->searchable()
+                            ->nullable()
+                            ->helperText('Shown on the Shield client portal card.'),
+                    ])
+                    ->fillForm(fn (Client $record) => [
+                        'account_manager_id' => $record->account_manager_id,
+                    ])
+                    ->action(fn (Client $record, array $data) => $record->update([
+                        'account_manager_id' => $data['account_manager_id'] ?? null,
+                    ]))
+                    ->successNotificationTitle('Account manager updated'),
                 Tables\Actions\Action::make('activate')
                     ->label('Activate')
                     ->icon('heroicon-o-check-circle')

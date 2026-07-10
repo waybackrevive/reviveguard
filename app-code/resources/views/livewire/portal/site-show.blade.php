@@ -148,6 +148,48 @@
             </div>
         @endif
 
+        @if ($showSecurityTab ?? false)
+            <div class="mb-6 grid gap-4 md:grid-cols-2">
+                @if ($planFeatures->canMalwareScan())
+                    <button type="button" wire:click="setTab('security')" class="text-left bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm hover:border-brand/40 transition-colors">
+                        <div class="flex items-start justify-between gap-3 mb-2">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Malware scan</p>
+                            @if ($lastMalwareScan)
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ $lastMalwareScan->type === 'malware_scan_alert' ? 'bg-amber-100 text-amber-800' : ($lastMalwareScan->type === 'malware_scan_failed' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800') }}">
+                                    {{ $lastMalwareScan->type === 'malware_scan_alert' ? 'Issues found' : ($lastMalwareScan->type === 'malware_scan_failed' ? 'Scan failed' : 'Clean') }}
+                                </span>
+                            @else
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Pending first scan</span>
+                            @endif
+                        </div>
+                        <p class="text-sm text-gray-700">
+                            {{ $lastMalwareScan?->created_at?->diffForHumans() ?? 'Weekly scans included on your plan' }}
+                        </p>
+                        <p class="text-xs text-brand font-medium mt-2">View Security &amp; links →</p>
+                    </button>
+                @endif
+                @if ($planFeatures->canBrokenLinkAudit())
+                    <button type="button" wire:click="setTab('security')" class="text-left bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm hover:border-brand/40 transition-colors">
+                        <div class="flex items-start justify-between gap-3 mb-2">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Broken links</p>
+                            @if ($lastLinkAudit)
+                                @php $brokenCount = (int) ($lastLinkAudit->metadata['broken_count'] ?? 0); @endphp
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ $brokenCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
+                                    {{ $brokenCount > 0 ? $brokenCount.' broken' : 'All clear' }}
+                                </span>
+                            @else
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Pending first audit</span>
+                            @endif
+                        </div>
+                        <p class="text-sm text-gray-700">
+                            {{ $lastLinkAudit?->created_at?->diffForHumans() ?? 'Monthly audits included on your plan' }}
+                        </p>
+                        <p class="text-xs text-brand font-medium mt-2">View Security &amp; links →</p>
+                    </button>
+                @endif
+            </div>
+        @endif
+
         <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-gray-900">Recent activity</h2>

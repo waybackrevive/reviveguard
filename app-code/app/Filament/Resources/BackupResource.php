@@ -62,7 +62,10 @@ class BackupResource extends Resource
                 Tables\Columns\TextColumn::make('error_message')
                     ->label('Error')
                     ->limit(60)
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->wrap()
+                    ->placeholder('—')
+                    ->color('danger')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('started_at')
                     ->label('Started')
