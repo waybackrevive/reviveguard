@@ -19,8 +19,8 @@
   <rect x="80" y="360" width="1040" height="1" fill="#1e3a5f"/>
   <!-- Stats row -->
   <text x="80" y="410" font-family="Inter,Arial,sans-serif" font-size="18" fill="#64748b">24/7 Monitoring  ·  Automatic Backups  ·  WordPress Updates  ·  Private Client Portal</text>
-  <!-- WaybackRevive credit -->
-  <text x="80" y="460" font-family="Inter,Arial,sans-serif" font-size="16" fill="#475569">Built by the WaybackRevive team  ·  Invite-only  ·  Starting at $49/month</text>
+  <!-- Wayback Revive credit -->
+  <text x="80" y="460" font-family="Inter,Arial,sans-serif" font-size="16" fill="#475569">Built by the Wayback Revive team  ·  Invite-only  ·  Starting at $49/month</text>
   <!-- URL -->
   <text x="1120" y="600" font-family="Inter,Arial,sans-serif" font-size="16" fill="#334155" text-anchor="end">reviveguard.com</text>
 </svg>

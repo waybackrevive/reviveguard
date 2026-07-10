@@ -54,6 +54,13 @@ final class ReviveGuard_BackupHandler
 
             $this->reportEvent($client, 'success', "Backup uploaded: {$b2Path} ({$fileSize} MB)");
 
+            update_option('reviveguard_last_backup', time());
+
+            $trigger = (string) ($params['trigger'] ?? '');
+            if ($trigger === 'pre_update') {
+                update_option('reviveguard_pre_update_backup', $b2Path);
+            }
+
             return [
                 'status'           => 'success',
                 'file_size_mb'     => $fileSize,
@@ -154,11 +161,10 @@ final class ReviveGuard_BackupHandler
 
     private function createArchive(string $archiveFile, string $tmpDir): void
     {
-        $wpRoot        = escapeshellarg(ABSPATH);
-        $archiveEsc    = escapeshellarg($archiveFile);
-        $tmpDirEsc     = escapeshellarg($tmpDir);
+        $wpRoot     = escapeshellarg(ABSPATH);
+        $archiveEsc = escapeshellarg($archiveFile);
+        $tmpDirEsc  = escapeshellarg($tmpDir);
 
-        // Add WP files (excluding cache/logs/tmp) + include the DB dump from tmpDir
         $excludeFlags = implode(' ', [
             '--exclude=./wp-content/cache',
             '--exclude=./wp-content/upgrade',
@@ -167,8 +173,8 @@ final class ReviveGuard_BackupHandler
             '--exclude=*.log',
         ]);
 
-        // Build: archive WP files + append DB dump
-        $cmd = "tar -czf {$archiveEsc} -C {$wpRoot} . {$excludeFlags} 2>&1";
+        // Archive database.sql (from tmpDir) + WordPress files (from site root)
+        $cmd = "tar -czf {$archiveEsc} -C {$tmpDirEsc} database.sql -C {$wpRoot} . {$excludeFlags} 2>&1";
         system($cmd, $exitCode);
 
         if ($exitCode !== 0) {

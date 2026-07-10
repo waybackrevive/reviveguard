@@ -29,6 +29,9 @@ class Client extends Authenticatable
         'sites_managed_range',
         'phone',
         'timezone',
+        'account_manager_id',
+        'content_minutes_remaining',
+        'content_minutes_reset_at',
         'whop_member_id',
         'stripe_id',
         'stripe_test_id',
@@ -49,6 +52,7 @@ class Client extends Authenticatable
         'last_login_at'            => 'datetime',
         'activation_expires_at'    => 'datetime',
         'onboarding_completed_at'  => 'datetime',
+        'content_minutes_reset_at' => 'datetime',
     ];
 
     /**
@@ -79,6 +83,16 @@ class Client extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function accountManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'account_manager_id');
+    }
+
+    public function isShieldClient(): bool
+    {
+        return ($this->bestSupportPlan()?->slug ?? '') === 'shield';
     }
 
     public function sites(): HasMany

@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers\Agent;
 
-use App\Enums\CommandStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SiteCommand;
+use App\Services\CommandResultService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CommandResultController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request, CommandResultService $results): JsonResponse
     {
         /** @var \App\Models\Site $site */
         $site = $request->attributes->get('site');
@@ -30,14 +30,17 @@ class CommandResultController extends Controller
             return response()->json(['error' => 'Command not found'], 404);
         }
 
-        $command->update([
-            'status'        => $validated['status'] === 'success'
-                ? CommandStatus::SUCCESS
-                : CommandStatus::FAILED,
-            'result'        => $validated['result'] ?? null,
-            'error_message' => $validated['error'] ?? null,
-            'completed_at'  => now(),
-        ]);
+        if ($command->completed_at !== null) {
+            return response()->json(['status' => 'ok']);
+        }
+
+        $results->handle(
+            $command,
+            $site,
+            $validated['status'],
+            $validated['result'] ?? null,
+            $validated['error'] ?? null,
+        );
 
         return response()->json(['status' => 'ok']);
     }

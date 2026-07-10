@@ -46,7 +46,8 @@ class MigrationAndSeedTest extends TestCase
         $monitor = Plan::where('slug', 'monitor')->first();
 
         $this->assertNotNull($monitor);
-        $this->assertSame('monthly', $monitor->backup_frequency);
+        $this->assertSame('twice_monthly', $monitor->backup_frequency);
+        $this->assertSame(2, $monitor->backups_per_month);
         $this->assertSame(30, $monitor->retention_days);
         $this->assertSame(-1, $monitor->support_tickets_per_month);
         $this->assertSame(49.00, (float) $monitor->price_monthly);

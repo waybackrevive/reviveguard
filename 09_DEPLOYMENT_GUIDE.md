@@ -961,6 +961,82 @@ sudo certbot --nginx -d app.reviveguard.com
 
 ---
 
+## 21. Marketing Site (Hostinger PHP)
+
+The public site at `reviveguard.com` lives in `marketing-site/` and runs as **PHP on Hostinger** (not on the Laravel VPS).
+
+### Upload
+
+1. Upload the entire `marketing-site/` folder contents to Hostinger `public_html/` (or the domain root).
+2. Confirm PHP **8.1+** is enabled for the domain in hPanel.
+3. Ensure `.htaccess` is uploaded (Apache `mod_rewrite` required for clean URLs).
+
+### Structure
+
+| Path | Purpose |
+|------|---------|
+| `index.php` | Homepage |
+| `{page}/index.php` | Routed pages (`/pricing/`, `/contact/`, legal, etc.) |
+| `includes/` | Config, layout, SEO (blocked from direct web access) |
+| `partials/` | Page body fragments (blocked from direct web access) |
+| `sitemap.php` | Dynamic sitemap — served at `/sitemap.xml` via rewrite |
+| `contact/send.php` | Contact form handler |
+
+### Pre-deploy checks (local)
+
+```bash
+# PHP syntax
+find marketing-site -name "*.php" -print0 | xargs -0 -n1 php -l
+
+# Link/copy QA
+php marketing-site/scripts/qa-links.php
+
+# Build Hostinger package (excludes scripts/)
+php marketing-site/scripts/package-deploy.php
+
+# Local smoke server + test
+cd marketing-site && php -S 127.0.0.1:8080 router.php
+# separate terminal:
+php marketing-site/scripts/smoke-test.php
+```
+
+### Hostinger upload
+
+1. Run `php marketing-site/scripts/package-deploy.php` — output: `dist/reviveguard-marketing/`
+2. Upload **contents** of that folder to `public_html/` (File Manager or FTP).
+3. Do **not** upload `marketing-site/scripts/` to the public web root.
+
+### Post-deploy (production QA)
+
+```bash
+BASE_URL=https://reviveguard.com php marketing-site/scripts/smoke-test.php
+```
+
+### Google Search Console (M8)
+
+1. Go to [Google Search Console](https://search.google.com/search-console)
+2. Add property: `https://reviveguard.com` (DNS TXT or HTML file verification on Hostinger)
+3. **Sitemaps** → submit `https://reviveguard.com/sitemap.xml`
+4. **URL inspection** → request indexing for `/`, `/pricing/`, `/for-alumni/`
+5. After 48–72h, confirm indexed pages and fix any coverage errors
+
+### DNS
+
+| Host | Type | Target |
+|------|------|--------|
+| `@` | A | Hostinger static site IP |
+| `www` | CNAME | `reviveguard.com` |
+
+Legacy `.html` URLs (`/about.html`, `/*/index.html`) 301 to PHP routes via `.htaccess`.
+
+### Post-deploy
+
+1. Visit `https://reviveguard.com/sitemap.xml` and submit in Google Search Console.
+2. Run Lighthouse mobile on `/`, `/pricing/`, `/contact/` (target >85).
+3. Test CTAs: `https://app.reviveguard.com/evaluate`, `/for-alumni/`, `/contact/?topic=alumni`.
+
+---
+
 ## Quick Reference Card
 
 | URL | Purpose |

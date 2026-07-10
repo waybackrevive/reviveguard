@@ -66,10 +66,17 @@ final class ReviveGuard_CommandRunner
         // Clear pending before reporting back (so a failed report doesn't re-run)
         delete_option(self::PENDING_OPTION);
 
+        $apiStatus = 'failed';
+        $resultStatus = (string) ($result['status'] ?? '');
+
+        if ($resultStatus === 'success' || $resultStatus === 'deferred') {
+            $apiStatus = 'success';
+        }
+
         $client = new ReviveGuard_ApiClient();
         $client->post('/api/v1/agent/command-result', [
             'command_id' => $commandId,
-            'status'     => $result['status'] === 'success' ? 'success' : 'failed',
+            'status'     => $apiStatus,
             'result'     => $result,
             'error'      => $result['error'] ?? null,
         ]);
@@ -90,6 +97,14 @@ final class ReviveGuard_CommandRunner
             case 'run_updates':
                 $handler = new ReviveGuard_UpdateHandler();
                 return $handler->run($commandId);
+
+            case 'rollback_restore':
+                $handler = new ReviveGuard_RestoreHandler();
+                return $handler->run($commandId, $params);
+
+            case 'run_malware_scan':
+                $handler = new ReviveGuard_MalwareScanHandler();
+                return $handler->run($commandId, $params);
 
             case 'get_plugin_list':
                 $inventory = new ReviveGuard_PluginInventory();

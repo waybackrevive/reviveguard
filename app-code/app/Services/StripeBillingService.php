@@ -510,6 +510,10 @@ class StripeBillingService
             if ($isNew) {
                 OnboardClientJob::dispatch($client->id, $subscription->id, false);
             }
+
+            if ($plan && $plan->slug === 'shield') {
+                app(ContentHoursService::class)->ensureAllocation($client->fresh(), $plan);
+            }
         }
 
         return $subscription;

@@ -28,6 +28,32 @@
         </div>
     @endif
 
+    @if ($isShield ?? false)
+        <div class="mb-6 bg-gradient-to-br from-violet-50 to-white border border-violet-200 rounded-[10px] p-5 shadow-sm">
+            <p class="text-xs font-semibold text-violet-700 uppercase tracking-wider mb-3">Your Shield plan</p>
+            <div class="grid gap-4 sm:grid-cols-3 text-sm">
+                <div>
+                    <p class="text-xs text-gray-500">Account manager</p>
+                    @if ($client->accountManager)
+                        <p class="font-semibold text-gray-900 mt-1">{{ $client->accountManager->name }}</p>
+                        <a href="mailto:{{ $client->accountManager->email }}" class="text-xs text-brand hover:underline">{{ $client->accountManager->email }}</a>
+                    @else
+                        <p class="text-gray-600 mt-1">We'll assign your manager soon</p>
+                    @endif
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Content edit hours</p>
+                    <p class="font-semibold text-gray-900 mt-1">{{ $contentHours ?? 0 }} min left</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Emergency restore</p>
+                    <p class="font-semibold text-gray-900 mt-1">4-hour SLA</p>
+                    <a href="{{ route('portal.tickets') }}" class="text-xs text-brand hover:underline">Open support →</a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="flex flex-wrap items-start justify-between gap-4 mb-2">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Sites</h1>

@@ -78,15 +78,29 @@ class Event extends Model
     public static function typeLabels(): array
     {
         return [
-            'client_action'         => 'Client action',
-            'uptime_probe'          => 'Uptime probe',
-            'heartbeat_missed'      => 'Heartbeat missed',
-            'site_recovered'        => 'Site recovered',
-            'domain_expiry_warning' => 'Domain expiry',
-            'uptime_kuma_alert'     => 'Uptime Kuma alert',
-            'addon_order'           => 'Add-on order',
-            'update_complete'       => 'Update complete',
-            'ssl_expiry_warning'    => 'SSL expiry',
+            'client_action'              => 'Something you did in the portal',
+            'uptime_probe'               => 'Uptime check',
+            'heartbeat_missed'           => 'Site stopped checking in',
+            'site_recovered'             => 'Site came back online',
+            'domain_expiry_warning'      => 'Domain expiring soon',
+            'uptime_kuma_alert'          => 'Downtime alert',
+            'addon_order'                => 'Add-on order',
+            'update_complete'            => 'WordPress update completed',
+            'update_failed'              => 'WordPress update failed',
+            'update_deferred'            => 'Update waiting for backup',
+            'rollback_complete'          => 'Site restored from backup',
+            'rollback_failed'            => 'Automatic restore failed',
+            'rollback_queued'            => 'Restore queued',
+            'backup_complete'            => 'Backup completed',
+            'backup_failed'              => 'Backup failed',
+            'malware_scan_complete'      => 'Security scan — all clear',
+            'malware_scan_alert'         => 'Security scan found issues',
+            'malware_scan_failed'        => 'Security scan could not finish',
+            'broken_link_audit_complete' => 'Broken link check completed',
+            'broken_link_audit_failed'   => 'Broken link check failed',
+            'quarterly_security_audit'   => 'Quarterly security review',
+            'quarterly_seo_snapshot'     => 'Quarterly SEO review',
+            'ssl_expiry_warning'         => 'SSL certificate expiring soon',
         ];
     }
 

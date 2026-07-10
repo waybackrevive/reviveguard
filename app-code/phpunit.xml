@@ -11,6 +11,15 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <testsuite name="ProductCompletion">
+            <directory>tests/Feature/ProductCompletion</directory>
+            <file>tests/Feature/AgentApi/AgentEndpointsTest.php</file>
+            <file>tests/Unit/Support/PlanCatalogTest.php</file>
+            <file>tests/Unit/Services/MalwareScanServiceTest.php</file>
+            <file>tests/Unit/Services/BrokenLinkAuditServiceTest.php</file>
+            <file>tests/Unit/Services/ShieldPremiumServicesTest.php</file>
+            <file>tests/Unit/Services/MaintenanceSchedulerTest.php</file>
+        </testsuite>
     </testsuites>
     <source>
         <include>

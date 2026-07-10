@@ -2,6 +2,33 @@
     <h1 class="text-2xl font-semibold text-gray-900 mb-2">Support</h1>
     <p class="text-sm text-gray-500 mb-6">{{ $supportTier['headline'] }}</p>
 
+    @if ($isShield ?? false)
+        <div class="bg-gradient-to-br from-violet-50 to-white border border-violet-200 rounded-2xl p-5 mb-6">
+            <p class="text-xs font-semibold text-violet-700 uppercase tracking-wider mb-3">Shield premium</p>
+            <div class="grid gap-4 sm:grid-cols-3 text-sm">
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">Account manager</p>
+                    @if ($accountManager ?? null)
+                        <p class="font-medium text-gray-900">{{ $accountManager->name }}</p>
+                        <a href="mailto:{{ $accountManager->email }}" class="text-xs text-brand hover:underline">{{ $accountManager->email }}</a>
+                    @else
+                        <p class="text-gray-600">Assigned shortly after onboarding</p>
+                    @endif
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">Content edit hours</p>
+                    <p class="font-medium text-gray-900">{{ $contentHours ?? 0 }} min left this month</p>
+                    <p class="text-xs text-gray-500">120 min included · billed when tickets close</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">Emergency restore</p>
+                    <p class="font-medium text-gray-900">4-hour SLA</p>
+                    <p class="text-xs text-gray-500">Use emergency restore ticket type below</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white border border-gray-200 rounded-2xl p-5 mb-6 text-sm">
         <div class="grid gap-4 sm:grid-cols-3">
             <div>
@@ -25,7 +52,7 @@
         </div>
         @if (optional($plan)->slug === 'shield')
             <p class="mt-4 text-xs text-violet-800 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
-                Shield clients receive priority routing — high-impact issues are escalated first.
+                Shield clients receive priority routing — emergency restores are tracked against a 4-hour SLA.
             </p>
         @endif
     </div>
@@ -35,6 +62,18 @@
             <h2 class="text-base font-semibold text-gray-900 mb-4">Need help with your website?</h2>
 
             <form wire:submit.prevent="submitTicket" class="space-y-4">
+                @if ($isShield ?? false)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Request type</label>
+                        <select wire:model="ticketType"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="general">General support</option>
+                            <option value="content_edit">Content edit (uses monthly hours)</option>
+                            <option value="emergency_restore">Emergency restore (4h SLA)</option>
+                        </select>
+                    </div>
+                @endif
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                     <input type="text" wire:model="subject" placeholder="Briefly describe your issue"
@@ -83,6 +122,12 @@
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-800 truncate">{{ $ticket->subject }}</p>
                             <p class="text-xs text-gray-400">Submitted {{ $ticket->created_at->format('M j') }}</p>
+                            @if ($ticket->sla_due_at && $ticket->isOpen())
+                                @php $slaLabel = $slaService->slaLabel($ticket); @endphp
+                                @if ($slaLabel)
+                                    <p class="text-xs mt-1 {{ $slaService->isBreached($ticket) ? 'text-red-600 font-semibold' : 'text-amber-600' }}">{{ $slaLabel }}</p>
+                                @endif
+                            @endif
                         </div>
                     </div>
                     <span class="ml-4 flex-shrink-0 text-xs font-medium {{ $ticket->isOpen() ? 'text-green-600' : 'text-gray-400' }}">
@@ -99,6 +144,12 @@
             <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
                 <h3 class="text-base font-semibold text-gray-900 mb-1">{{ $selectedTicket->subject }}</h3>
                 <p class="text-xs text-gray-400 mb-4">Submitted {{ $selectedTicket->created_at->format('M j, Y') }}</p>
+
+                @if ($selectedTicket->sla_due_at && $selectedTicket->isOpen())
+                    <p class="text-xs mb-4 px-3 py-2 rounded-lg {{ $slaService->isBreached($selectedTicket) ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-800' }}">
+                        {{ $slaService->slaLabel($selectedTicket) }}
+                    </p>
+                @endif
 
                 <div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 mb-4">
                     {{ $selectedTicket->message }}

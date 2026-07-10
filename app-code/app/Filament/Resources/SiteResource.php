@@ -9,6 +9,8 @@ use App\Enums\SiteType;
 use App\Filament\Resources\SiteResource\Pages;
 use App\Filament\Resources\SiteResource\RelationManagers;
 use App\Jobs\GenerateSiteReport;
+use App\Jobs\RunBrokenLinkAudit;
+use App\Jobs\RunExternalMalwareScan;
 use App\Models\Client;
 use App\Models\Plan;
 use App\Models\Report;
@@ -17,6 +19,7 @@ use App\Models\SiteCommand;
 use App\Services\NotificationService;
 use App\Services\WhoisXmlService;
 use App\Support\StripeConfig;
+use App\Support\PlanFeatures;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -394,28 +397,18 @@ class SiteResource extends Resource
                     ->modalHeading('Trigger Backup')
                     ->modalDescription('This will queue a backup command. The agent will pick it up on the next heartbeat (within 5 min).')
                     ->action(function (Site $record): void {
-                        $existing = SiteCommand::where('site_id', $record->id)
-                            ->where('type', CommandType::RUN_BACKUP)
-                            ->where('status', CommandStatus::PENDING)
-                            ->exists();
+                        $queued = app(\App\Services\SiteCommandQueueService::class)
+                            ->queueBackup($record, 'manual');
 
-                        if ($existing) {
+                        if (! $queued) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Already queued')
                                 ->body('A backup command is already pending for this site.')
                                 ->warning()
                                 ->send();
+
                             return;
                         }
-
-                        SiteCommand::create([
-                            'tenant_id' => $record->tenant_id,
-                            'site_id'   => $record->id,
-                            'type'      => CommandType::RUN_BACKUP,
-                            'status'    => CommandStatus::PENDING,
-                            'params'    => [],
-                            'queued_at' => now(),
-                        ]);
 
                         \Filament\Notifications\Notification::make()
                             ->title('Backup queued')
@@ -430,34 +423,115 @@ class SiteResource extends Resource
                     ->color('info')
                     ->requiresConfirmation()
                     ->modalHeading('Trigger WP Updates')
-                    ->modalDescription('This will queue a WordPress core + plugin update command. Guard and Shield plans only.')
+                    ->modalDescription('Queues a pre-update backup first if none exists in the last 24 hours, then runs WordPress core + plugin + theme updates.')
                     ->action(function (Site $record): void {
-                        $existing = SiteCommand::where('site_id', $record->id)
-                            ->where('type', CommandType::RUN_WP_UPDATES)
-                            ->where('status', CommandStatus::PENDING)
-                            ->exists();
+                        $queued = app(\App\Services\SiteCommandQueueService::class)
+                            ->queueWpUpdates($record, 'manual');
 
-                        if ($existing) {
+                        if (! $queued) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Already queued')
-                                ->body('An update command is already pending for this site.')
+                                ->body('An update or pre-update backup is already pending for this site.')
                                 ->warning()
                                 ->send();
+
                             return;
                         }
 
-                        SiteCommand::create([
-                            'tenant_id' => $record->tenant_id,
-                            'site_id'   => $record->id,
-                            'type'      => CommandType::RUN_WP_UPDATES,
-                            'status'    => CommandStatus::PENDING,
-                            'params'    => [],
-                            'queued_at' => now(),
-                        ]);
+                        $isPreBackup = ($queued->type === CommandType::RUN_BACKUP);
 
                         \Filament\Notifications\Notification::make()
-                            ->title('Update queued')
-                            ->body("WP update command queued for {$record->name}. Agent will pick it up within 5 minutes.")
+                            ->title($isPreBackup ? 'Pre-update backup queued' : 'Update queued')
+                            ->body($isPreBackup
+                                ? "Safety backup queued first for {$record->name}. Updates will run automatically after it completes."
+                                : "WP update command queued for {$record->name}. Agent will pick it up within 5 minutes.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('trigger_rollback')
+                    ->label('Rollback Last Update')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Rollback from backup')
+                    ->modalDescription('Restores the site from the latest pre-update backup (or most recent successful backup). Use after a broken update.')
+                    ->action(function (Site $record): void {
+                        $queued = app(\App\Services\SiteCommandQueueService::class)
+                            ->queueRollbackRestore($record, 'manual');
+
+                        if (! $queued) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cannot queue rollback')
+                                ->body('No restorable backup found, or a rollback is already pending.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Rollback queued')
+                            ->body("Restore command queued for {$record->name}. Agent will pick it up within 5 minutes.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('trigger_malware_scan')
+                    ->label('Run Malware Scan')
+                    ->icon('heroicon-o-shield-exclamation')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Run malware scan')
+                    ->modalDescription('Queues a malware integrity scan. WordPress sites use the agent; other sites use external reputation checks.')
+                    ->visible(fn (Site $record) => PlanFeatures::forSite($record)->canMalwareScan())
+                    ->action(function (Site $record): void {
+                        if ($record->type === SiteType::WORDPRESS) {
+                            $queued = app(\App\Services\SiteCommandQueueService::class)
+                                ->queueMalwareScan($record, 'manual');
+
+                            if (! $queued) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Already queued')
+                                    ->body('A malware scan is already pending for this site.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Malware scan queued')
+                                ->body("Scan queued for {$record->name}. Agent will pick it up within 5 minutes.")
+                                ->success()
+                                ->send();
+
+                            return;
+                        }
+
+                        RunExternalMalwareScan::dispatch($record->id, 'manual');
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('External scan started')
+                            ->body("Reputation scan queued for {$record->name}.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('trigger_link_audit')
+                    ->label('Run Link Audit')
+                    ->icon('heroicon-o-link')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Run broken link audit')
+                    ->modalDescription('Crawls up to 200 internal links from the server and records broken URLs.')
+                    ->visible(fn (Site $record) => PlanFeatures::forSite($record)->canBrokenLinkAudit())
+                    ->action(function (Site $record): void {
+                        RunBrokenLinkAudit::dispatch($record->id, 'manual');
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Link audit queued')
+                            ->body("Broken link audit queued for {$record->name}.")
                             ->success()
                             ->send();
                     }),

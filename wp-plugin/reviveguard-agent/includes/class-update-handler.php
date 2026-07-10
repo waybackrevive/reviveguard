@@ -18,7 +18,6 @@ final class ReviveGuard_UpdateHandler
      */
     public function run(string $commandId): array
     {
-        // Safety gate: require a recent backup before updating
         $lastBackup = (int) get_option('reviveguard_last_backup', 0);
         if ($lastBackup === 0 || (time() - $lastBackup) > self::BACKUP_REQUIRED_SECONDS) {
             ReviveGuard_DebugLogger::info('Updates deferred — no backup in last 24 hours');
@@ -26,6 +25,11 @@ final class ReviveGuard_UpdateHandler
                 'status' => 'deferred',
                 'reason' => 'No backup found in the last 24 hours. Run a backup first, then retry updates.',
             ];
+        }
+
+        $preBackupPath = (string) get_option('reviveguard_pre_update_backup', '');
+        if ($preBackupPath !== '') {
+            ReviveGuard_DebugLogger::info('Pre-update backup on file: ' . $preBackupPath);
         }
 
         if ($this->isWpCliAvailable()) {
@@ -41,8 +45,8 @@ final class ReviveGuard_UpdateHandler
     private function updateViaWpCli(): array
     {
         $results = ['method' => 'wp_cli'];
+        $failed  = false;
 
-        // Core update
         $coreOutput   = [];
         $coreExitCode = 0;
         exec('wp core update --allow-root 2>&1', $coreOutput, $coreExitCode);
@@ -50,15 +54,19 @@ final class ReviveGuard_UpdateHandler
             'exit_code' => $coreExitCode,
             'output'    => implode("\n", $coreOutput),
         ];
+        if ($coreExitCode !== 0) {
+            $failed = true;
+        }
 
-        // Plugin updates — JSON output for structured result
         $pluginOutput   = [];
         $pluginExitCode = 0;
         exec('wp plugin update --all --allow-root --format=json 2>&1', $pluginOutput, $pluginExitCode);
-        $pluginJson       = json_decode(implode('', $pluginOutput), true);
+        $pluginJson         = json_decode(implode('', $pluginOutput), true);
         $results['plugins'] = is_array($pluginJson) ? $pluginJson : ['raw' => implode("\n", $pluginOutput)];
+        if ($pluginExitCode !== 0) {
+            $failed = true;
+        }
 
-        // Theme updates
         $themeOutput   = [];
         $themeExitCode = 0;
         exec('wp theme update --all --allow-root 2>&1', $themeOutput, $themeExitCode);
@@ -66,8 +74,19 @@ final class ReviveGuard_UpdateHandler
             'exit_code' => $themeExitCode,
             'output'    => implode("\n", $themeOutput),
         ];
+        if ($themeExitCode !== 0) {
+            $failed = true;
+        }
+
+        if ($failed) {
+            $results['status'] = 'failed';
+            $results['error']  = 'One or more WP-CLI update commands returned a non-zero exit code.';
+
+            return $results;
+        }
 
         $results['status'] = 'success';
+
         return $results;
     }
 
@@ -76,20 +95,18 @@ final class ReviveGuard_UpdateHandler
      */
     private function updateViaWordPressApi(): array
     {
-        // Load WordPress upgrader classes
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader-skin.php';
         require_once ABSPATH . 'wp-admin/includes/update.php';
         require_once ABSPATH . 'wp-includes/update.php';
 
         $results = ['method' => 'wordpress_api', 'plugins' => [], 'themes' => []];
+        $failed  = false;
 
-        // Force refresh of update data
         wp_update_plugins();
         wp_update_themes();
         wp_version_check();
 
-        // --- Plugin updates ---
         $pluginUpdates = get_site_transient('update_plugins');
         if (! empty($pluginUpdates->response) && is_array($pluginUpdates->response)) {
             foreach ($pluginUpdates->response as $pluginFile => $updateInfo) {
@@ -97,10 +114,12 @@ final class ReviveGuard_UpdateHandler
                 $upgrader = new Plugin_Upgrader($skin);
                 $result   = $upgrader->upgrade((string) $pluginFile);
                 $results['plugins'][(string) $pluginFile] = $result ? 'updated' : 'failed';
+                if (! $result) {
+                    $failed = true;
+                }
             }
         }
 
-        // --- Theme updates ---
         $themeUpdates = get_site_transient('update_themes');
         if (! empty($themeUpdates->response) && is_array($themeUpdates->response)) {
             foreach (array_keys($themeUpdates->response) as $themeSlug) {
@@ -108,10 +127,21 @@ final class ReviveGuard_UpdateHandler
                 $upgrader = new Theme_Upgrader($skin);
                 $result   = $upgrader->upgrade((string) $themeSlug);
                 $results['themes'][(string) $themeSlug] = $result ? 'updated' : 'failed';
+                if (! $result) {
+                    $failed = true;
+                }
             }
         }
 
+        if ($failed) {
+            $results['status'] = 'failed';
+            $results['error']  = 'One or more plugin or theme updates failed.';
+
+            return $results;
+        }
+
         $results['status'] = 'success';
+
         return $results;
     }
 
@@ -120,6 +150,7 @@ final class ReviveGuard_UpdateHandler
         $output   = [];
         $exitCode = 0;
         exec('which wp 2>/dev/null', $output, $exitCode);
+
         return $exitCode === 0 && ! empty($output);
     }
 }

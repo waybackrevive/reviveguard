@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — ReviveGuard managed WordPress protection</title>
+  <meta name="description" content="Monitor $49, Guard $99, Shield $179 per site/month. Uptime checks every 5 minutes, cloud backups, WordPress updates, monthly PDF reports.">
+  <link rel="canonical" href="https://reviveguard.com/pricing/">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
+
+<header class="nav nav--light is-scrolled" role="banner">
+  <div class="container nav__inner">
+    <a href="/" class="nav__logo"><span class="nav__dot"></span> Revive<span>Guard</span></a>
+    <nav class="nav__links"><a href="/#how-it-works">How it works</a><a href="/pricing/">Pricing</a><a href="/for-alumni/">Alumni</a><a href="/about/">About</a><a href="/contact/">Contact</a></nav>
+    <div class="nav__actions"><a href="https://app.reviveguard.com/portal/login" class="btn btn--ghost">Log in</a><a href="https://app.reviveguard.com/evaluate" class="btn btn--primary">Get evaluation</a></div>
+    <button class="nav__toggle" type="button" aria-label="Menu"><i data-lucide="menu" width="24"></i></button>
+  </div>
+</header>
+
+<main>
+  <section class="page-hero">
+    <div class="container">
+      <p class="eyebrow">Pricing</p>
+      <h1>Per site. Per month.</h1>
+      <p class="lead" style="color:var(--text-muted-dark)">No setup fees. No "contact us for pricing." Pick a plan, pass an evaluation, and we start watching your sites.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="pricing-grid">
+        <article class="plan" id="plan-monitor">
+          <div class="plan__name">Monitor</div>
+          <div class="plan__price">$49<span>/mo per site</span></div>
+          <p class="plan__desc">Monitoring and monthly backups. You handle updates yourself.</p>
+          <ul class="plan__features">
+            <li><i data-lucide="check" width="16"></i> Uptime every 5 minutes</li>
+            <li><i data-lucide="check" width="16"></i> Monthly backup · 30-day retention</li>
+            <li><i data-lucide="check" width="16"></i> SSL &amp; domain alerts (60/30/7 days)</li>
+            <li><i data-lucide="check" width="16"></i> Client portal + monthly PDF report</li>
+          </ul>
+          <a href="https://app.reviveguard.com/evaluate" class="btn btn--outline" style="width:100%">Request evaluation</a>
+        </article>
+        <article class="plan plan--featured" id="plan-guard">
+          <span class="plan__badge">Most chosen</span>
+          <div class="plan__name">Guard</div>
+          <div class="plan__price">$99<span>/mo per site</span></div>
+          <p class="plan__desc">Daily backups and managed WordPress updates. What most agencies need.</p>
+          <ul class="plan__features">
+            <li><i data-lucide="check" width="16"></i> Everything in Monitor</li>
+            <li><i data-lucide="check" width="16"></i> Daily backup · 90-day retention</li>
+            <li><i data-lucide="check" width="16"></i> WordPress core &amp; plugin updates</li>
+            <li><i data-lucide="check" width="16"></i> Support tickets included</li>
+          </ul>
+          <a href="https://app.reviveguard.com/evaluate" class="btn btn--primary" style="width:100%">Request evaluation</a>
+        </article>
+        <article class="plan" id="plan-shield">
+          <div class="plan__name">Shield</div>
+          <div class="plan__price">$179<span>/mo per site</span></div>
+          <p class="plan__desc">For revenue-critical sites that need priority response and longer backup history.</p>
+          <ul class="plan__features">
+            <li><i data-lucide="check" width="16"></i> Everything in Guard</li>
+            <li><i data-lucide="check" width="16"></i> Daily backup · 180-day retention</li>
+            <li><i data-lucide="check" width="16"></i> Priority support queue</li>
+          </ul>
+          <a href="https://app.reviveguard.com/evaluate" class="btn btn--outline" style="width:100%">Request evaluation</a>
+        </article>
+      </div>
+
+      <div class="section__head" style="margin-top:5rem">
+        <h2>Add-ons for active clients</h2>
+        <p class="lead">One-time and recurring extras. Available after you're onboarded.</p>
+      </div>
+      <div class="grid-3">
+        <div class="card"><h3>Emergency restore</h3><p>$99 one-time — full restore from backup when something goes wrong.</p></div>
+        <div class="card"><h3>Malware cleanup</h3><p>$149 one-time — infected site cleaned and hardened.</p></div>
+        <div class="card"><h3>Speed audit</h3><p>$99 one-time — performance report with specific fixes.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="container">
+      <h2>Not sure which plan fits?</h2>
+      <p>Request an evaluation. We look at your sites and recommend a plan — no obligation.</p>
+      <a href="https://app.reviveguard.com/evaluate" class="btn btn--primary btn--lg">Request free evaluation</a>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container footer__bottom" style="border:none;padding:0">
+    <span>© <span id="year"></span> ReviveGuard / WaybackRevive LLC</span>
+    <div class="footer__bottom-links"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/refund/">Refund</a></div>
+  </div>
+</footer>
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/assets/js/site.js"></script>
+</body>
+</html>

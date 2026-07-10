@@ -58,7 +58,46 @@ class PlanCatalogTest extends TestCase
         $gains = PlanCatalog::upgradeGains($monitor, $guard);
 
         $this->assertNotEmpty($gains);
-        $this->assertStringContainsString('Daily backups', implode(' ', $gains));
+        $joined = implode(' ', $gains);
+        $this->assertStringContainsString('Weekly backups', $joined);
+        $this->assertStringContainsString('malware', strtolower($joined));
+    }
+
+    /** @test */
+    public function guard_to_shield_upgrade_mentions_sla_and_content_hours(): void
+    {
+        $guard  = new Plan(['slug' => 'guard']);
+        $shield = new Plan(['slug' => 'shield']);
+
+        $gains = PlanCatalog::upgradeGains($guard, $shield);
+        $joined = implode(' ', $gains);
+
+        $this->assertStringContainsString('SLA', $joined);
+        $this->assertStringContainsString('content edits', strtolower($joined));
+    }
+
+    /** @test */
+    public function comparison_rows_include_security_features(): void
+    {
+        $rows = collect(PlanCatalog::comparisonRows());
+        $labels = $rows->pluck('label')->all();
+
+        $this->assertContains('Malware / integrity scan', $labels);
+        $this->assertContains('Broken link audit', $labels);
+        $this->assertContains('Emergency restore SLA', $labels);
+
+        $malware = $rows->firstWhere('label', 'Malware / integrity scan');
+        $this->assertSame('—', $malware['monitor']);
+        $this->assertSame('Weekly', $malware['guard']);
+    }
+
+    /** @test */
+    public function client_activity_action_labels_are_plain_english(): void
+    {
+        $this->assertStringContainsString(
+            'support ticket',
+            strtolower(\App\Services\ClientActivityService::actionLabel('support_ticket_submitted')),
+        );
     }
 
     /** @test */

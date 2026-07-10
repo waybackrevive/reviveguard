@@ -6,6 +6,7 @@ use App\Enums\CommandStatus;
 use App\Enums\CommandType;
 use App\Enums\EventSeverity;
 use App\Enums\SiteStatus;
+use App\Models\Backup;
 use App\Models\Client;
 use App\Models\Event;
 use App\Models\Plan;
@@ -90,6 +91,65 @@ class AgentEndpointsTest extends TestCase
         $this->assertNotNull($command->completed_at);
     }
 
+    public function test_command_result_creates_backup_record_on_success(): void
+    {
+        $command = SiteCommand::create([
+            'tenant_id' => $this->site->tenant_id,
+            'site_id'   => $this->site->id,
+            'type'      => CommandType::RUN_BACKUP,
+            'status'    => CommandStatus::SENT,
+            'params'    => ['trigger' => 'manual'],
+            'queued_at' => now(),
+            'sent_at'   => now(),
+        ]);
+
+        $response = $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/command-result', [
+                'command_id' => $command->id,
+                'status'     => 'success',
+                'result'     => [
+                    'b2_path'      => 'reviveguard-backups/site/backup.tar.gz',
+                    'file_size_mb' => 12.5,
+                    'checksum'     => 'sha256:abc123def456',
+                ],
+            ]);
+
+        $response->assertStatus(200);
+
+        $backup = Backup::where('site_id', $this->site->id)->first();
+        $this->assertNotNull($backup);
+        $this->assertSame('success', $backup->status->value);
+        $this->assertSame('manual', $backup->type);
+        $this->assertSame('abc123def456', $backup->checksum_sha256);
+
+        $this->assertDatabaseHas('events', [
+            'site_id' => $this->site->id,
+            'type'    => 'backup_complete',
+        ]);
+    }
+
+    public function test_command_result_is_idempotent_when_already_completed(): void
+    {
+        $command = SiteCommand::create([
+            'tenant_id'    => $this->site->tenant_id,
+            'site_id'      => $this->site->id,
+            'type'         => CommandType::RUN_BACKUP,
+            'status'       => CommandStatus::SUCCESS,
+            'params'       => [],
+            'queued_at'    => now(),
+            'completed_at' => now()->subMinute(),
+        ]);
+
+        $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/command-result', [
+                'command_id' => $command->id,
+                'status'     => 'success',
+            ])
+            ->assertStatus(200);
+
+        $this->assertSame(0, Backup::where('site_id', $this->site->id)->count());
+    }
+
     public function test_command_result_marks_failed_with_error(): void
     {
         $command = SiteCommand::create([
@@ -113,6 +173,150 @@ class AgentEndpointsTest extends TestCase
         $command->refresh();
         $this->assertEquals(CommandStatus::FAILED, $command->status);
         $this->assertEquals('Disk full', $command->error_message);
+
+        $this->assertDatabaseHas('events', [
+            'site_id' => $this->site->id,
+            'type'    => 'backup_failed',
+        ]);
+
+        $backup = Backup::where('site_id', $this->site->id)->first();
+        $this->assertNotNull($backup);
+        $this->assertSame('failed', $backup->status->value);
+    }
+
+    public function test_command_result_malware_scan_clean_creates_complete_event(): void
+    {
+        $command = SiteCommand::create([
+            'tenant_id' => $this->site->tenant_id,
+            'site_id'   => $this->site->id,
+            'type'      => CommandType::RUN_MALWARE_SCAN,
+            'status'    => CommandStatus::SENT,
+            'params'    => ['trigger' => 'manual'],
+            'queued_at' => now(),
+        ]);
+
+        $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/command-result', [
+                'command_id' => $command->id,
+                'status'     => 'success',
+                'result'     => [
+                    'scan_type' => 'wordpress',
+                    'findings'  => [],
+                    'summary'   => ['critical_count' => 0, 'warning_count' => 0, 'clean' => true],
+                ],
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('events', [
+            'site_id' => $this->site->id,
+            'type'    => 'malware_scan_complete',
+        ]);
+    }
+
+    public function test_command_result_update_failure_queues_rollback_when_pre_update_backup_exists(): void
+    {
+        $backup = Backup::create([
+            'tenant_id'    => $this->site->tenant_id,
+            'site_id'      => $this->site->id,
+            'status'       => \App\Enums\BackupStatus::SUCCESS,
+            'type'         => 'pre_update',
+            'b2_file_key'  => 'reviveguard-backups/test/backup.tar.gz',
+            'b2_bucket'    => 'test-bucket',
+            'completed_at' => now()->subHour(),
+        ]);
+
+        $command = SiteCommand::create([
+            'tenant_id' => $this->site->tenant_id,
+            'site_id'   => $this->site->id,
+            'type'      => CommandType::RUN_WP_UPDATES,
+            'status'    => CommandStatus::SENT,
+            'params'    => ['trigger' => 'manual'],
+            'queued_at' => now(),
+        ]);
+
+        $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/command-result', [
+                'command_id' => $command->id,
+                'status'     => 'failed',
+                'error'      => 'Plugin conflict',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('events', [
+            'site_id' => $this->site->id,
+            'type'    => 'update_failed',
+        ]);
+
+        $this->assertDatabaseHas('site_commands', [
+            'site_id' => $this->site->id,
+            'type'    => 'rollback_restore',
+            'status'  => 'pending',
+        ]);
+
+        $rollback = SiteCommand::where('site_id', $this->site->id)
+            ->where('type', CommandType::ROLLBACK_RESTORE)
+            ->first();
+
+        $this->assertNotNull($rollback);
+        $this->assertSame($backup->b2_file_key, $rollback->params['b2_path'] ?? null);
+    }
+
+    public function test_command_result_deferred_update_queues_pre_update_backup(): void
+    {
+        $command = SiteCommand::create([
+            'tenant_id' => $this->site->tenant_id,
+            'site_id'   => $this->site->id,
+            'type'      => CommandType::RUN_WP_UPDATES,
+            'status'    => CommandStatus::SENT,
+            'params'    => ['trigger' => 'scheduled'],
+            'queued_at' => now(),
+        ]);
+
+        $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/command-result', [
+                'command_id' => $command->id,
+                'status'     => 'success',
+                'result'     => [
+                    'status' => 'deferred',
+                    'reason' => 'No backup in last 24 hours',
+                ],
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('site_commands', [
+            'site_id' => $this->site->id,
+            'type'    => 'run_backup',
+            'status'  => 'pending',
+        ]);
+    }
+
+    public function test_command_result_rollback_success_creates_event(): void
+    {
+        $command = SiteCommand::create([
+            'tenant_id' => $this->site->tenant_id,
+            'site_id'   => $this->site->id,
+            'type'      => CommandType::ROLLBACK_RESTORE,
+            'status'    => CommandStatus::SENT,
+            'params'    => [
+                'trigger'   => 'auto',
+                'b2_path'   => 'reviveguard-backups/test/backup.tar.gz',
+                'b2_bucket' => 'test-bucket',
+            ],
+            'queued_at' => now(),
+        ]);
+
+        $this->withToken($this->rawToken)
+            ->postJson('/api/v1/agent/command-result', [
+                'command_id' => $command->id,
+                'status'     => 'success',
+                'result'     => ['status' => 'success', 'message' => 'Restored'],
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('events', [
+            'site_id' => $this->site->id,
+            'type'    => 'rollback_complete',
+        ]);
     }
 
     public function test_command_result_404_for_wrong_site(): void
