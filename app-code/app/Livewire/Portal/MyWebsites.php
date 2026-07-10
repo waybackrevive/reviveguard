@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Services\StripeBillingService;
 use App\Services\WordPressSsoService;
 use App\Support\StripeConfig;
+use App\Services\ContentHoursService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -152,7 +153,12 @@ class MyWebsites extends Component
             'issues'    => $sites->filter(fn ($s) => in_array($s->portalStatusKey(), ['issue', 'warning']))->count(),
         ];
 
-        return view('livewire.portal.my-websites', compact('sites', 'client', 'summary'))
+        $client->loadMissing('accountManager');
+        $shieldPlan = $client->bestSupportPlan();
+        $isShield   = optional($shieldPlan)->slug === 'shield';
+        $contentHours = $isShield ? app(ContentHoursService::class)->remainingMinutes($client) : null;
+
+        return view('livewire.portal.my-websites', compact('sites', 'client', 'summary', 'isShield', 'contentHours'))
             ->layout('portal.layouts.app');
     }
 }

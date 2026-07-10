@@ -13,6 +13,7 @@ use App\Services\WordPressSsoService;
 use App\Support\ClientTimezone;
 use App\Support\MonitorSettings;
 use App\Support\PlanCatalog;
+use App\Support\PlanFeatures;
 use App\Support\SiteUptimeChart;
 use App\Support\StripeConfig;
 use Illuminate\Support\Facades\Auth;
@@ -424,6 +425,24 @@ class SiteShow extends Component
         $plans = Plan::where('is_active', true)->orderBy('price_monthly')->get();
         $planChangeModal = [];
 
+        $planFeatures = PlanFeatures::for($this->site->plan);
+        $showSecurityTab = $planFeatures->canMalwareScan() || $planFeatures->canBrokenLinkAudit();
+
+        $lastMalwareScan = null;
+        $lastLinkAudit   = null;
+
+        if ($showSecurityTab) {
+            $lastMalwareScan = $this->site->events()
+                ->whereIn('type', ['malware_scan_complete', 'malware_scan_alert', 'malware_scan_failed'])
+                ->latest()
+                ->first();
+
+            $lastLinkAudit = $this->site->events()
+                ->whereIn('type', ['broken_link_audit_complete', 'broken_link_audit_failed'])
+                ->latest()
+                ->first();
+        }
+
         if ($this->showPlanChangeModal && $this->planChangePlanSlug && $this->site->plan) {
             $toPlan = $plans->firstWhere('slug', $this->planChangePlanSlug);
 
@@ -458,6 +477,10 @@ class SiteShow extends Component
             'allowedRegions'   => $allowedRegions,
             'clientTimezoneLabel' => $clientTimezoneLabel,
             'portalClient'        => $portalClient,
+            'showSecurityTab'       => $showSecurityTab,
+            'planFeatures'          => $planFeatures,
+            'lastMalwareScan'       => $lastMalwareScan,
+            'lastLinkAudit'         => $lastLinkAudit,
         ])->layout('portal.layouts.app');
     }
 }

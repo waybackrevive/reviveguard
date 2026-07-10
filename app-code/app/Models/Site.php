@@ -344,4 +344,53 @@ class Site extends Model
     {
         return (bool) $this->monitoring_paused;
     }
+
+    /**
+     * Restore readiness for portal display.
+     *
+     * @return array{status: string, label: string, detail: string}
+     */
+    public function restoreReadiness(): array
+    {
+        if (! $this->hasAgentConnected()) {
+            return [
+                'status' => 'no_agent',
+                'label'  => 'Plugin required',
+                'detail' => 'Install the agent to enable cloud backups.',
+            ];
+        }
+
+        $features = \App\Support\PlanFeatures::forSite($this);
+        $latest   = $this->backups()
+            ->where('status', \App\Enums\BackupStatus::SUCCESS)
+            ->orderByDesc('completed_at')
+            ->first();
+
+        if (! $latest?->completed_at) {
+            return [
+                'status' => 'pending',
+                'label'  => 'First backup scheduled',
+                'detail' => 'Your first automated backup will run within the next cycle.',
+            ];
+        }
+
+        $ageDays = (int) $latest->completed_at->diffInDays(now());
+        $maxAge  = $features->restoreReadinessMaxAgeDays();
+
+        if ($ageDays <= $maxAge) {
+            $verified = filled($latest->checksum_sha256);
+
+            return [
+                'status' => 'ready',
+                'label'  => $verified ? 'Restore ready ✓' : 'Backup on file',
+                'detail' => 'Last verified backup '.$latest->completed_at->diffForHumans().'.',
+            ];
+        }
+
+        return [
+            'status' => 'stale',
+            'label'  => 'Backup overdue',
+            'detail' => 'Last successful backup was '.$latest->completed_at->diffForHumans().'. Our team has been notified.',
+        ];
+    }
 }

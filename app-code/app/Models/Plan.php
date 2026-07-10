@@ -50,7 +50,14 @@ class Plan extends Model
 
     public function getBackupFrequencyAttribute(): string
     {
-        return $this->features['backup_frequency'] ?? 'monthly';
+        return $this->features['backup_frequency'] ?? 'twice_monthly';
+    }
+
+    public function getBackupsPerMonthAttribute(): ?int
+    {
+        $value = $this->features['backups_per_month'] ?? null;
+
+        return $value !== null ? (int) $value : null;
     }
 
     public function getRetentionDaysAttribute(): int
@@ -66,8 +73,8 @@ class Plan extends Model
     public function portalSummary(): string
     {
         return match ($this->slug) {
-            'monitor' => 'Uptime & SSL monitoring, monthly backups, unlimited email support',
-            'guard'   => 'Daily backups, WP updates handled for you — best for most sites',
+            'monitor' => 'Uptime & SSL monitoring, 2× monthly backups, unlimited email support',
+            'guard'   => 'Weekly backups, WP updates handled for you — best for most sites',
             'shield'  => 'Priority support, extended backup retention, full hands-off care',
             default   => '',
         };

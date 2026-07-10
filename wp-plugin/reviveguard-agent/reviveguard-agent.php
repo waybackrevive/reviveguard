@@ -24,6 +24,8 @@ require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-plugin-inventory.php';
 require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-command-runner.php';
 require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-backup-handler.php';
 require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-update-handler.php';
+require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-restore-handler.php';
+require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-malware-scan-handler.php';
 require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-heartbeat.php';
 require_once REVIVEGUARD_PLUGIN_DIR . 'includes/class-sso-login.php';
 

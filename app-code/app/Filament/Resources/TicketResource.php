@@ -3,10 +3,11 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TicketResource\Pages;
+use App\Enums\TicketType;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\Ticket;
-use App\Services\NotificationService;
+use App\Services\TicketSlaService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -64,6 +65,11 @@ class TicketResource extends Resource
 
             Forms\Components\Section::make('Your Reply')
                 ->schema([
+                    Forms\Components\Select::make('type')
+                        ->label('Ticket type')
+                        ->options(TicketType::options())
+                        ->required(),
+
                     Forms\Components\Select::make('status')
                         ->options([
                             'open'        => 'Open',
@@ -76,10 +82,27 @@ class TicketResource extends Resource
                     Forms\Components\Select::make('priority')
                         ->options([
                             'low'    => 'Low',
+                            'normal' => 'Normal',
                             'medium' => 'Medium',
                             'high'   => 'High',
+                            'urgent' => 'Urgent',
                         ])
                         ->default('medium'),
+
+                    Forms\Components\Placeholder::make('sla_due_at_display')
+                        ->label('SLA due')
+                        ->content(fn (?Ticket $record) => $record?->sla_due_at
+                            ? $record->sla_due_at->format('M j, Y g:i A T')
+                            : '—')
+                        ->visible(fn (?Ticket $record) => $record?->sla_due_at !== null),
+
+                    Forms\Components\TextInput::make('minutes_billed')
+                        ->label('Content minutes billed')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(480)
+                        ->helperText('Deducted from client allowance when ticket is resolved/closed.')
+                        ->visible(fn (Forms\Get $get) => $get('type') === TicketType::CONTENT_EDIT->value),
 
                     Forms\Components\Textarea::make('admin_reply')
                         ->label('Reply to Client')
@@ -119,6 +142,18 @@ class TicketResource extends Resource
                         'gray'    => 'closed',
                     ])
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Type')
+                    ->formatStateUsing(fn (?string $state) => TicketType::tryFrom((string) $state)?->label() ?? $state)
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('sla_due_at')
+                    ->label('SLA')
+                    ->since()
+                    ->color(fn (Ticket $record) => app(TicketSlaService::class)->isBreached($record) ? 'danger' : 'warning')
+                    ->placeholder('—')
+                    ->toggleable(),
 
                 Tables\Columns\BadgeColumn::make('priority')
                     ->colors([
@@ -183,20 +218,7 @@ class TicketResource extends Resource
                         : null)
                     ->visible(fn (Ticket $record) => $record->site_id !== null),
 
-                Tables\Actions\EditAction::make()
-                    ->after(function (Ticket $record, array $data): void {
-                        // Send notification if a reply was just added or updated
-                        if (! empty($data['admin_reply'])) {
-                            $record->update([
-                                'replied_at' => $record->replied_at ?? now(),
-                            ]);
-                            try {
-                                (new NotificationService())->sendTicketReplied($record->fresh());
-                            } catch (\Throwable $e) {
-                                \Illuminate\Support\Facades\Log::error('TicketResource: sendTicketReplied failed', ['error' => $e->getMessage()]);
-                            }
-                        }
-                    }),
+                Tables\Actions\EditAction::make(),
             ]);
     }
 

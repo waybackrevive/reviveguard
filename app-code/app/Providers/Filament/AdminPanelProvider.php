@@ -53,6 +53,8 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 \App\Filament\Widgets\NeedsAttentionWidget::class,
+                \App\Filament\Widgets\SlaAtRiskWidget::class,
+                \App\Filament\Widgets\MaintenanceDueWidget::class,
                 \App\Filament\Widgets\SiteHealthOverview::class,
                 \App\Filament\Widgets\SiteEventsChart::class,
                 \App\Filament\Widgets\ClientActivityChart::class,

@@ -180,7 +180,122 @@
   <p class="no-data">No events recorded this month — your site ran smoothly.</p>
   @endif
 
-  {{-- Plugin Updates --}}
+  {{-- WordPress Updates --}}
+  @if (isset($updateEvents) && count($updateEvents) > 0)
+  <h2>WordPress Updates Applied</h2>
+  <table class="events-table" style="margin-bottom:32px;">
+    <thead>
+      <tr><th>Date</th><th>Summary</th></tr>
+    </thead>
+    <tbody>
+      @foreach ($updateEvents as $event)
+      <tr>
+        <td>{{ \Carbon\Carbon::parse($event->created_at)->format('M j') }}</td>
+        <td>{{ $event->message ?? $event->title }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Rollbacks --}}
+  @if (isset($rollbackEvents) && count($rollbackEvents) > 0)
+  <h2>Rollback Activity</h2>
+  <table class="events-table" style="margin-bottom:32px;">
+    <thead>
+      <tr><th>Date</th><th>Event</th></tr>
+    </thead>
+    <tbody>
+      @foreach ($rollbackEvents as $event)
+      <tr>
+        <td>{{ \Carbon\Carbon::parse($event->created_at)->format('M j') }}</td>
+        <td>{{ $event->title }}@if($event->message) — {{ $event->message }}@endif</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Security scans --}}
+  @if (isset($malwareScanEvents) && count($malwareScanEvents) > 0)
+  <h2>Malware Scans</h2>
+  <table class="info-table" style="margin-bottom:16px;">
+    <tr>
+      <td>Scans this month</td>
+      <td>{{ count($malwareScanEvents) }}</td>
+    </tr>
+    <tr>
+      <td>Alerts raised</td>
+      <td>{{ $malwareAlerts ?? 0 }}</td>
+    </tr>
+  </table>
+  <table class="events-table" style="margin-bottom:32px;">
+    <thead>
+      <tr><th>Date</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      @foreach ($malwareScanEvents as $event)
+      <tr>
+        <td>{{ \Carbon\Carbon::parse($event->created_at)->format('M j') }}</td>
+        <td>{{ $event->title }}@if($event->message) — {{ $event->message }}@endif</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Broken links --}}
+  @if (isset($linkAuditEvents) && count($linkAuditEvents) > 0)
+  <h2>Broken Link Audits</h2>
+  <table class="info-table" style="margin-bottom:16px;">
+    <tr>
+      <td>Audits this month</td>
+      <td>{{ count($linkAuditEvents) }}</td>
+    </tr>
+    <tr>
+      <td>Broken links found (total)</td>
+      <td>{{ $brokenLinksTotal ?? 0 }}</td>
+    </tr>
+  </table>
+  <table class="events-table" style="margin-bottom:32px;">
+    <thead>
+      <tr><th>Date</th><th>Summary</th></tr>
+    </thead>
+    <tbody>
+      @foreach ($linkAuditEvents as $event)
+      <tr>
+        <td>{{ \Carbon\Carbon::parse($event->created_at)->format('M j') }}</td>
+        <td>{{ $event->title }}@if($event->message) — {{ $event->message }}@endif</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Quarterly Shield audits --}}
+  @if (! empty($quarterlySecurity))
+  <h2>Quarterly Security Audit</h2>
+  <table class="info-table" style="margin-bottom:32px;">
+    <tr><td>Date</td><td>{{ \Carbon\Carbon::parse($quarterlySecurity->created_at)->format('M j, Y') }}</td></tr>
+    <tr><td>Result</td><td>{{ $quarterlySecurity->title }} — {{ $quarterlySecurity->message }}</td></tr>
+    @if (! empty($quarterlySecurity->metadata['risk_level']))
+    <tr><td>Risk level</td><td>{{ ucfirst($quarterlySecurity->metadata['risk_level']) }}</td></tr>
+    @endif
+  </table>
+  @endif
+
+  @if (! empty($quarterlySeo))
+  <h2>Quarterly SEO Snapshot</h2>
+  <table class="info-table" style="margin-bottom:32px;">
+    <tr><td>Date</td><td>{{ \Carbon\Carbon::parse($quarterlySeo->created_at)->format('M j, Y') }}</td></tr>
+    <tr><td>Summary</td><td>{{ $quarterlySeo->message }}</td></tr>
+    @if (! empty($quarterlySeo->metadata['pages_crawled']))
+    <tr><td>Pages crawled</td><td>{{ $quarterlySeo->metadata['pages_crawled'] }}</td></tr>
+    @endif
+  </table>
+  @endif
+
+  {{-- Legacy plugin list --}}
   @if (count($updatedPlugins) > 0)
   <h2>Plugin Updates Applied</h2>
   <ul class="updates-list">

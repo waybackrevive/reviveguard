@@ -98,13 +98,14 @@ class Dashboard extends Component
         $summaryNoBackup   = 0; // computed per-site in blade (keep render lean)
 
         return view('livewire.portal.dashboard', [
-            'client'        => $client,
-            'allSites'      => $allSites,
-            'site'          => $site,
-            'lastBackup'    => $lastBackup,
-            'recentEvents'  => $recentEvents,
-            'summaryDown'   => $summaryDown,
-            'summarySslSoon'=> $summarySslSoon,
+            'client'           => $client,
+            'allSites'         => $allSites,
+            'site'             => $site,
+            'lastBackup'       => $lastBackup,
+            'recentEvents'     => $recentEvents,
+            'summaryDown'      => $summaryDown,
+            'summarySslSoon'   => $summarySslSoon,
+            'restoreReadiness' => $site?->restoreReadiness(),
         ])->layout('portal.layouts.app');
     }
 }

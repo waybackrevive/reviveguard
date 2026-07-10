@@ -36,6 +36,8 @@ class EnumsTest extends TestCase
     {
         $this->assertSame('run_backup', CommandType::RUN_BACKUP->value);
         $this->assertSame('run_wp_updates', CommandType::RUN_WP_UPDATES->value);
+        $this->assertSame('rollback_restore', CommandType::ROLLBACK_RESTORE->value);
+        $this->assertSame('run_malware_scan', CommandType::RUN_MALWARE_SCAN->value);
     }
 
     public function test_command_status_flow(): void

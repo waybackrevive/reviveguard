@@ -266,6 +266,32 @@
         </div>
     @endif
 
+    {{-- ── Restore readiness ───────────────────────────────────────── --}}
+    @if ($site && isset($restoreReadiness))
+        @php
+            $rr = $restoreReadiness;
+            $rrColors = match ($rr['status']) {
+                'ready'    => 'border-emerald-200 bg-emerald-50/60 text-emerald-800',
+                'stale'    => 'border-amber-200 bg-amber-50/60 text-amber-800',
+                'pending'  => 'border-gray-200 bg-gray-50 text-gray-700',
+                default    => 'border-gray-200 bg-gray-50 text-gray-600',
+            };
+        @endphp
+        <div class="flex items-center gap-4 rounded-2xl border px-5 py-4 mb-6 {{ $rrColors }}">
+            <div class="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-white/80">
+                @if ($rr['status'] === 'ready')
+                    <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                @else
+                    <svg class="h-5 w-5 text-current opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                @endif
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold">{{ $rr['label'] }}</p>
+                <p class="text-xs mt-0.5 opacity-90">{{ $rr['detail'] }}</p>
+            </div>
+        </div>
+    @endif
+
     {{-- ── 5 stat cards ────────────────────────────────────────────── --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
 
@@ -323,7 +349,7 @@
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Last Backup</p>
             @if ($lastBackup)
                 <p class="text-xl font-bold text-gray-900 leading-tight">{{ $lastBackup->created_at->diffForHumans(null, true, true) }} ago</p>
-                <p class="text-xs mt-1.5 {{ $lastBackup->status->value === 'success' ? 'text-emerald-600' : 'text-red-500' }}">{{ $lastBackup->status->value === 'success' ? '✓ Successful' : '✗ '.ucfirst($lastBackup->status->value) }}@if($lastBackup->size_bytes) · {{ number_format($lastBackup->size_bytes / 1048576, 0) }} MB @endif</p>
+                <p class="text-xs mt-1.5 {{ $lastBackup->status->value === 'success' ? 'text-emerald-600' : 'text-red-500' }}">{{ $lastBackup->status->value === 'success' ? ($lastBackup->checksum_sha256 ? '✓ Verified' : '✓ Successful') : '✗ '.ucfirst($lastBackup->status->value) }}@if($lastBackup->size_bytes) · {{ number_format($lastBackup->size_bytes / 1048576, 0) }} MB @endif</p>
             @elseif ($agentConnected)
                 <p class="text-xl font-semibold text-gray-500 mt-1">Scheduled</p>
                 <p class="text-xs text-gray-400 mt-1.5">First backup tonight</p>

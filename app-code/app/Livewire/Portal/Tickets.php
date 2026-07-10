@@ -2,10 +2,13 @@
 
 namespace App\Livewire\Portal;
 
+use App\Enums\TicketType;
 use App\Livewire\Concerns\DispatchesPortalToast;
 use App\Models\Site;
 use App\Models\Ticket;
 use App\Services\ClientActivityService;
+use App\Services\ContentHoursService;
+use App\Services\TicketSlaService;
 use App\Support\SupportTier;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +22,7 @@ class Tickets extends Component
 
     public string  $subject = '';
     public string  $message = '';
+    public string  $ticketType = 'general';
     public ?string $siteId  = null;
 
     public ?Ticket $selectedTicket = null;
@@ -109,7 +113,7 @@ class Tickets extends Component
             : null;
 
         try {
-            Ticket::create([
+            $ticket = Ticket::create([
                 'tenant_id' => $client->tenant_id,
                 'client_id' => $client->id,
                 'site_id'   => $validated['siteId'],
@@ -117,7 +121,11 @@ class Tickets extends Component
                 'message'   => $validated['message'],
                 'status'    => 'open',
                 'priority'  => optional($plan)->slug === 'shield' ? 'high' : 'medium',
+                'type'      => $this->ticketType,
             ]);
+
+            $type = TicketType::tryFrom($this->ticketType) ?? TicketType::GENERAL;
+            app(TicketSlaService::class)->applyOnCreate($ticket, $client, $type);
         } catch (QueryException $e) {
             Log::warning('Portal ticket create failed', [
                 'client_id' => $client->id,
@@ -136,8 +144,12 @@ class Tickets extends Component
             ['priority' => optional($plan)->slug === 'shield' ? 'high' : 'medium'],
         );
 
-        $this->reset('subject', 'message');
-        $this->toastSuccess('Ticket submitted. ' . SupportTier::forPlan($plan)['reply_sla'] . '.');
+        $submittedType = $this->ticketType;
+        $this->reset('subject', 'message', 'ticketType');
+        $slaNote = $submittedType === TicketType::EMERGENCY_RESTORE->value && optional($plan)->slug === 'shield'
+            ? ' Emergency restore SLA: 4 hours.'
+            : '';
+        $this->toastSuccess('Ticket submitted. ' . SupportTier::forPlan($plan)['reply_sla'] . '.' . $slaNote);
     }
 
     public function showTicket(string $id): void
@@ -209,12 +221,18 @@ class Tickets extends Component
         }
 
         $plan = $client->bestSupportPlan();
+        $contentHours = app(ContentHoursService::class)->remainingMinutes($client);
+        $slaService   = app(TicketSlaService::class);
 
         return view('livewire.portal.tickets', [
-            'tickets'     => $tickets,
-            'sites'       => $sites,
-            'plan'        => $plan,
-            'supportTier' => SupportTier::forPlan($plan),
+            'tickets'       => $tickets,
+            'sites'         => $sites,
+            'plan'          => $plan,
+            'supportTier'   => SupportTier::forPlan($plan),
+            'contentHours'  => $contentHours,
+            'slaService'    => $slaService,
+            'isShield'      => optional($plan)->slug === 'shield',
+            'accountManager'=> $client->loadMissing('accountManager')->accountManager,
         ])->layout('portal.layouts.app');
     }
 }

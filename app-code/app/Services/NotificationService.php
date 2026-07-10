@@ -251,6 +251,168 @@ class NotificationService
         );
     }
 
+    public function sendUpdateFailed(Site $site, string $errorMessage): void
+    {
+        $client = $site->client;
+        if (! $this->shouldNotify($client)) {
+            return;
+        }
+
+        $siteUrl = $site->url ?? $site->name;
+
+        $this->send(
+            to: $client->email,
+            subject: "⚠ WordPress update issue — we're restoring your site — {$siteUrl}",
+            view: 'emails.update-failed',
+            data: [
+                'clientName'   => explode(' ', $client->name)[0],
+                'siteUrl'      => $siteUrl,
+                'errorMessage' => $errorMessage,
+                'dashboardUrl' => PortalUrl::to('portal/events'),
+            ],
+            type: 'update_failed',
+            siteId: $site->id,
+            clientId: $client->id,
+        );
+    }
+
+    public function sendRollbackComplete(Site $site): void
+    {
+        $client = $site->client;
+        if (! $this->shouldNotify($client)) {
+            return;
+        }
+
+        $siteUrl = $site->url ?? $site->name;
+
+        $this->send(
+            to: $client->email,
+            subject: "✓ Your site was restored from backup — {$siteUrl}",
+            view: 'emails.rollback-complete',
+            data: [
+                'clientName'   => explode(' ', $client->name)[0],
+                'siteUrl'      => $siteUrl,
+                'dashboardUrl' => PortalUrl::to('portal/dashboard'),
+            ],
+            type: 'rollback_complete',
+            siteId: $site->id,
+            clientId: $client->id,
+        );
+    }
+
+    public function sendRollbackFailed(Site $site, string $errorMessage): void
+    {
+        $client = $site->client;
+        if (! $this->shouldNotify($client)) {
+            return;
+        }
+
+        $siteUrl = $site->url ?? $site->name;
+
+        $this->send(
+            to: $client->email,
+            subject: "⚠ Urgent: rollback needs attention — {$siteUrl}",
+            view: 'emails.rollback-failed',
+            data: [
+                'clientName'   => explode(' ', $client->name)[0],
+                'siteUrl'      => $siteUrl,
+                'errorMessage' => $errorMessage,
+                'dashboardUrl' => PortalUrl::to('portal/tickets'),
+            ],
+            type: 'rollback_failed',
+            siteId: $site->id,
+            clientId: $client->id,
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $findings
+     */
+    public function sendMalwareScanAlert(Site $site, array $findings, int $criticalCount, int $warningCount): void
+    {
+        $client = $site->client;
+        if (! $this->shouldNotify($client)) {
+            return;
+        }
+
+        $siteUrl = $site->url ?? $site->name;
+
+        $this->send(
+            to: $client->email,
+            subject: $criticalCount > 0
+                ? "⚠ Security alert: malware scan findings — {$siteUrl}"
+                : "Security notice: malware scan warnings — {$siteUrl}",
+            view: 'emails.malware-scan-alert',
+            data: [
+                'clientName'    => explode(' ', $client->name)[0],
+                'siteUrl'       => $siteUrl,
+                'criticalCount' => $criticalCount,
+                'warningCount'  => $warningCount,
+                'findings'      => array_slice($findings, 0, 5),
+                'dashboardUrl'  => PortalUrl::to('portal/sites/'.$site->id.'?tab=security'),
+                'ticketsUrl'    => PortalUrl::to('portal/tickets'),
+            ],
+            type: 'malware_scan_alert',
+            siteId: $site->id,
+            clientId: $client->id,
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $samples
+     */
+    public function sendBrokenLinkAuditAlert(Site $site, int $brokenCount, array $samples): void
+    {
+        $client = $site->client;
+        if (! $this->shouldNotify($client)) {
+            return;
+        }
+
+        $siteUrl = $site->url ?? $site->name;
+
+        $this->send(
+            to: $client->email,
+            subject: "Broken links found on your site — {$siteUrl}",
+            view: 'emails.broken-link-audit',
+            data: [
+                'clientName'   => explode(' ', $client->name)[0],
+                'siteUrl'      => $siteUrl,
+                'brokenCount'  => $brokenCount,
+                'samples'      => array_slice($samples, 0, 5),
+                'dashboardUrl' => PortalUrl::to('portal/sites/'.$site->id.'?tab=security'),
+                'ticketsUrl'   => PortalUrl::to('portal/tickets'),
+            ],
+            type: 'broken_link_audit',
+            siteId: $site->id,
+            clientId: $client->id,
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $findings
+     */
+    public function sendAdminSecurityAlert(string $adminEmail, Site $site, string $kind, array $findings): void
+    {
+        $siteUrl = $site->url ?? $site->name;
+        $label   = $kind === 'malware' ? 'Malware scan' : 'Broken link audit';
+
+        $this->send(
+            to: $adminEmail,
+            subject: "[Ops] {$label} alert — {$siteUrl}",
+            view: 'emails.admin-security-alert',
+            data: [
+                'siteUrl'   => $siteUrl,
+                'siteName'  => $site->name,
+                'kind'      => $label,
+                'findings'  => array_slice($findings, 0, 8),
+                'adminUrl'  => url('/admin/sites/'.$site->id.'/edit'),
+            ],
+            type: 'admin_security_alert',
+            clientId: $site->client_id,
+            siteId: $site->id,
+        );
+    }
+
     // ── Onboarding ────────────────────────────────────────────────────────────
 
     /**

@@ -5,6 +5,7 @@ namespace App\Livewire\Portal;
 use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\Site;
+use App\Support\PlanFeatures;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -50,14 +51,12 @@ class Backups extends Component
             $backups = collect();
         }
 
-        // Plan-based retention copy from the subscription
-        $plan = optional($client->activeSubscription)->plan;
+        // Plan-based retention copy — use best paid plan across sites (not legacy single subscription)
+        $plan = $client->bestSupportPlan();
 
-        $retentionCopy = match (optional($plan)->slug) {
-            'guard'  => 'Your site is backed up weekly. Files are kept for 90 days.',
-            'shield' => 'Your site is backed up daily. Files are kept for 180 days.',
-            default  => 'Your site is backed up monthly. Files are kept for 30 days.',
-        };
+        $retentionCopy = $plan
+            ? PlanFeatures::for($plan)->portalRetentionCopy()
+            : 'Your backup schedule depends on your plan.';
 
         return view('livewire.portal.backups', [
             'backups'       => $backups,

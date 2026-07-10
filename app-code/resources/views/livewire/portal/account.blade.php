@@ -107,7 +107,7 @@
         </div>
 
         {{-- Active subscriptions --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-start justify-between gap-4 mb-4">
                 <div>
                     <h2 class="text-base font-semibold text-gray-900">Your subscriptions</h2>
@@ -331,7 +331,7 @@
                     </div>
                 </div>
                 @endif
-            @endif
+        @endif
         @endforeach
     </div>
     @endif

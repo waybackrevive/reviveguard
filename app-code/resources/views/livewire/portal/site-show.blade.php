@@ -76,15 +76,23 @@
 
     {{-- Sub-nav tabs --}}
     <div class="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
-        @foreach ([
-            'overview' => 'Overview',
-            'monitoring' => 'Monitoring',
-            'activity' => 'Activity',
-            'backups' => 'Backups',
-            'reports' => 'Reports',
-            'connection' => 'Connection',
-            'plan' => 'Plan',
-        ] as $key => $label)
+        @php
+            $tabs = [
+                'overview' => 'Overview',
+                'monitoring' => 'Monitoring',
+                'activity' => 'Activity',
+                'backups' => 'Backups',
+            ];
+            if ($showSecurityTab ?? false) {
+                $tabs['security'] = 'Security & links';
+            }
+            $tabs += [
+                'reports' => 'Reports',
+                'connection' => 'Connection',
+                'plan' => 'Plan',
+            ];
+        @endphp
+        @foreach ($tabs as $key => $label)
             <button wire:click="setTab('{{ $key }}')"
                 class="px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors
                     {{ $tab === $key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -149,7 +157,14 @@
                 @forelse ($overviewEvents as $event)
                     <li class="px-5 py-3 text-sm">
                         <p class="font-medium text-gray-800">{{ $event->title }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5">{{ $event->created_at->diffForHumans() }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            @if ($event->type === 'client_action' && ! empty($event->metadata['action']))
+                                {{ \App\Services\ClientActivityService::actionLabel((string) $event->metadata['action']) }} ·
+                            @elseif ($event->type !== 'client_action')
+                                {{ $event->typeLabel() }} ·
+                            @endif
+                            {{ $event->created_at->diffForHumans() }}
+                        </p>
                     </li>
                 @empty
                     <li class="px-5 py-8 text-center text-sm text-gray-500">No notable activity yet. Your site is running smoothly.</li>
@@ -330,6 +345,11 @@
                         @endif
                         <div class="min-w-0 flex-1">
                             <p class="font-medium text-gray-800">{{ $event->title }}</p>
+                            @if ($event->type === 'client_action' && ! empty($event->metadata['action']))
+                                <p class="text-xs text-violet-600 mt-0.5">{{ \App\Services\ClientActivityService::actionLabel((string) $event->metadata['action']) }}</p>
+                            @elseif ($event->type !== 'client_action')
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $event->typeLabel() }}</p>
+                            @endif
                             @if ($event->message)
                                 <p class="text-gray-600 mt-0.5">{{ $event->message }}</p>
                             @endif
@@ -347,7 +367,7 @@
     @if ($tab === 'backups')
         @if ($site->hasPaidSubscription())
             <p class="text-sm text-gray-500 mb-4">
-                Backups run on your {{ $site->plan?->name ?? 'plan' }} schedule.
+                {{ \App\Support\PlanFeatures::for($site->plan)->portalRetentionCopy() }}
                 @if ($latestBackup?->completed_at)
                     Last completed {{ $latestBackup->completed_at->diffForHumans() }}.
                 @else
@@ -388,6 +408,90 @@
             @endif
         </div>
         <p class="text-sm text-gray-500">Need a restore? <a href="{{ route('portal.tickets') }}" class="text-brand font-medium hover:underline">Contact support</a> and we'll handle it.</p>
+    @endif
+
+    {{-- Security & links (Guard/Shield) --}}
+    @if ($tab === 'security')
+        @if (! $site->hasPaidSubscription())
+            <div class="rounded-[10px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                Security scans and link audits are included on Guard and Shield plans after checkout.
+                <button wire:click="setTab('plan')" class="ml-2 font-semibold underline hover:no-underline">View plans →</button>
+            </div>
+        @else
+            <p class="text-sm text-gray-500 mb-4">
+                @if ($planFeatures->canMalwareScan())
+                    Malware scans run weekly.
+                @endif
+                @if ($planFeatures->canMalwareScan() && $planFeatures->canBrokenLinkAudit())
+                    Broken link audits run monthly.
+                @elseif ($planFeatures->canBrokenLinkAudit())
+                    Broken link audits run monthly.
+                @endif
+                Detection and reporting only — open a ticket if you'd like us to fix anything.
+            </p>
+
+            <div class="grid gap-4 md:grid-cols-2 mb-6">
+                @if ($planFeatures->canMalwareScan())
+                    <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Malware scan</p>
+                            @if ($lastMalwareScan)
+                                @php
+                                    $msSeverity = $lastMalwareScan->severity instanceof \App\Enums\EventSeverity
+                                        ? $lastMalwareScan->severity->value
+                                        : (string) $lastMalwareScan->severity;
+                                @endphp
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full
+                                    {{ in_array($msSeverity, ['critical', 'warning'], true) ? 'bg-amber-100 text-amber-800' : ($msSeverity === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600') }}">
+                                    {{ $lastMalwareScan->type === 'malware_scan_alert' ? 'Issues found' : ($lastMalwareScan->type === 'malware_scan_failed' ? 'Scan failed' : 'Clean') }}
+                                </span>
+                            @endif
+                        </div>
+                        @if ($lastMalwareScan)
+                            <p class="text-sm font-semibold text-gray-900">{{ $lastMalwareScan->title }}</p>
+                            <p class="text-sm text-gray-600 mt-1">{{ $lastMalwareScan->message }}</p>
+                            <p class="text-xs text-gray-400 mt-3">Last run {{ $lastMalwareScan->created_at->diffForHumans() }}</p>
+                        @else
+                            <p class="text-sm text-gray-600">No scan results yet. Your first weekly scan will appear here.</p>
+                        @endif
+                    </div>
+                @endif
+
+                @if ($planFeatures->canBrokenLinkAudit())
+                    <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Broken links</p>
+                            @if ($lastLinkAudit)
+                                @php
+                                    $brokenCount = (int) ($lastLinkAudit->metadata['broken_count'] ?? 0);
+                                @endphp
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ $brokenCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
+                                    {{ $brokenCount > 0 ? $brokenCount . ' broken' : 'All clear' }}
+                                </span>
+                            @endif
+                        </div>
+                        @if ($lastLinkAudit)
+                            <p class="text-sm font-semibold text-gray-900">{{ $lastLinkAudit->title }}</p>
+                            <p class="text-sm text-gray-600 mt-1">{{ $lastLinkAudit->message }}</p>
+                            @if (! empty($lastLinkAudit->metadata['total_checked']))
+                                <p class="text-xs text-gray-500 mt-2">{{ $lastLinkAudit->metadata['total_checked'] }} links checked</p>
+                            @endif
+                            <p class="text-xs text-gray-400 mt-1">Last run {{ $lastLinkAudit->created_at->diffForHumans() }}</p>
+                        @else
+                            <p class="text-sm text-gray-600">No audit results yet. Your first monthly audit will appear here.</p>
+                        @endif
+                    </div>
+                @endif
+            </div>
+
+            @if (($lastMalwareScan && $lastMalwareScan->type === 'malware_scan_alert') || ($lastLinkAudit && (int) ($lastLinkAudit->metadata['broken_count'] ?? 0) > 0))
+                <div class="rounded-[10px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                    Issues were detected on your site.
+                    <a href="{{ route('portal.tickets') }}" class="ml-1 font-semibold text-amber-800 underline hover:no-underline">Open a support ticket</a>
+                    and we'll help review or fix them.
+                </div>
+            @endif
+        @endif
     @endif
 
     {{-- Reports --}}

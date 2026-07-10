@@ -36,3 +36,4 @@ app-code/storage/framework/cache/data/*
 # ---------- Release artifacts ----------
 wp-plugin/*.zip
 marketing-site/*.zip
+/dist/

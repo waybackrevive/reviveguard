@@ -21,14 +21,18 @@ class Ticket extends Model
         'message',
         'status',
         'priority',
+        'type',
+        'sla_due_at',
+        'minutes_billed',
         'admin_reply',
         'replied_at',
         'resolved_at',
     ];
 
     protected $casts = [
-        'replied_at'  => 'datetime',
-        'resolved_at' => 'datetime',
+        'replied_at'   => 'datetime',
+        'resolved_at'  => 'datetime',
+        'sla_due_at'   => 'datetime',
     ];
 
     public function tenant(): BelongsTo
@@ -49,6 +53,16 @@ class Ticket extends Model
     public function isOpen(): bool
     {
         return in_array($this->status, ['open', 'in_progress']);
+    }
+
+    public function isEmergencyRestore(): bool
+    {
+        return $this->type === 'emergency_restore';
+    }
+
+    public function isContentEdit(): bool
+    {
+        return $this->type === 'content_edit';
     }
 }
 

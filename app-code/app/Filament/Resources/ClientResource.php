@@ -7,6 +7,7 @@ use App\Filament\Resources\ClientResource\RelationManagers;
 use App\Models\Client;
 use App\Support\PortalAccess;
 use App\Support\StripeConfig;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -57,6 +58,30 @@ class ClientResource extends Resource
                         ->label('Active')
                         ->default(true),
                 ])->columns(2),
+
+            Forms\Components\Section::make('Shield premium')
+                ->description('Account manager and content-edit hours for Shield clients.')
+                ->schema([
+                    Forms\Components\Select::make('account_manager_id')
+                        ->label('Account manager')
+                        ->options(fn () => User::query()
+                            ->where('tenant_id', config('app.tenant_id'))
+                            ->where('is_super_admin', true)
+                            ->orderBy('name')
+                            ->pluck('name', 'id'))
+                        ->searchable()
+                        ->nullable()
+                        ->helperText('Shown in the Shield client portal.'),
+
+                    Forms\Components\TextInput::make('content_minutes_remaining')
+                        ->label('Content minutes remaining')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(999)
+                        ->helperText('Shield plan includes 120 min/month. Reset automatically on the 1st.'),
+                ])
+                ->columns(2)
+                ->visibleOn('edit'),
 
             Forms\Components\Section::make('Portal Access')
                 ->schema([
@@ -126,6 +151,16 @@ class ClientResource extends Resource
                     ->label('Open tickets')
                     ->sortable()
                     ->color(fn (int $state) => $state > 0 ? 'warning' : 'gray'),
+
+                Tables\Columns\TextColumn::make('accountManager.name')
+                    ->label('Account mgr')
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('content_minutes_remaining')
+                    ->label('Content min')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('stripe_customer')
                     ->label('Stripe')
@@ -215,6 +250,7 @@ class ClientResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('tenant_id', config('app.tenant_id'))
+            ->with(['accountManager'])
             ->withCount([
                 'sites',
                 'sites as paying_sites_count' => function (Builder $query): void {

@@ -71,6 +71,6 @@ class EventOpsTest extends TestCase
 
         $this->assertFalse($event->isClientInitiated());
         $this->assertSame('System', $event->sourceLabel());
-        $this->assertSame('Uptime probe', $event->typeLabel());
+        $this->assertSame('Uptime check', $event->typeLabel());
     }
 }
