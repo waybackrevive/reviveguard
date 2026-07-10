@@ -61,16 +61,46 @@ class ReportService
         $html = view('reports.monthly', $viewData)->render();
 
         // ── 3. Convert to PDF via Puppeteer microservice ──────────────────────
-        $pdfContent = $this->renderPdf($html);
+        [$pdfContent, $pdfError] = $this->renderPdf($html);
         if (! $pdfContent) {
-            Log::error('ReportService: PDF generation failed', ['site_id' => $siteId, 'period' => $period]);
-            $this->createReportRecord($site, $client, $period, 'failed', null, null, null, 'PDF generation failed');
+            Log::error('ReportService: PDF generation failed', [
+                'site_id' => $siteId,
+                'period'  => $period,
+                'error'   => $pdfError,
+            ]);
+            $this->createReportRecord(
+                $site,
+                $client,
+                $period,
+                'failed',
+                null,
+                null,
+                null,
+                $pdfError ?? 'PDF generation failed',
+            );
+
             return;
         }
 
         // ── 4. Upload PDF to B2 ───────────────────────────────────────────────
         $fileKey = "reports/{$period}/{$site->id}.pdf";
         $b2Key   = $this->b2->uploadFile($fileKey, $pdfContent, 'application/pdf');
+
+        if (! $b2Key) {
+            Log::error('ReportService: B2 upload failed', ['site_id' => $siteId, 'period' => $period]);
+            $this->createReportRecord(
+                $site,
+                $client,
+                $period,
+                'failed',
+                null,
+                null,
+                strlen($pdfContent),
+                'PDF generated but upload to Backblaze B2 failed',
+            );
+
+            return;
+        }
 
         // ── 5. Create Report record ───────────────────────────────────────────
         $report = $this->createReportRecord(
@@ -79,7 +109,7 @@ class ReportService
             period: $period,
             status: 'completed',
             b2FileKey: $b2Key,
-            b2Bucket: $b2Key ? config('services.backblaze.bucket_name') : null,
+            b2Bucket: config('services.backblaze.bucket_name'),
             sizeBytes: strlen($pdfContent),
         );
 
@@ -275,7 +305,10 @@ class ReportService
         return $found;
     }
 
-    private function renderPdf(string $html): ?string
+    /**
+     * @return array{0: ?string, 1: ?string} [pdfBinary, errorMessage]
+     */
+    private function renderPdf(string $html): array
     {
         try {
             $response = Http::timeout(60)
@@ -284,15 +317,30 @@ class ReportService
                 ]);
 
             if ($response->successful()) {
-                return $response->body();
+                $body = $response->body();
+                if ($body === '' || $body === false) {
+                    return [null, 'PDF service returned an empty response'];
+                }
+
+                return [$body, null];
             }
 
-            Log::error('ReportService: Puppeteer /render failed', ['status' => $response->status()]);
+            $detail = substr(trim($response->body()), 0, 200);
+            $msg    = "PDF service HTTP {$response->status()}"
+                .($detail !== '' ? ": {$detail}" : '')
+                ." (url: {$this->puppeteerUrl}/render)";
+
+            Log::error('ReportService: Puppeteer /render failed', [
+                'status' => $response->status(),
+                'body'   => $detail,
+            ]);
+
+            return [null, $msg];
         } catch (\Throwable $e) {
             Log::error('ReportService: Puppeteer exception', ['error' => $e->getMessage()]);
-        }
 
-        return null;
+            return [null, 'PDF service unreachable: '.$e->getMessage()];
+        }
     }
 
     private function createReportRecord(

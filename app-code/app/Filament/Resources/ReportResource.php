@@ -64,6 +64,14 @@ class ReportResource extends Resource
                     ->sortable()
                     ->toggleable(),
 
+                Tables\Columns\TextColumn::make('error_message')
+                    ->label('Error')
+                    ->limit(80)
+                    ->wrap()
+                    ->placeholder('—')
+                    ->color('danger')
+                    ->toggleable(),
+
                 Tables\Columns\IconColumn::make('email_sent')
                     ->boolean()
                     ->label('Emailed')

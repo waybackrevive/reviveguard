@@ -85,7 +85,7 @@ class SiteShow extends Component
 
     public function setTab(string $tab): void
     {
-        $allowed = ['overview', 'monitoring', 'activity', 'backups', 'reports', 'connection', 'plan'];
+        $allowed = ['overview', 'monitoring', 'activity', 'backups', 'security', 'reports', 'connection', 'plan'];
         $this->tab = in_array($tab, $allowed, true) ? $tab : 'overview';
     }
 

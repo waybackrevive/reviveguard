@@ -26,7 +26,8 @@ class EventsRelationManager extends RelationManager
 
                 Tables\Columns\TextColumn::make('title')
                     ->limit(50)
-                    ->searchable(),
+                    ->searchable()
+                    ->description(fn (Event $record) => $record->message ? \Illuminate\Support\Str::limit($record->message, 100) : null),
 
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
@@ -53,6 +54,15 @@ class EventsRelationManager extends RelationManager
                         'resolved'    => true,
                         'resolved_at' => now(),
                     ])),
+
+                Tables\Actions\Action::make('details')
+                    ->label('Details')
+                    ->icon('heroicon-o-eye')
+                    ->color('gray')
+                    ->modalHeading(fn (Event $record) => $record->title)
+                    ->modalContent(fn (Event $record) => view('filament.event-detail', ['event' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close'),
             ])
             ->defaultSort('created_at', 'desc');
     }

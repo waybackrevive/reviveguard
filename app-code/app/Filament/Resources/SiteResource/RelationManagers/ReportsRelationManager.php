@@ -42,6 +42,13 @@ class ReportsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('created_at')
                     ->since()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('error_message')
+                    ->label('Error')
+                    ->limit(100)
+                    ->wrap()
+                    ->placeholder('—')
+                    ->color('danger'),
             ])
             ->defaultSort('created_at', 'desc');
     }
