@@ -870,11 +870,34 @@ sudo supervisorctl tail reviveguard-worker:reviveguard-worker_00
 ```
 
 ### PDF reports not generating
+Error in admin often looks like: `PDF service HTTP 500: Failed to launch the browser process!`
+
 ```bash
 pm2 status
-pm2 logs reviveguard-pdf --lines 50
+pm2 logs reviveguard-pdf --lines 80
+curl -s http://127.0.0.1:3002/health
+
+# Install Chromium deps (Ubuntu) if browser cannot launch:
+sudo apt-get update
+sudo apt-get install -y chromium-browser fonts-liberation libasound2 libatk-bridge2.0-0 \
+  libatk1.0-0 libcups2 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 libxcomposite1 \
+  libxdamage1 libxrandr2 xdg-utils
+
+# Or point Puppeteer at system Chrome:
+# In pm2 ecosystem / env: PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+cd /var/www/reviveguard/puppeteer-service && npm ci
 pm2 restart reviveguard-pdf
 ```
+
+Also re-seed plan features after product sprints so Guard/Shield unlock security UI:
+```bash
+cd /var/www/reviveguard/app-code
+php artisan db:seed --class=PlanSeeder --force
+```
+
+### Backup fails with `tar archive creation failed with exit code 2`
+Usually files changed while tar was reading a live WordPress site. Agent **1.1.1+** uses `--ignore-failed-read` and accepts a usable archive. Redeploy plugin zip from admin / portal download, update the site plugin, then re-run backup.
 
 ### Database connection refused
 ```bash

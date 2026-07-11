@@ -6,10 +6,7 @@ use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Support\PlanFeatures;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class Backups extends Component
@@ -18,49 +15,71 @@ class Backups extends Component
     {
         $client = Auth::guard('client')->user();
 
-        if (!$client) {
-            return view('livewire.portal.backups', [
-                'backups' => collect(),
-                'retentionCopy' => 'Please sign in to view backups.',
-            ])->layout('portal.layouts.app');
+        if (! $client) {
+            return view('livewire.portal.backups', $this->emptyState('Please sign in to view backups.'))
+                ->layout('portal.layouts.app');
         }
 
-        if (!Schema::hasTable('sites') || !Schema::hasTable('backups')) {
-            return view('livewire.portal.backups', [
-                'backups' => collect(),
-                'retentionCopy' => 'Backups are being initialized. Please check again shortly or contact support.',
-            ])->layout('portal.layouts.app');
-        }
+        $siteIds = Site::query()
+            ->where('client_id', $client->id)
+            ->pluck('id');
 
-        try {
-            $site = Site::where('client_id', $client->id)->first();
+        $backups = Backup::query()
+            ->whereIn('site_id', $siteIds)
+            ->with('site')
+            ->orderByDesc('completed_at')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
 
-            $backups = $site
-                ? Backup::where('site_id', $site->id)
-                    ->where('status', BackupStatus::SUCCESS)
-                    ->orderByDesc('completed_at')
-                    ->limit(10)
-                    ->get()
-                : collect();
-        } catch (QueryException $e) {
-            Log::warning('Portal backups query failed', [
-                'client_id' => $client->id,
-                'error' => $e->getMessage(),
-            ]);
+        $successCount = $backups->where('status', BackupStatus::SUCCESS)->count();
+        $failedCount  = $backups->where('status', BackupStatus::FAILED)->count();
+        $latestOk     = $backups->first(fn (Backup $b) => $b->status === BackupStatus::SUCCESS);
 
-            $backups = collect();
-        }
+        $sites = Site::query()
+            ->where('client_id', $client->id)
+            ->with(['plan', 'latestBackup'])
+            ->orderBy('name')
+            ->get()
+            ->map(function (Site $site) {
+                $features = PlanFeatures::forSite($site);
 
-        // Plan-based retention copy — use best paid plan across sites (not legacy single subscription)
+                return [
+                    'site'           => $site,
+                    'retention'      => $features->portalRetentionCopy(),
+                    'frequency'      => $features->backupFrequencyLabel(),
+                    'latest'         => $site->latestBackup,
+                    'ready'          => $site->latestBackup?->status === BackupStatus::SUCCESS
+                        && $site->latestBackup->completed_at
+                        && $site->latestBackup->completed_at->gte(now()->subDays($features->restoreReadinessMaxAgeDays())),
+                ];
+            });
+
         $plan = $client->bestSupportPlan();
-
         $retentionCopy = $plan
             ? PlanFeatures::for($plan)->portalRetentionCopy()
             : 'Your backup schedule depends on your plan.';
 
         return view('livewire.portal.backups', [
             'backups'       => $backups,
+            'sites'         => $sites,
             'retentionCopy' => $retentionCopy,
+            'successCount'  => $successCount,
+            'failedCount'   => $failedCount,
+            'latestOk'      => $latestOk,
         ])->layout('portal.layouts.app');
+    }
+
+    /** @return array<string, mixed> */
+    private function emptyState(string $message): array
+    {
+        return [
+            'backups'       => collect(),
+            'sites'         => collect(),
+            'retentionCopy' => $message,
+            'successCount'  => 0,
+            'failedCount'   => 0,
+            'latestOk'      => null,
+        ];
     }
 }

@@ -111,7 +111,7 @@ final class PlanCatalog
                 ['name' => 'Email + phone support', 'desc' => 'Unlimited tickets · reply within 24h'],
             ],
             'shield' => [
-                ['name' => 'Everything in Guard', 'desc' => 'All managed updates, scans & weekly backups'],
+                ['name' => 'Everything in Guard', 'desc' => 'All managed updates, scans & weekly Guard cadence — plus daily backups'],
                 ['name' => '2-minute uptime checks', 'desc' => 'Fastest detection for critical sites (Guard: 5 min)'],
                 ['name' => 'Daily backups · 180 days', 'desc' => 'Longer history for peace of mind'],
                 ['name' => '4-hour emergency restore SLA', 'desc' => 'Tracked in portal when you open an emergency ticket'],
@@ -144,7 +144,7 @@ final class PlanCatalog
                 ['name' => 'Phone support', 'desc' => 'Email only — upgrade to Guard for phone'],
             ],
             'guard' => [
-                ['name' => '2-minute uptime checks', 'desc' => 'Shield plan — or keep 10-min checks on Guard'],
+                ['name' => '2-minute uptime checks', 'desc' => 'Shield plan — Guard uses 5-minute checks'],
                 ['name' => 'Content edits included', 'desc' => 'Order Content Edit Hours as an add-on'],
                 ['name' => '4-hour emergency restore SLA', 'desc' => 'Shield plan — or one-time restore add-on'],
                 ['name' => 'SEO, ads, or e-commerce fixes', 'desc' => 'Contact us for a custom quote'],

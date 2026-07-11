@@ -56,12 +56,13 @@ Route::middleware(['portal.auth', 'portal.timeout', 'portal.onboarded'])->group(
     Route::get('/alerts', \App\Livewire\Portal\Events::class)->name('portal.alerts');
     Route::redirect('/events', '/portal/alerts')->name('portal.events');
 
+    Route::get('/backups', \App\Livewire\Portal\Backups::class)->name('portal.backups');
+    Route::get('/security', \App\Livewire\Portal\Security::class)->name('portal.security');
+
     Route::get('/reports', \App\Livewire\Portal\Reports::class)->name('portal.reports');
     Route::get('/addons', \App\Livewire\Portal\Addons::class)->name('portal.addons');
     Route::get('/addons/checkout/success', AddonCheckoutSuccessController::class)->name('portal.addons.checkout.success');
     Route::get('/tickets', \App\Livewire\Portal\Tickets::class)->name('portal.tickets');
     Route::get('/billing', \App\Livewire\Portal\Account::class)->name('portal.billing');
     Route::redirect('/account', '/portal/billing')->name('portal.account');
-
-    Route::redirect('/backups', '/portal/sites')->name('portal.backups');
 });

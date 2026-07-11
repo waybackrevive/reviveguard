@@ -1,15 +1,52 @@
 /* ReviveGuard Admin Settings Page */
 
 .rg-wrap {
-    max-width: 860px;
+    max-width: 920px;
 }
 
-.rg-status-card {
+.rg-lead {
+    margin: 4px 0 16px;
+    color: #50575e;
+    font-size: 14px;
+    max-width: 42rem;
+}
+
+.rg-status-card,
+.rg-panel {
     background: #fff;
     border: 1px solid #c3c4c7;
     border-radius: 4px;
     padding: 20px 24px;
-    margin: 20px 0;
+    margin: 16px 0 20px;
+}
+
+.rg-panel--warn {
+    border-color: #dba617;
+    box-shadow: inset 3px 0 0 #dba617;
+}
+
+.rg-panel h2,
+.rg-status-card h2 {
+    margin-top: 0;
+}
+
+.rg-info-table--wide {
+    width: 100%;
+}
+
+.rg-info-table--wide th {
+    width: 220px;
+}
+
+.rg-panel h3 {
+    margin: 28px 0 10px;
+    font-size: 14px;
+    border-bottom: 1px solid #e2e4e7;
+    padding-bottom: 6px;
+}
+
+.rg-panel h3:first-of-type {
+    margin-top: 8px;
 }
 
 .rg-info-table {
@@ -30,9 +67,9 @@
     font-weight: 600;
     color: #1d2327;
     white-space: nowrap;
+    text-align: left;
 }
 
-/* Status badges */
 .rg-status {
     display: inline-block;
     padding: 2px 10px;
@@ -58,14 +95,23 @@
     color: #854d0e;
 }
 
-/* Token field */
 .rg-token-wrap {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
-/* Inline test result */
+.rg-token-set-notice {
+    margin: 0 0 10px;
+    color: #1d2327;
+}
+
+.rg-token-set-notice .dashicons {
+    color: #46b450;
+    vertical-align: middle;
+}
+
 .rg-inline-result {
     margin-left: 12px;
     font-size: 13px;
@@ -82,9 +128,52 @@
     font-weight: 600;
 }
 
-.rg-settings-form h2 {
-    font-size: 1.1em;
-    margin-top: 28px;
-    border-bottom: 1px solid #e2e4e7;
-    padding-bottom: 8px;
+.rg-tabs {
+    margin: 8px 0 0;
+}
+
+.rg-settings-form .form-table th {
+    width: 200px;
+}
+
+.rg-logs-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.rg-logs-header h2 {
+    margin-bottom: 4px;
+}
+
+.rg-log-meta {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: #646970;
+}
+
+.rg-log-box {
+    width: 100%;
+    max-width: 100%;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    background: #1d2327;
+    color: #f0f0f1;
+    border: 1px solid #1d2327;
+    border-radius: 4px;
+    padding: 12px 14px;
+    resize: vertical;
+    white-space: pre;
+    overflow: auto;
+    box-sizing: border-box;
+}
+
+.rg-log-box:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
 }

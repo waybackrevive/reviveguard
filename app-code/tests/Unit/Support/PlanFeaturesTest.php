@@ -77,6 +77,33 @@ class PlanFeaturesTest extends TestCase
         $this->assertTrue($features->isShield());
         $this->assertSame(4, $features->emergencyRestoreSlaHours());
         $this->assertSame(120, $features->contentEditMinutesMonthly());
+        // Stale features JSON without malware keys still unlocks Guard/Shield security.
+        $this->assertTrue($features->canMalwareScan());
+        $this->assertTrue($features->canBrokenLinkAudit());
+    }
+
+    /** @test */
+    public function guard_slug_enables_auto_update_when_feature_keys_missing(): void
+    {
+        $features = PlanFeatures::for(new Plan([
+            'slug'     => 'guard',
+            'features' => [
+                'backup_frequency' => 'weekly',
+            ],
+        ]));
+
+        $this->assertTrue($features->canAutoUpdate());
+    }
+
+    /** @test */
+    public function monitor_slug_does_not_enable_auto_update_when_keys_missing(): void
+    {
+        $features = PlanFeatures::for(new Plan([
+            'slug'     => 'monitor',
+            'features' => [],
+        ]));
+
+        $this->assertFalse($features->canAutoUpdate());
     }
 
     /** @test */

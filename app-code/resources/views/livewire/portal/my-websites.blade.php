@@ -13,7 +13,14 @@
                         We're activating 24/7 uptime monitoring, SSL &amp; domain expiry alerts, and backup scheduling.
                     </p>
                     @if (! ($welcome['connected'] ?? false))
-                        <p class="mt-2 text-sm text-emerald-800">One more step: connect the WordPress plugin so we can manage updates and backups for you.</p>
+                        <p class="mt-2 text-sm text-emerald-800">
+                            One more step: connect the WordPress plugin so monitoring and backups can run
+                            @if (str_contains(strtolower((string) ($welcome['plan'] ?? '')), 'guard') || str_contains(strtolower((string) ($welcome['plan'] ?? '')), 'shield'))
+                                — and so we can manage updates for you.
+                            @else
+                                . On Monitor you keep WordPress updates yourself (or upgrade to Guard for hands-off updates).
+                            @endif
+                        </p>
                     @endif
                     @if ($welcome['partial'] ?? false)
                         <p class="mt-2 text-xs text-amber-700">Your payment is confirmed. Health metrics may take a minute to appear while we finish setup.</p>

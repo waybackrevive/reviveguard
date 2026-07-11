@@ -3,7 +3,7 @@
  * Plugin Name:     ReviveGuard Site Agent
  * Plugin URI:      https://app.reviveguard.com
  * Description:     Connects this WordPress site to ReviveGuard monitoring platform.
- * Version:         1.1.0
+ * Version:         1.1.3
  * Requires at least: 5.8
  * Requires PHP:    7.4
  * Author:          WaybackRevive LLC
@@ -12,7 +12,7 @@
 
 defined('ABSPATH') || exit;
 
-define('REVIVEGUARD_VERSION',    '1.1.0');
+define('REVIVEGUARD_VERSION',    '1.1.3');
 define('REVIVEGUARD_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('REVIVEGUARD_API_BASE',   'https://app.reviveguard.com');
 

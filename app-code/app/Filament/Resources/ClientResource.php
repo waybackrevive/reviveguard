@@ -60,23 +60,27 @@ class ClientResource extends Resource
                 ])->columns(2),
 
             Forms\Components\Section::make('Shield premium — assign manager')
-                ->description('Required for Shield clients: pick who appears as their account manager in the portal. Also set content-edit minutes remaining.')
+                ->description('Create team users under System → Team users first, then assign them here. They appear on the Shield client portal card.')
                 ->schema([
                     Forms\Components\Select::make('account_manager_id')
                         ->label('Account manager')
-                        ->relationship(
-                            name: 'accountManager',
-                            titleAttribute: 'name',
-                            modifyQueryUsing: fn ($query) => $query
-                                ->where('tenant_id', config('app.tenant_id'))
-                                ->where('is_super_admin', true)
-                                ->orderBy('name'),
-                        )
-                        ->getOptionLabelFromRecordUsing(fn (User $record) => "{$record->name} ({$record->email})")
+                        ->options(fn () => User::query()
+                            ->where('is_super_admin', true)
+                            ->where(function ($q) {
+                                $q->where('tenant_id', config('app.tenant_id'))
+                                    ->orWhereNull('tenant_id');
+                            })
+                            ->orderBy('name')
+                            ->get()
+                            ->mapWithKeys(fn (User $u) => [$u->id => "{$u->name} ({$u->email})"])
+                            ->all())
                         ->searchable()
                         ->preload()
                         ->nullable()
-                        ->helperText('Clients → open this client → assign here. Portal shows “We’ll assign your manager soon” until set.'),
+                        ->native(false)
+                        ->helperText(new HtmlString(
+                            'No names listed? Go to <strong>System → Team users</strong> and add an admin, then return here.'
+                        )),
 
                     Forms\Components\TextInput::make('content_minutes_remaining')
                         ->label('Content minutes remaining')
@@ -209,14 +213,20 @@ class ClientResource extends Resource
                         Forms\Components\Select::make('account_manager_id')
                             ->label('Account manager')
                             ->options(fn () => User::query()
-                                ->where('tenant_id', config('app.tenant_id'))
                                 ->where('is_super_admin', true)
+                                ->where(function ($q) {
+                                    $q->where('tenant_id', config('app.tenant_id'))
+                                        ->orWhereNull('tenant_id');
+                                })
                                 ->orderBy('name')
                                 ->get()
-                                ->mapWithKeys(fn (User $u) => [$u->id => "{$u->name} ({$u->email})"]))
+                                ->mapWithKeys(fn (User $u) => [$u->id => "{$u->name} ({$u->email})"])
+                                ->all())
                             ->searchable()
+                            ->preload()
                             ->nullable()
-                            ->helperText('Shown on the Shield client portal card.'),
+                            ->native(false)
+                            ->helperText('Add people under System → Team users if the list is empty.'),
                     ])
                     ->fillForm(fn (Client $record) => [
                         'account_manager_id' => $record->account_manager_id,
