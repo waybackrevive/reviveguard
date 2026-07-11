@@ -6,9 +6,12 @@
         <select wire:model.live="filterType"
                 class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Events</option>
-            <option value="uptime_kuma_alert">Downtime</option>
-            <option value="backup_completed">Backup</option>
-            <option value="plugin_update">Updates</option>
+            <option value="uptime_probe">Downtime / uptime</option>
+            <option value="backup_complete">Backup success</option>
+            <option value="backup_failed">Backup failed</option>
+            <option value="update_complete">Updates applied</option>
+            <option value="update_failed">Update failed</option>
+            <option value="malware_scan_complete">Malware scan</option>
             <option value="ssl_expiry_warning">SSL Warning</option>
             <option value="domain_expiry_warning">Domain Warning</option>
         </select>

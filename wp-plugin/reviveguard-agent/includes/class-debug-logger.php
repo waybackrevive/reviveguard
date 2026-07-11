@@ -8,6 +8,7 @@ defined('ABSPATH') || exit;
 final class ReviveGuard_DebugLogger
 {
     private const MAX_FILE_SIZE_BYTES = 524288; // 512 KB
+    private const DEFAULT_TAIL_LINES  = 200;
 
     private static function logDir(): string
     {
@@ -32,6 +33,48 @@ final class ReviveGuard_DebugLogger
     public static function error(string $message): void
     {
         self::write('ERROR', $message);
+    }
+
+    /**
+     * Read the latest log lines for the admin Support logs panel (view/copy only).
+     *
+     * @return array{lines: list<string>, exists: bool, path_hint: string}
+     */
+    public static function tail(int $maxLines = self::DEFAULT_TAIL_LINES): array
+    {
+        $maxLines = max(1, min(500, $maxLines));
+        $logFile  = self::logFile();
+
+        if (! file_exists($logFile) || ! is_readable($logFile)) {
+            return [
+                'lines'     => [],
+                'exists'    => false,
+                'path_hint' => 'wp-content/uploads/reviveguard/debug.log',
+            ];
+        }
+
+        $content = file_get_contents($logFile);
+        if ($content === false || $content === '') {
+            return [
+                'lines'     => [],
+                'exists'    => true,
+                'path_hint' => 'wp-content/uploads/reviveguard/debug.log',
+            ];
+        }
+
+        $allLines = preg_split("/\r\n|\n|\r/", rtrim($content));
+        if (! is_array($allLines)) {
+            $allLines = [];
+        }
+
+        $allLines = array_values(array_filter($allLines, static fn ($line) => $line !== ''));
+        $slice    = array_slice($allLines, -$maxLines);
+
+        return [
+            'lines'     => $slice,
+            'exists'    => true,
+            'path_hint' => 'wp-content/uploads/reviveguard/debug.log',
+        ];
     }
 
     private static function write(string $level, string $message): void

@@ -161,24 +161,41 @@ final class ReviveGuard_BackupHandler
 
     private function createArchive(string $archiveFile, string $tmpDir): void
     {
-        $wpRoot     = escapeshellarg(ABSPATH);
+        $wpRoot     = ABSPATH;
         $archiveEsc = escapeshellarg($archiveFile);
         $tmpDirEsc  = escapeshellarg($tmpDir);
+        $wpRootEsc  = escapeshellarg($wpRoot);
 
+        // Excludes must come before the file list. --ignore-failed-read avoids exit 2
+        // when WP files change mid-read (common on live sites).
         $excludeFlags = implode(' ', [
             '--exclude=./wp-content/cache',
             '--exclude=./wp-content/upgrade',
+            '--exclude=./wp-content/uploads/backwpup*',
             '--exclude=./.git',
             '--exclude=./node_modules',
             '--exclude=*.log',
+            '--ignore-failed-read',
         ]);
 
-        // Archive database.sql (from tmpDir) + WordPress files (from site root)
-        $cmd = "tar -czf {$archiveEsc} -C {$tmpDirEsc} database.sql -C {$wpRoot} . {$excludeFlags} 2>&1";
-        system($cmd, $exitCode);
+        $output   = [];
+        $exitCode = 0;
+        $cmd      = "tar -czf {$archiveEsc} {$excludeFlags} -C {$tmpDirEsc} database.sql -C {$wpRootEsc} . 2>&1";
+        exec($cmd, $output, $exitCode);
 
-        if ($exitCode !== 0) {
-            throw new RuntimeException("tar archive creation failed with exit code {$exitCode}");
+        $stderr = trim(implode("\n", $output));
+        $exists = file_exists($archiveFile) && filesize($archiveFile) > 0;
+
+        // GNU tar exit 1 = some files differ; exit 2 = fatal. Accept 0/1 when archive exists.
+        if ($exitCode > 1 || ! $exists) {
+            $detail = $stderr !== '' ? $stderr : 'no tar output';
+            throw new RuntimeException(
+                "tar archive creation failed with exit code {$exitCode}: {$detail}"
+            );
+        }
+
+        if ($exitCode === 1 && $stderr !== '') {
+            ReviveGuard_DebugLogger::warning('tar completed with warnings: ' . $stderr);
         }
     }
 

@@ -83,6 +83,9 @@
                 'activity' => 'Activity',
                 'backups' => 'Backups',
             ];
+            if ($showUpdatesTab ?? false) {
+                $tabs['updates'] = 'Updates';
+            }
             if ($showSecurityTab ?? false) {
                 $tabs['security'] = 'Security & links';
             }
@@ -141,7 +144,32 @@
             </div>
         </div>
 
-        @if ($site->plan && in_array($site->plan->slug, ['guard', 'shield']))
+        @if ($showUpdatesTab ?? false)
+            <div class="mb-6 rounded-[10px] border border-emerald-100 bg-emerald-50/50 px-5 py-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-emerald-900">Managed WordPress updates</p>
+                        <p class="text-sm text-emerald-800 mt-1">
+                            Core, plugins, and themes are updated weekly by our team — with a safety backup first and automatic rollback if something breaks.
+                        </p>
+                        @if ($lastUpdateEvent)
+                            <p class="text-xs text-emerald-700 mt-2">Last activity: {{ $lastUpdateEvent->title }} · {{ $lastUpdateEvent->created_at->diffForHumans() }}</p>
+                        @else
+                            <p class="text-xs text-emerald-700 mt-2">First weekly update window runs after your site is connected — usually within 7 days.</p>
+                        @endif
+                    </div>
+                    <button type="button" wire:click="setTab('updates')" class="text-sm font-semibold text-brand hover:underline whitespace-nowrap">View updates →</button>
+                </div>
+            </div>
+        @elseif ($site->plan?->slug === 'monitor')
+            <div class="mb-6 rounded-[10px] border border-amber-100 bg-amber-50/60 px-5 py-4">
+                <p class="text-sm font-semibold text-amber-900">Updates: you manage</p>
+                <p class="text-sm text-amber-800 mt-1">
+                    On Monitor, you keep WordPress core, plugins, and themes up to date yourself. Upgrade to Guard for weekly hands-off updates with pre-update backup and rollback.
+                </p>
+                <button type="button" wire:click="setTab('plan')" class="mt-2 text-sm font-semibold text-amber-900 underline hover:no-underline">Compare plans →</button>
+            </div>
+        @elseif ($site->plan && in_array($site->plan->slug, ['guard', 'shield']))
             <div class="mb-6 rounded-[10px] border border-emerald-100 bg-emerald-50/50 px-5 py-4">
                 <p class="text-sm font-semibold text-emerald-900">Managed by ReviveGuard</p>
                 <p class="text-sm text-emerald-800 mt-1">Updates and backups are handled by our team on your {{ $site->plan->name }} plan.</p>
@@ -450,6 +478,88 @@
             @endif
         </div>
         <p class="text-sm text-gray-500">Need a restore? <a href="{{ route('portal.tickets') }}" class="text-brand font-medium hover:underline">Contact support</a> and we'll handle it.</p>
+    @endif
+
+    {{-- Updates (Guard/Shield) --}}
+    @if ($tab === 'updates')
+        @if (! ($showUpdatesTab ?? false))
+            <div class="rounded-[10px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                Managed WordPress updates are included on Guard and Shield.
+                <button wire:click="setTab('plan')" class="ml-2 font-semibold underline hover:no-underline">View plans →</button>
+            </div>
+        @elseif (! $site->hasPaidSubscription())
+            <div class="rounded-[10px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                Updates start after checkout is complete.
+                <button wire:click="setTab('plan')" class="ml-2 font-semibold underline hover:no-underline">Complete plan →</button>
+            </div>
+        @else
+            <p class="text-sm text-gray-500 mb-4">
+                Our team applies WordPress core, plugin, and theme updates weekly. Every run starts with a safety backup; if an update fails, we attempt an automatic rollback.
+            </p>
+
+            <div class="grid gap-4 sm:grid-cols-3 mb-6">
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Last update</p>
+                    <p class="text-lg font-bold text-gray-900">{{ $lastUpdateEvent?->created_at?->diffForHumans() ?? 'Pending first run' }}</p>
+                </div>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Safety backup</p>
+                    <p class="text-sm font-semibold text-gray-900">Required before each update</p>
+                </div>
+                <div class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Rollback</p>
+                    <p class="text-sm font-semibold text-gray-900">Auto-attempt on failure</p>
+                </div>
+            </div>
+
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Update history</h3>
+            <div class="bg-white rounded-[10px] border border-gray-200 overflow-hidden mb-6">
+                @if ($siteUpdateEvents->isEmpty())
+                    <div class="px-5 py-10 text-center text-sm text-gray-500">
+                        No update runs recorded yet. Weekly updates begin after the agent is connected — usually within 7 days.
+                    </div>
+                @else
+                    <ul class="divide-y divide-gray-100">
+                        @foreach ($siteUpdateEvents as $event)
+                            <li class="px-5 py-4">
+                                <div class="flex flex-wrap items-start justify-between gap-2">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">{{ $event->title }}</p>
+                                        @if ($event->message)
+                                            <p class="text-xs text-gray-500 mt-1">{{ $event->message }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        @php $sev = $event->severity instanceof \App\Enums\EventSeverity ? $event->severity->value : (string) $event->severity; @endphp
+                                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
+                                            {{ $sev === 'critical' ? 'bg-red-100 text-red-700' : ($sev === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-800') }}">
+                                            {{ $event->typeLabel() }}
+                                        </span>
+                                        <p class="text-xs text-gray-400 mt-1">{{ $event->created_at->diffForHumans() }}</p>
+                                    </div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+
+            @if ($siteRollbackEvents->isNotEmpty())
+                <h3 class="text-sm font-semibold text-gray-900 mb-3">Rollback activity</h3>
+                <div class="bg-white rounded-[10px] border border-gray-200 overflow-hidden mb-4">
+                    <ul class="divide-y divide-gray-100">
+                        @foreach ($siteRollbackEvents as $event)
+                            <li class="px-5 py-3 text-sm">
+                                <p class="font-medium text-gray-900">{{ $event->title }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $event->message }} · {{ $event->created_at->diffForHumans() }}</p>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <p class="text-sm text-gray-500">Questions about an update? <a href="{{ route('portal.tickets') }}" class="text-brand font-medium hover:underline">Open a support ticket</a>.</p>
+        @endif
     @endif
 
     {{-- Security & links (Guard/Shield) --}}

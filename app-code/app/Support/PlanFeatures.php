@@ -72,18 +72,38 @@ final class PlanFeatures
 
     public function canAutoUpdate(): bool
     {
-        return (bool) ($this->plan->features['wp_core_updates'] ?? false)
-            || (bool) ($this->plan->features['wp_plugin_updates'] ?? false);
+        $features = $this->plan->features ?? [];
+
+        if (array_key_exists('wp_core_updates', $features) || array_key_exists('wp_plugin_updates', $features)) {
+            return (bool) ($features['wp_core_updates'] ?? false)
+                || (bool) ($features['wp_plugin_updates'] ?? false);
+        }
+
+        // Stale DB rows (pre-P2) — Guard/Shield include weekly managed updates by plan matrix.
+        return in_array($this->slug(), ['guard', 'shield'], true);
     }
 
     public function canMalwareScan(): bool
     {
-        return (bool) ($this->plan->features['malware_scan'] ?? false);
+        $features = $this->plan->features ?? [];
+
+        if (array_key_exists('malware_scan', $features)) {
+            return (bool) $features['malware_scan'];
+        }
+
+        // Stale DB rows (pre-P3) — Guard/Shield include weekly malware scans by plan matrix.
+        return in_array($this->slug(), ['guard', 'shield'], true);
     }
 
     public function canBrokenLinkAudit(): bool
     {
-        return (bool) ($this->plan->features['broken_link_audit'] ?? false);
+        $features = $this->plan->features ?? [];
+
+        if (array_key_exists('broken_link_audit', $features)) {
+            return (bool) $features['broken_link_audit'];
+        }
+
+        return in_array($this->slug(), ['guard', 'shield'], true);
     }
 
     public function isShield(): bool

@@ -52,45 +52,16 @@ final class ReviveGuard_AdminPage
 
         check_admin_referer('reviveguard_save_settings');
 
-        // API Base URL
-        $apiUrl = isset($_POST['reviveguard_api_base_url'])
-            ? esc_url_raw(wp_unslash((string) $_POST['reviveguard_api_base_url']))
-            : REVIVEGUARD_API_BASE;
-        update_option('reviveguard_api_base_url', $apiUrl);
-
-        // B2 Settings
-        $b2KeyId = isset($_POST['reviveguard_b2_key_id'])
-            ? sanitize_text_field(wp_unslash((string) $_POST['reviveguard_b2_key_id']))
-            : '';
-        $b2AppKey = isset($_POST['reviveguard_b2_app_key'])
-            ? sanitize_text_field(wp_unslash((string) $_POST['reviveguard_b2_app_key']))
-            : '';
-        $b2BucketName = isset($_POST['reviveguard_b2_bucket_name'])
-            ? sanitize_text_field(wp_unslash((string) $_POST['reviveguard_b2_bucket_name']))
-            : '';
-        $b2PathPrefix = isset($_POST['reviveguard_b2_path_prefix'])
-            ? sanitize_text_field(wp_unslash((string) $_POST['reviveguard_b2_path_prefix']))
-            : 'reviveguard-backups';
-
-        update_option('reviveguard_b2_key_id',      $b2KeyId);
-        update_option('reviveguard_b2_bucket_name', $b2BucketName);
-        update_option('reviveguard_b2_path_prefix', $b2PathPrefix);
-
-        // Only update B2 app key if a new value was entered (don't overwrite with blank)
-        if (! empty($b2AppKey)) {
-            update_option('reviveguard_b2_app_key', $b2AppKey);
-        }
-
-        // Agent Token — only update if a new value was provided
+        // Connection tab only — platform URL / B2 are ops-provisioned, not client-edited.
         $rawToken = isset($_POST['reviveguard_agent_token'])
             ? sanitize_text_field(wp_unslash((string) $_POST['reviveguard_agent_token']))
             : '';
-        if (! empty($rawToken)) {
+        if ($rawToken !== '') {
             ReviveGuard_TokenStore::set($rawToken);
             update_option('reviveguard_connection_status', 'pending');
         }
 
-        wp_redirect(admin_url('options-general.php?page=reviveguard-settings&saved=1'));
+        wp_redirect(admin_url('options-general.php?page=reviveguard-settings&saved=1&rg_tab=connection'));
         exit;
     }
 
@@ -110,7 +81,7 @@ final class ReviveGuard_AdminPage
         if ($status === 'connected') {
             wp_send_json_success(['message' => 'Heartbeat sent successfully — connection confirmed.']);
         } else {
-            wp_send_json_error(['message' => 'Heartbeat failed. Check the debug log for details.']);
+            wp_send_json_error(['message' => 'Heartbeat failed. Check Support → Latest logs for details.']);
         }
     }
 

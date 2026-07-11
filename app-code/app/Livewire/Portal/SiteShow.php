@@ -85,7 +85,7 @@ class SiteShow extends Component
 
     public function setTab(string $tab): void
     {
-        $allowed = ['overview', 'monitoring', 'activity', 'backups', 'security', 'reports', 'connection', 'plan'];
+        $allowed = ['overview', 'monitoring', 'activity', 'backups', 'updates', 'security', 'reports', 'connection', 'plan'];
         $this->tab = in_array($tab, $allowed, true) ? $tab : 'overview';
     }
 
@@ -427,9 +427,13 @@ class SiteShow extends Component
 
         $planFeatures = PlanFeatures::for($this->site->plan);
         $showSecurityTab = $planFeatures->canMalwareScan() || $planFeatures->canBrokenLinkAudit();
+        $showUpdatesTab  = $planFeatures->canAutoUpdate();
 
         $lastMalwareScan = null;
         $lastLinkAudit   = null;
+        $lastUpdateEvent = null;
+        $updateEvents    = collect();
+        $rollbackEvents  = collect();
 
         if ($showSecurityTab) {
             $lastMalwareScan = $this->site->events()
@@ -441,6 +445,22 @@ class SiteShow extends Component
                 ->whereIn('type', ['broken_link_audit_complete', 'broken_link_audit_failed'])
                 ->latest()
                 ->first();
+        }
+
+        if ($showUpdatesTab) {
+            $updateEvents = $this->site->events()
+                ->whereIn('type', ['update_complete', 'update_failed', 'update_deferred'])
+                ->latest()
+                ->limit(15)
+                ->get();
+
+            $rollbackEvents = $this->site->events()
+                ->whereIn('type', ['rollback_complete', 'rollback_failed', 'rollback_queued'])
+                ->latest()
+                ->limit(10)
+                ->get();
+
+            $lastUpdateEvent = $updateEvents->first();
         }
 
         if ($this->showPlanChangeModal && $this->planChangePlanSlug && $this->site->plan) {
@@ -478,9 +498,13 @@ class SiteShow extends Component
             'clientTimezoneLabel' => $clientTimezoneLabel,
             'portalClient'        => $portalClient,
             'showSecurityTab'       => $showSecurityTab,
+            'showUpdatesTab'        => $showUpdatesTab,
             'planFeatures'          => $planFeatures,
             'lastMalwareScan'       => $lastMalwareScan,
             'lastLinkAudit'         => $lastLinkAudit,
+            'lastUpdateEvent'       => $lastUpdateEvent,
+            'siteUpdateEvents'      => $updateEvents,
+            'siteRollbackEvents'    => $rollbackEvents,
         ])->layout('portal.layouts.app');
     }
 }

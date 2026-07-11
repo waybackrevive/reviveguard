@@ -75,6 +75,8 @@
                 $nav = [
                     ['portal.sites', 'Home', 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'],
                     ['portal.alerts', 'Alerts', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'],
+                    ['portal.backups', 'Backups', 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4'],
+                    ['portal.security', 'Security', 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
                     ['portal.reports', 'Reports', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
                     ['portal.addons', 'Add-ons', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
                     ['portal.tickets', 'Support', 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
@@ -123,6 +125,8 @@
         <nav id="mobileNav" class="hidden bg-white border-b border-gray-200 py-2 z-50 shadow-lg">
             <a href="{{ route('portal.sites') }}" class="block px-5 py-2.5 text-sm">Home</a>
             <a href="{{ route('portal.alerts') }}" class="block px-5 py-2.5 text-sm">Alerts</a>
+            <a href="{{ route('portal.backups') }}" class="block px-5 py-2.5 text-sm">Backups</a>
+            <a href="{{ route('portal.security') }}" class="block px-5 py-2.5 text-sm">Security</a>
             <a href="{{ route('portal.reports') }}" class="block px-5 py-2.5 text-sm">Reports</a>
             <a href="{{ route('portal.addons') }}" class="block px-5 py-2.5 text-sm">Add-ons</a>
             <a href="{{ route('portal.tickets') }}" class="block px-5 py-2.5 text-sm">Support</a>

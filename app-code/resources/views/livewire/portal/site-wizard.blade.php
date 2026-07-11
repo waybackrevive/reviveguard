@@ -111,9 +111,10 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100 text-gray-700">
                         <tr><td class="px-3 py-2">Uptime & SSL monitoring</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
-                        <tr><td class="px-3 py-2">Backups</td><td class="text-center">Monthly</td><td class="text-center">Daily</td><td class="text-center">Daily</td></tr>
-                        <tr><td class="px-3 py-2">WP updates managed</td><td class="text-center">—</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
-                        <tr><td class="px-3 py-2">Support tickets</td><td class="text-center">—</td><td class="text-center">1/mo</td><td class="text-center">Unlimited</td></tr>
+                        <tr><td class="px-3 py-2">Backups</td><td class="text-center">2× / month</td><td class="text-center">Weekly</td><td class="text-center">Daily</td></tr>
+                        <tr><td class="px-3 py-2">WP updates managed</td><td class="text-center">You manage</td><td class="text-center">✓ Weekly</td><td class="text-center">✓ Weekly</td></tr>
+                        <tr><td class="px-3 py-2">Malware + link audits</td><td class="text-center">—</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
+                        <tr><td class="px-3 py-2">Support</td><td class="text-center">Email</td><td class="text-center">Email + phone</td><td class="text-center">Priority</td></tr>
                     </tbody>
                 </table>
             </div>

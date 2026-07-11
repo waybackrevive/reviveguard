@@ -483,8 +483,7 @@ class SiteResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Run malware scan')
-                    ->modalDescription('Queues a malware integrity scan. WordPress sites use the agent; other sites use external reputation checks.')
-                    ->visible(fn (Site $record) => PlanFeatures::forSite($record)->canMalwareScan())
+                    ->modalDescription('Queues a malware integrity scan. WordPress sites use the agent; other sites use external reputation checks. Available for all plans (admin override).')
                     ->action(function (Site $record): void {
                         if ($record->type === SiteType::WORDPRESS) {
                             $queued = app(\App\Services\SiteCommandQueueService::class)
@@ -524,8 +523,7 @@ class SiteResource extends Resource
                     ->color('gray')
                     ->requiresConfirmation()
                     ->modalHeading('Run broken link audit')
-                    ->modalDescription('Crawls up to 200 internal links from the server and records broken URLs.')
-                    ->visible(fn (Site $record) => PlanFeatures::forSite($record)->canBrokenLinkAudit())
+                    ->modalDescription('Crawls up to 200 internal links from the server and records broken URLs. Available for all plans (admin override).')
                     ->action(function (Site $record): void {
                         RunBrokenLinkAudit::dispatch($record->id, 'manual');
 
